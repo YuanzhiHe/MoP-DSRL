@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mop-dsrl"
+version = "0.1.0"
+description = "Mode-Preserving Noise-Space Reinforcement Learning for Diffusion and Flow Robot Policies"
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+license = {text = "MIT"}
+
+dependencies = [
+    "torch>=2.3.0",
+    "numpy>=1.26,<2.0",
+    "scikit-learn>=1.5",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Core RL training loop
+rl = [
+    "scipy>=1.13",
+    "wandb>=0.17",
+]
+# LIBERO simulation benchmark
+libero = [
+    "robosuite==1.4.1",
+    "mujoco>=3.2",
+]
+# RoboCasa simulation benchmark
+robocasa = [
+    "robosuite>=1.5",
+    "mujoco>=3.2",
+]
+# pi_0.5 backbone via LeRobot
+pi05 = [
+    "transformers>=4.44",
+    "einops>=0.8",
+]
+# Development and testing
+dev = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.3",
+]
+# All optional dependencies
+all = [
+    "mop-dsrl[rl,libero,dev]",
+]
+
+[tool.setuptools.packages.find]
+include = ["mop_dsrl*"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "mop_dsrl/tests",
+    "mop_dsrl/flow_variant/tests",
+]
+markers = [
+    "gpu: marks tests that require a CUDA GPU (deselect with '-m \"not gpu\"')",
+]

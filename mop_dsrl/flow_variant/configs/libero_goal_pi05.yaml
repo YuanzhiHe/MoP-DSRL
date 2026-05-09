@@ -1,0 +1,50 @@
+# Default configuration for UT-5 BC-sanity evaluation on LIBERO-Goal
+# using pi_0.5 (lerobot/pi05_libero_finetuned_v044) as the flow-matching backbone.
+#
+# Run with:
+#   python -m mop_dsrl.flow_variant.eval.run_bc_sanity \
+#       --config mop_dsrl/flow_variant/configs/libero_goal_pi05.yaml \
+#       --diffusion_reference_csv Experiment/analysis/baselines/pi05_bc_libero_goal.csv \
+#       --output Experiment/analysis/flow_variant/ut5_libero_goal.csv
+
+# --- backbone ---
+backbone: pi05                        # primary: pi_0.5 via LeRobot HF Hub
+pretrained_path: lerobot/pi05_libero_finetuned_v044  # LIBERO fine-tuned pi_0.5
+# pretrained_path: lerobot/pi05_base  # base pre-trained (no LIBERO fine-tuning)
+local_files_only: false               # set true if weights are pre-cached
+cache_dir: ""                         # empty = default HF cache
+
+# --- action geometry ---
+H: 50                                 # chunk horizon (pi_0.5 default)
+d_a: 7                                # LIBERO single-arm action dim
+M: 10                                 # Euler steps (pi_0.5 default: 10)
+
+# --- evaluation protocol (method_spec S9, UT-5) ---
+seeds: [0, 1, 2, 3, 4]
+episodes_per_task: 50
+# LIBERO-Goal has 10 tasks; total episodes = 10 * 5 * 50 = 2500
+
+# --- coupling endpoint ---
+# BC mode: z_0 ~ N(0, I), no outer policy (mu_phi = None)
+bc_mode: true
+
+# --- environment ---
+env_suite: libero_goal                # LIBERO v1.0 / robosuite 1.4.1 / mujoco 3.2.3
+max_episode_steps: 300                # LIBERO default
+
+# --- quality gate (method_spec S9, UT-5) ---
+# |S_flow - S_diff| <= 2.0 pp, where S_diff is the pi_0.5 BC reference
+# (not the pi_0 reference — the gate compares flow-variant to the same
+# backbone's native sampler, not across backbone versions).
+gate_threshold_pp: 2.0
+
+# --- reproducibility (PLAN.md Risk R4) ---
+deterministic: true
+cublas_workspace_config: ":16:8"
+
+# --- output ---
+output_dir: Experiment/analysis/flow_variant
+# Artifacts written:
+#   ut5_libero_goal.csv    — per-(task, seed) success rates
+#   ut5_verdict.json       — {S_diff, S_flow, delta_pp, pass}
+#   ut5_summary.md         — short Markdown report

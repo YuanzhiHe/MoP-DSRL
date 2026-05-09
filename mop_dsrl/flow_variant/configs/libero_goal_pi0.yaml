@@ -1,0 +1,42 @@
+# Default configuration for UT-5 BC-sanity evaluation on LIBERO-Goal.
+# Run with:
+#   python -m mop_dsrl.flow_variant.eval.run_bc_sanity \
+#       --config mop_dsrl/flow_variant/configs/libero_goal_pi0.yaml \
+#       --diffusion_reference_csv Experiment/analysis/baselines/pi0_bc_libero_goal.csv \
+#       --output Experiment/analysis/flow_variant/ut5_libero_goal.csv
+
+# --- backbone ---
+backbone: pi0                        # "pi0" or "dpt" (Risk R1 fallback)
+checkpoint_dir: Experiment/datasets/checkpoints/pi0_libero
+
+# --- action geometry (method_spec S8) ---
+H: 50                                # chunk horizon for pi_0
+d_a: 7                               # LIBERO single-arm action dim
+M: 4                                 # Euler steps (method_spec S8)
+
+# --- evaluation protocol (method_spec S9, UT-5) ---
+seeds: [0, 1, 2, 3, 4]
+episodes_per_task: 50
+# LIBERO-Goal has 10 tasks; total episodes = 10 * 5 * 50 = 2500
+
+# --- coupling endpoint ---
+# BC mode: z_0 ~ N(0, I), no outer policy (mu_phi = None)
+bc_mode: true
+
+# --- environment ---
+env_suite: libero_goal               # LIBERO v1.0 / robosuite 1.4.1 / mujoco 3.2.3
+max_episode_steps: 300               # LIBERO default
+
+# --- quality gate (method_spec S9, UT-5) ---
+gate_threshold_pp: 2.0               # |S_flow - S_diff| <= 2.0 pp
+
+# --- reproducibility (PLAN.md Risk R4) ---
+deterministic: true                   # torch.use_deterministic_algorithms(True)
+cublas_workspace_config: ":16:8"      # CUBLAS_WORKSPACE_CONFIG
+
+# --- output ---
+output_dir: Experiment/analysis/flow_variant
+# Artifacts written:
+#   ut5_libero_goal.csv    — per-(task, seed) success rates
+#   ut5_verdict.json       — {S_diff, S_flow, delta_pp, pass}
+#   ut5_summary.md         — short Markdown report
