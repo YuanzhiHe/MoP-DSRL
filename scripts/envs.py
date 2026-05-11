@@ -122,6 +122,7 @@ class LiberoEnv:
     ):
         _ensure_libero_paths()
         from libero.libero import benchmark as libero_benchmark
+        from libero.libero import get_libero_path
         from libero.libero.envs import OffScreenRenderEnv
 
         self.suite = suite
@@ -134,17 +135,37 @@ class LiberoEnv:
         bench = libero_benchmark.get_benchmark(suite)()
         task = bench.get_task(self.task_id)
         self._task = task
-        self._env = OffScreenRenderEnv(
-            has_renderer=False,
-            has_offscreen_renderer=True,
-            render_camera=camera,
-            **task.env_kwargs,
+
+        # Build the bddl_file path using LIBERO's canonical API.
+        bddl_root = get_libero_path("bddl_files")
+        bddl_file = os.path.join(
+            bddl_root, task.problem_folder, task.bddl_file
         )
-        self._env.seed(self.seed * 1000 + self.task_id)
+        self._bddl_file = bddl_file
+
+        env_args = {
+            "bddl_file_name": bddl_file,
+            "camera_heights": 128,
+            "camera_widths": 128,
+            "has_renderer": False,
+            "has_offscreen_renderer": True,
+            "render_camera_name": camera,
+            "use_camera_obs": False,  # we only consume proprio in the SAC policy
+            "use_object_obs": True,
+        }
+        self._env = OffScreenRenderEnv(**env_args)
+        # LIBERO 0.1 OffScreenRenderEnv doesn't accept seed in __init__; use the
+        # underlying robosuite seed if available.
+        try:
+            self._env.seed(self.seed * 1000 + self.task_id)
+        except AttributeError:
+            np.random.seed(self.seed * 1000 + self.task_id)
+
         obs = self._env.reset()
         self._obs = self._flatten_obs(obs)
         self.obs_dim = int(self._obs.shape[0])
-        self.action_dim = int(self._task.action_dim) if hasattr(self._task, "action_dim") else 7
+        # LIBERO single-arm: 7 (6 DoF + gripper).
+        self.action_dim = 7
         self._t = 0
 
     # ------------------------------------------------------------------
@@ -160,10 +181,25 @@ class LiberoEnv:
         parts = []
         for k in sorted(obs.keys()):
             v = obs[k]
-            if isinstance(v, np.ndarray) and v.ndim == 1:
-                parts.append(v.astype(np.float32))
+            if isinstance(v, np.ndarray):
+                if v.ndim == 1:
+                    parts.append(v.astype(np.float32))
+                elif v.ndim == 0:  # scalar
+                    parts.append(v.astype(np.float32).reshape(1))
+                # Skip 3D images, 2D segmentation masks etc.
+            elif isinstance(v, (int, float, np.integer, np.floating)):
+                parts.append(np.array([v], dtype=np.float32))
         if not parts:
-            raise RuntimeError("LIBERO obs dict had no 1-D numerical fields")
+            # Fallback: flatten everything that's numeric, even multi-dim.
+            for k in sorted(obs.keys()):
+                v = obs[k]
+                if isinstance(v, np.ndarray) and np.issubdtype(v.dtype, np.number):
+                    parts.append(v.astype(np.float32).reshape(-1))
+        if not parts:
+            raise RuntimeError(
+                "LIBERO obs dict had no numerical fields. Keys: "
+                + ", ".join(sorted(obs.keys()))
+            )
         return np.concatenate(parts, axis=0)
 
     # ------------------------------------------------------------------
