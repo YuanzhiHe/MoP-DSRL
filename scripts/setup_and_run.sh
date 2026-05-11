@@ -538,6 +538,143 @@ stage_status() {
     ls -1t "$REPO_ROOT/submissions/local_manifest_"*.tsv 2>/dev/null | head -3
 }
 
+# =============================================================================
+# Stage 5b: Repair a partially-installed Stage 5.
+#
+# Run this if Stage 5 reported "LIBERO + lerobot installed" but:
+#  - LIBERO clone died mid-stream (curl 92 / HTTP/2 cancel) and ~/LIBERO is empty
+#  - lerobot install downgraded torch to a CPU wheel (no +cu128 suffix)
+#  - numpy got bumped to 2.x and broke the pyproject pin
+#
+# Idempotent: skip what's already good, fix what's not.
+# =============================================================================
+stage_5b() {
+    stage_header "5b: repair LIBERO clone + restore torch cu128 + reinstall mop-dsrl"
+    ensure_env_active || return 1
+
+    # --- 1. Restore torch with cu128 build (lerobot may have stomped it) ---
+    log "Checking current torch build…"
+    local cur_ver cur_cuda
+    cur_ver=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "missing")
+    cur_cuda=$(python -c "import torch; print(torch.version.cuda or 'CPU')" 2>/dev/null || echo "CPU")
+    log "  torch=$cur_ver  cuda=$cur_cuda"
+    if [[ "$cur_ver" != *"+cu"* ]]; then
+        local base_ver="${cur_ver%%+*}"
+        if [ "$base_ver" = "missing" ] || [ -z "$base_ver" ]; then base_ver="2.10.0"; fi
+        log "Reinstalling torch==$base_ver from cu128 index (force)"
+        pip install --force-reinstall --no-deps \
+            --index-url https://download.pytorch.org/whl/cu128 \
+            "torch==$base_ver" 2>&1 | tail -5
+        # Match torchvision/torchaudio to whatever the cu128 index has paired with torch==base_ver.
+        pip install --force-reinstall --no-deps \
+            --index-url https://download.pytorch.org/whl/cu128 \
+            torchvision torchaudio 2>&1 | tail -5 || true
+    else
+        ok "torch already has +cu suffix — skip force-reinstall"
+    fi
+
+    log "Re-verifying GPU"
+    python - <<'PY'
+import torch
+print("torch:", torch.__version__, " built with cuda:", torch.version.cuda)
+print("cuda available:", torch.cuda.is_available(),
+      " device_count:", torch.cuda.device_count())
+assert torch.cuda.is_available(), "GPU not available after restore — STOP"
+for i in range(torch.cuda.device_count()):
+    p = torch.cuda.get_device_properties(i)
+    print(f"  GPU{i}: {p.name}  sm_{p.major}{p.minor}")
+a = torch.randn(512, 512, device="cuda:0", dtype=torch.bfloat16)
+print("  bf16 matmul OK:", (a @ a).shape)
+PY
+
+    # --- 2. Re-clone LIBERO if missing/empty ---
+    if [ -z "$(ls -A "$LIBERO_DIR" 2>/dev/null)" ]; then
+        log "LIBERO dir empty.  Reclone with HTTP/1.1 + big postBuffer + retries."
+        rm -rf "$LIBERO_DIR"
+        git config --global http.postBuffer 524288000
+        git config --global http.version HTTP/1.1
+        local tries=0 max_tries=5 success=0
+        while [ $tries -lt $max_tries ]; do
+            tries=$((tries + 1))
+            log "clone attempt $tries/$max_tries"
+            if git clone --depth=1 https://github.com/Lifelong-Robot-Learning/LIBERO.git "$LIBERO_DIR"; then
+                success=1; break
+            fi
+            rm -rf "$LIBERO_DIR"
+            sleep $((tries * 5))
+        done
+        if [ $success -eq 0 ]; then
+            err "LIBERO clone still failing after $max_tries tries.  Try manually:"
+            err "  git clone https://github.com/Lifelong-Robot-Learning/LIBERO.git $LIBERO_DIR"
+            return 1
+        fi
+        ok "LIBERO cloned"
+    else
+        ok "LIBERO already present at $LIBERO_DIR"
+    fi
+
+    log "pip install -e $LIBERO_DIR  (LIBERO from source)"
+    pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || {
+        err "LIBERO editable install failed; trying non-editable"
+        pip install "$LIBERO_DIR" 2>&1 | tail -5
+    }
+
+    log "Sanity: import libero"
+    python -c "import libero, libero.libero; print('libero OK:', libero.__file__)" || {
+        err "libero still doesn't import — STOP"
+        return 1
+    }
+
+    # --- 3. Reinstall mop-dsrl in editable mode so pyproject changes apply ---
+    log "Reinstalling mop-dsrl (picks up relaxed numpy constraint)"
+    pip install -e ".[dev,rl]" 2>&1 | tail -5
+
+    # --- 4. Write ~/.libero/config.yaml ---
+    log "Writing ~/.libero/config.yaml"
+    python - <<'PY'
+import yaml, pathlib, libero
+root = pathlib.Path(libero.__file__).parent / 'libero'
+cfg = {
+    'benchmark_root': str(root),
+    'bddl_files':    str(root / 'bddl_files'),
+    'init_states':   str(root / 'init_files'),
+    'datasets':      str(root.parent / 'datasets'),
+    'assets':        str(root / 'assets'),
+}
+out = pathlib.Path.home() / '.libero' / 'config.yaml'
+out.parent.mkdir(exist_ok=True)
+out.write_text(yaml.safe_dump(cfg))
+print('wrote', out)
+print('benchmark_root:', cfg['benchmark_root'])
+print('datasets:', cfg['datasets'])
+PY
+
+    # --- 5. Comprehensive sanity check ---
+    log "Full sanity check"
+    export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
+    python - <<'PY'
+import os, sys
+os.environ.setdefault('MUJOCO_GL','egl')
+import numpy, torch
+print("numpy:", numpy.__version__)
+print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
+import libero, libero.libero
+from libero.libero import benchmark
+print("libero:", libero.__file__)
+b = benchmark.get_benchmark('libero_goal')()
+print("libero_goal tasks:", b.n_tasks)
+import lerobot
+print("lerobot:", lerobot.__version__)
+try:
+    from lerobot.policies.pi05 import PI05Policy
+    print("PI05Policy: import OK")
+except Exception as e:
+    print("PI05Policy import failed:", e); sys.exit(1)
+print("ALL OK")
+PY
+    ok "Stage 5b repair complete.  Re-run stage 6, 7, 8."
+}
+
 stage_collect() {
     stage_header "collect results"
     ensure_env_active || return 1
@@ -566,6 +703,7 @@ main() {
         3)        stage_3 ;;
         4)        stage_4 ;;
         5)        stage_5 ;;
+        5b|repair) stage_5b ;;
         6)        stage_6 ;;
         7)        stage_7 ;;
         8)        stage_8 ;;

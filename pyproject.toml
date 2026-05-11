@@ -12,7 +12,9 @@ license = {text = "MIT"}
 
 dependencies = [
     "torch>=2.3.0",
-    "numpy>=1.26,<2.0",
+    # Allow numpy 2.x — required by lerobot >= 0.4 and modern HF stack.
+    # Our code uses only stable numpy APIs that survive the 2.0 transition.
+    "numpy>=1.26",
     "scikit-learn>=1.5",
     "pyyaml>=6.0",
 ]
