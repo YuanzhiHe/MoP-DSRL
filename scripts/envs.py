@@ -160,11 +160,20 @@ class LiberoEnv:
             np.random.seed(self.seed * 1000 + self.task_id)
 
         obs = self._env.reset()
+        self._last_raw_obs = obs                  # full dict (incl. images) for backbone preprocessing
         self._obs = self._flatten_obs(obs)
         self.obs_dim = int(self._obs.shape[0])
         # LIBERO single-arm: 7 (6 DoF + gripper).
         self.action_dim = 7
         self._t = 0
+
+        # Try to extract the task's natural-language goal for pi_0.5/lerobot.
+        # LIBERO Task objects expose `.language` on recent versions; otherwise
+        # fall back to the human-readable task name.
+        instr = getattr(task, "language", None)
+        if not instr:
+            instr = task.name.replace("_", " ")
+        self.task_instruction = instr
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -201,9 +210,15 @@ class LiberoEnv:
         return np.concatenate(parts, axis=0)
 
     # ------------------------------------------------------------------
+    @property
+    def last_obs_dict(self) -> dict:
+        """Most recent raw LIBERO obs dict (incl. images) for backbone preprocessing."""
+        return self._last_raw_obs
+
     def reset(self) -> np.ndarray:
         self._t = 0
         obs = self._env.reset()
+        self._last_raw_obs = obs
         self._obs = self._flatten_obs(obs)
         return self._obs.copy()
 
@@ -214,6 +229,7 @@ class LiberoEnv:
             action = np.concatenate([action, pad], axis=0)
         action = action[: self.action_dim]
         obs, reward, done, info = self._env.step(action)
+        self._last_raw_obs = obs
         self._obs = self._flatten_obs(obs)
         self._t += 1
         if self._t >= self.max_steps:
@@ -225,6 +241,85 @@ class LiberoEnv:
             self._env.close()
         except Exception:
             pass
+
+
+# ---------------------------------------------------------------------------
+# LIBERO obs dict → pi_0.5 batch adapter
+# ---------------------------------------------------------------------------
+
+
+def libero_obs_to_pi05_batch(
+    raw_obs: dict,
+    task_instruction: str,
+    device: str = "cuda",
+    image_size: int = 224,
+) -> dict:
+    """Convert a LIBERO observation dict into pi_0.5's expected batch format.
+
+    pi_0.5 (LeRobot) expects keys:
+      - observation.images.image_*   [B, C, H, W] float in [0, 1]
+      - observation.state            [B, state_dim]
+      - task / language tokens       (filled in by lerobot's preprocessor)
+
+    LIBERO emits:
+      - agentview_image    [H, W, 3] uint8
+      - robot0_eye_in_hand_image  [H, W, 3] uint8 (if camera enabled)
+      - robot0_eef_pos, robot0_eef_quat, robot0_gripper_qpos  proprio
+    """
+    import torch
+    import torch.nn.functional as F
+
+    def _to_chw_float(img: np.ndarray) -> torch.Tensor:
+        # uint8 HWC → float CHW in [0, 1]
+        t = torch.from_numpy(img.copy()).float() / 255.0
+        if t.ndim == 3 and t.shape[-1] == 3:
+            t = t.permute(2, 0, 1)
+        return t
+
+    images = {}
+    if "agentview_image" in raw_obs:
+        img = _to_chw_float(raw_obs["agentview_image"])
+        if img.shape[-1] != image_size or img.shape[-2] != image_size:
+            img = F.interpolate(img.unsqueeze(0), size=(image_size, image_size),
+                                mode="bilinear", align_corners=False).squeeze(0)
+        images["observation.images.image"] = img.unsqueeze(0).to(device)
+    if "robot0_eye_in_hand_image" in raw_obs:
+        img = _to_chw_float(raw_obs["robot0_eye_in_hand_image"])
+        if img.shape[-1] != image_size or img.shape[-2] != image_size:
+            img = F.interpolate(img.unsqueeze(0), size=(image_size, image_size),
+                                mode="bilinear", align_corners=False).squeeze(0)
+        images["observation.images.wrist_image"] = img.unsqueeze(0).to(device)
+
+    # Proprio state: concatenate eef pos / quat / gripper.
+    state_parts = []
+    for k in ("robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"):
+        if k in raw_obs:
+            v = raw_obs[k]
+            if isinstance(v, np.ndarray):
+                state_parts.append(torch.from_numpy(v.copy()).float().flatten())
+    if state_parts:
+        state = torch.cat(state_parts, dim=0).unsqueeze(0).to(device)
+    else:
+        state = torch.zeros(1, 8, device=device)
+
+    batch = dict(images)
+    batch["observation.state"] = state
+    batch["task"] = task_instruction
+    return batch
+
+
+def repeat_pi05_batch(batch: dict, n: int) -> dict:
+    """Repeat every tensor in the batch n times along dim 0; broadcast strings."""
+    import torch
+    out = {}
+    for k, v in batch.items():
+        if isinstance(v, torch.Tensor):
+            out[k] = v.repeat_interleave(n, dim=0) if v.shape[0] == 1 else v.repeat(n, *([1] * (v.ndim - 1)))
+        elif isinstance(v, str):
+            out[k] = [v] * n
+        else:
+            out[k] = v
+    return out
 
 
 # ---------------------------------------------------------------------------

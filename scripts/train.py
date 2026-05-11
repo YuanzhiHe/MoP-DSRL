@@ -180,16 +180,39 @@ def compute_C_ref(
     n_ref: int,
     vocab: KMeansVocab,
     device: str,
+    obs_dicts: list | None = None,
 ) -> np.ndarray:
-    """Sample n_ref actions per held-out obs under z ~ N(0, I) and assign to clusters."""
+    """Sample n_ref actions per held-out obs under z ~ N(0, I) and assign to clusters.
+
+    If ``obs_dicts`` is provided and the denoiser supports ``denoise_with_obs_dict``
+    (i.e., pi_0.5 / pi_0 backbones that need image+language inputs), the dict path
+    is taken — flat ``obs_set`` is then only used for length / device.
+    """
     obs_t = torch.as_tensor(obs_set, dtype=torch.float32, device=device)
 
-    def _sample_at(i: int, n: int) -> np.ndarray:
-        o_b = obs_t[i].unsqueeze(0).expand(n, -1).contiguous()
-        with torch.no_grad():
-            z = torch.randn(n, z_dim, device=device, dtype=o_b.dtype)
-            a = denoiser.denoise(o_b, z)
-        return a.cpu().numpy().astype(np.float64)
+    use_dict_path = (
+        obs_dicts is not None
+        and hasattr(denoiser, "denoise_with_obs_dict")
+        and hasattr(denoiser.velocity_field, "bind_obs_dict")
+    )
+
+    if use_dict_path:
+        from scripts.envs import repeat_pi05_batch
+
+        def _sample_at(i: int, n: int) -> np.ndarray:
+            batch_one = obs_dicts[i]
+            batch_n = repeat_pi05_batch(batch_one, n)
+            with torch.no_grad():
+                z = torch.randn(n, z_dim, device=device, dtype=torch.float32)
+                a = denoiser.denoise_with_obs_dict(batch_n, z)
+            return a.cpu().numpy().astype(np.float64)
+    else:
+        def _sample_at(i: int, n: int) -> np.ndarray:
+            o_b = obs_t[i].unsqueeze(0).expand(n, -1).contiguous()
+            with torch.no_grad():
+                z = torch.randn(n, z_dim, device=device, dtype=o_b.dtype)
+                a = denoiser.denoise(o_b, z)
+            return a.cpu().numpy().astype(np.float64)
 
     return compute_reference_histogram(
         _sample_at, n_obs=obs_set.shape[0], n_ref=n_ref, vocab=vocab
@@ -322,15 +345,36 @@ def main() -> int:
         vocab = fit_synthetic_vocab(z_dim, args.K, n=4 * args.K * 64, seed=args.seed)
         logger.info("Fit synthetic vocab K=%d (no --vocab_path supplied)", args.K)
 
-    # ---- C_ref ----
-    held_out_obs = np.stack(
-        [env.reset() for _ in range(args.n_obs)], axis=0
-    ).astype(np.float32)
+    # ---- Held-out observations + (for pi_0.5) their full obs dicts ----
+    needs_obs_dicts = (
+        args.backbone in ("pi05", "pi0")
+        and hasattr(denoiser, "denoise_with_obs_dict")
+        and args.env != "synthetic"
+    )
+    held_out_obs_list = []
+    held_out_obs_dicts: list | None = [] if needs_obs_dicts else None
+    for _ in range(args.n_obs):
+        flat = env.reset()
+        held_out_obs_list.append(flat)
+        if needs_obs_dicts:
+            from scripts.envs import libero_obs_to_pi05_batch
+            try:
+                batch = libero_obs_to_pi05_batch(
+                    env.last_obs_dict, env.task_instruction, device=args.device
+                )
+                held_out_obs_dicts.append(batch)
+            except Exception as e:
+                logger.warning("libero_obs_to_pi05_batch failed at #%d: %s", len(held_out_obs_dicts), e)
+                # Fall back: disable dict path entirely
+                needs_obs_dicts = False
+                held_out_obs_dicts = None
+    held_out_obs = np.stack(held_out_obs_list, axis=0).astype(np.float32)
     obs0 = env.reset()
-    logger.info("Computing C_ref on %d held-out observations (n_ref=%d)…",
-                args.n_obs, args.n_ref)
+    logger.info("Computing C_ref on %d held-out observations (n_ref=%d, dict_path=%s)…",
+                args.n_obs, args.n_ref, needs_obs_dicts)
     C_ref_full = compute_C_ref(
-        denoiser, held_out_obs, z_dim, args.n_ref, vocab, args.device
+        denoiser, held_out_obs, z_dim, args.n_ref, vocab, args.device,
+        obs_dicts=held_out_obs_dicts,
     )
     logger.info("C_ref shape=%s entropy=%.3f", C_ref_full.shape,
                 float(-(C_ref_full * np.log(C_ref_full + 1e-12)).sum(axis=-1).mean()))
