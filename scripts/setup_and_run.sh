@@ -398,17 +398,18 @@ stage_9d() { _launch "baselines_3seed"   --tier baselines  --seeds-main 0 1 2; }
 stage_9e() { _launch "all_full"          --tier all; }
 stage_9_ut5() { _launch "ut5_bc_sanity"  --tier ut5; }
 
-# Sequential 9a → 9b → 9c → 9d under a single nohup-able launcher.
+# Sequential 9c → 9d → 9b → 9a under a single nohup-able launcher.
+# Main results first (tier1 main + baselines), then robustness and ablations.
 # Each phase runs run_local.py in the FOREGROUND so they don't compete for GPUs.
 # Designed for `nohup bash scripts/setup_and_run.sh 9_phased &` — survives ssh disconnects.
 stage_9_phased() {
-    stage_header "9_phased: ablations → robustness → tier1 → baselines (sequential)"
+    stage_header "9_phased: tier1 → baselines → robustness → ablations (sequential)"
     ensure_env_active || return 1
     export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl CUBLAS_WORKSPACE_CONFIG=":16:8"
     mkdir -p "$LOG_DIR"
 
     local started=$(date -Is)
-    log "Phased run started at $started — will sequence 9a → 9b → 9c → 9d"
+    log "Phased run started at $started — will sequence 9c → 9d → 9b → 9a"
     log "Each phase logs to $LOG_DIR/phase_*.log; this dispatcher logs to dispatch_*.log."
 
     _phase() {
@@ -427,10 +428,10 @@ stage_9_phased() {
         fi
     }
 
-    _phase ablations_seed0   --tier ablations  --seeds-aux 0
-    _phase robustness_seed0  --tier robustness --seeds-aux 0
     _phase tier1_main_3seed  --tier main       --seeds-main 0 1 2
     _phase baselines_3seed   --tier baselines  --seeds-main 0 1 2
+    _phase robustness_seed0  --tier robustness --seeds-aux 0
+    _phase ablations_seed0   --tier ablations  --seeds-aux 0
 
     ok "All 4 phases done.  Started: $started   Finished: $(date -Is)"
     log "Aggregate with:  bash scripts/setup_and_run.sh collect"
