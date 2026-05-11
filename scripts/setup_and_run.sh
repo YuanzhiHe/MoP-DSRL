@@ -207,18 +207,52 @@ stage_5() {
         err "Continuing — install may still succeed if EGL is in a non-standard path."
     }
 
-    log "Installing robosuite + mujoco"
-    pip install "robosuite==1.4.1" "mujoco>=3.2.3" 2>&1 | tail -3
+    log "Installing robosuite + mujoco + h5py (LIBERO deps)"
+    pip install "robosuite==1.4.1" "mujoco>=3.2.3" h5py easydict thop bddl future 2>&1 | tail -5
 
     if [ ! -d "$LIBERO_DIR" ]; then
         log "Cloning LIBERO → $LIBERO_DIR"
-        git clone --depth=1 https://github.com/Lifelong-Robot-Learning/LIBERO.git "$LIBERO_DIR"
+        git clone --depth=1 https://github.com/Lifelong-Robot-Learning/LIBERO.git "$LIBERO_DIR" || {
+            err "git clone failed.  Check internet / SSL cert."
+            return 1
+        }
     fi
-    log "pip install -e $LIBERO_DIR"
-    pip install -e "$LIBERO_DIR" 2>&1 | tail -3
+    log "pip install -e $LIBERO_DIR  (LIBERO from source)"
+    pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || {
+        err "LIBERO install failed.  Trying without -e:"
+        pip install "$LIBERO_DIR" 2>&1 | tail -5
+    }
 
-    log "Installing lerobot[pi05] (this is slow — ~1 GB of deps)"
-    pip install "lerobot[pi05]" transformers accelerate 2>&1 | tail -5
+    log "Sanity: can we import libero?"
+    python -c "import libero, libero.libero; print('libero OK:', libero.__file__)" || {
+        err "libero import still broken; STOP and report stage 5 log."
+        return 1
+    }
+
+    log "Installing lerobot (try a few install paths — the extras keep changing)"
+    # Latest lerobot has bundled pi_0 / pi_0.5 support without a specific extra.
+    # Fall back to plain `lerobot`, then to a github source install if HF release lags.
+    if pip install "lerobot[pi]" transformers accelerate 2>&1 | tail -10; then
+        ok "lerobot[pi] installed"
+    elif pip install "lerobot[pi05]" transformers accelerate 2>&1 | tail -10; then
+        ok "lerobot[pi05] installed"
+    elif pip install "lerobot" transformers accelerate 2>&1 | tail -10; then
+        ok "lerobot (no extras) installed"
+    else
+        err "PyPI lerobot install failed; trying github source"
+        pip install "git+https://github.com/huggingface/lerobot.git" transformers accelerate 2>&1 | tail -10
+    fi
+
+    log "Sanity: can we import lerobot + the PI05 policy?"
+    python -c "
+import lerobot; print('lerobot:', lerobot.__version__, '@', lerobot.__file__)
+try:
+    from lerobot.policies.pi05 import PI05Policy
+    print('PI05Policy import OK')
+except Exception as e:
+    print('PI05Policy import failed:', e)
+    print('You may need a newer lerobot or an env var LEROBOT_SRC pointing at a checkout.')
+" || true
 
     log "Writing ~/.libero/config.yaml"
     python - <<'PY'
