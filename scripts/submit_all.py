@@ -79,13 +79,24 @@ OPTIMAL_DEFAULTS = {
     "alpha_lr": 3e-4,
     "tau_polyak": 5e-3,
     "gamma": 0.99,
-    # Mode regularizer
-    "lambda_": 1e-1,
+    # Mode regularizer.
+    #
+    # NOTE on lambda compensation: pi_0.5 forwards are ~110ms each on a 5090,
+    # so computing R_mode fully every actor update is infeasible.  The pi_0.5
+    # path subsamples ``rmode_subsample`` held-out obs per evaluation and only
+    # re-evaluates every ``rmode_every`` actor updates (in-between the most
+    # recent KL value is reused as a detached constant).  To keep the integrated
+    # gradient pressure on R_mode equal to spec §8's nominal lambda=0.1, we
+    # scale lambda by rmode_every (= 4) → effective lambda = 0.4.  Ablation
+    # sweeps below use the same x4 compensation.
+    "lambda_": 4e-1,             # = 0.1 × rmode_every=4 compensation
     "epsilon": 0.1,
     "alpha_lambda": 1e-3,
     "n_on": 8,
     "n_ref": 50,
     "n_obs": 1000,
+    "rmode_subsample": 8,        # held-out obs sampled per R_mode evaluation
+    "rmode_every": 4,            # only evaluate R_mode every K actor updates
     # Eval
     "eval_interval": 25_000,
     "eval_episodes": 10,
@@ -211,6 +222,8 @@ def _common_args(
         f"--n_on {OPTIMAL_DEFAULTS['n_on']}",
         f"--n_ref {OPTIMAL_DEFAULTS['n_ref']}",
         f"--n_obs {OPTIMAL_DEFAULTS['n_obs']}",
+        f"--rmode_subsample {OPTIMAL_DEFAULTS['rmode_subsample']}",
+        f"--rmode_every {OPTIMAL_DEFAULTS['rmode_every']}",
         f"--eval_interval {OPTIMAL_DEFAULTS['eval_interval']}",
         f"--eval_episodes {OPTIMAL_DEFAULTS['eval_episodes']}",
         f"--final_eval_episodes {OPTIMAL_DEFAULTS['final_eval_episodes']}",
@@ -316,9 +329,10 @@ def plan_robustness(seeds: list[int]) -> list[Run]:
 def plan_ablations(seeds: list[int]) -> list[Run]:
     runs = []
     suite, backbone = "libero_goal", "pi05"
-    # lambda axis
+    # lambda axis.  Values are scaled by rmode_every=4 to keep the *effective*
+    # gradient pressure on R_mode equal to the spec sweep {0, 1e-2, 1e-1, 1, 10}.
     for seed in seeds:
-        for lam in (0.0, 1e-2, 1e-1, 1.0, 10.0):
+        for lam in (0.0, 4e-2, 4e-1, 4.0, 40.0):
             runs.append(Run(
                 group="ablation_lambda", name=f"lam{lam}_seed{seed}",
                 args=_common_args(backbone, suite, seed, lambda_=lam),
