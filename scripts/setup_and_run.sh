@@ -252,11 +252,15 @@ stage_5() {
     # with lerobot (needs numpy 2.x) and has no Python 3.11 wheel.
     # Workaround: install the packages LIBERO actually imports, unpinned,
     # from binary wheels only (so a stray source build can't hang the install).
-    log "Installing LIBERO's runtime imports (no version pins, binary wheels only)"
+    log "Installing LIBERO's runtime imports (binary wheels only)"
     pip install --only-binary :all: \
         matplotlib hydra-core omegaconf opencv-python cloudpickle \
         ipython imageio thop easydict future seaborn \
-        gym pyquaternion termcolor 2>&1 | tail -5
+        pyquaternion termcolor imageio-ffmpeg pillow \
+        scikit-image tqdm tensorboardX 2>&1 | tail -5
+
+    log "Installing legacy 'gym' (pure Python; no wheels on PyPI anymore, but builds fast)"
+    pip install "gym==0.26.2" 2>&1 | tail -3
 
     # --- .pth shim: add LIBERO_DIR to sys.path so `import libero` works ---
     local SP
