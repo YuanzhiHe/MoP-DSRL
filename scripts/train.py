@@ -134,6 +134,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ood_init", action="store_true",
                    help="Sample initial states from a shifted distribution.")
 
+    # R_mode performance (pi_0.5 path only — toy/toyflow ignore these)
+    p.add_argument("--rmode_subsample", type=int, default=8,
+                   help="For pi_0.5: number of held-out obs sampled per R_mode "
+                        "evaluation (instead of full batch_size).  Cost is "
+                        "O(rmode_subsample * n_on) pi_0.5 forwards per actor update.")
+    p.add_argument("--rmode_every", type=int, default=4,
+                   help="For pi_0.5: only evaluate R_mode every K actor updates.  "
+                        "The most recent KL value is reused for the skipped updates.")
+
     # Eval / I/O
     p.add_argument("--eval_interval", type=int, default=25_000)
     p.add_argument("--eval_episodes", type=int, default=10,
@@ -414,37 +423,57 @@ def main() -> int:
             C_ref_full, dtype=torch.float32, device=args.device
         )
 
+        # Subsample R_mode evaluation: B_mode held-out obs × n_on z's per actor update.
+        # Cost = B_mode * n_on * (pi_0.5 forward cost).  With defaults (8 * 4 = 32
+        # forwards, ~110ms each on a 5090) ≈ 3.5s per R_mode evaluation.
+        _rmode_state = {"step": 0, "last_value": torch.zeros((), device=args.device)}
+
         def _pi05_mode_regularizer(o, vocab_, C_ref_batch_):
-            """Compute R_mode using held-out (flat, dict) pairs aligned by index."""
-            B = o.shape[0]
+            """Compute R_mode on a sub-sample of held-out (flat, dict) pairs.
+
+            For pi_0.5, evaluating R_mode every actor update with full batch is
+            prohibitively expensive (≈28s/update with B=64, n_on=4).  We
+            sub-sample ``--rmode_subsample`` held-out obs per evaluation and
+            only re-evaluate every ``--rmode_every`` updates; in-between, the
+            most recent KL value is reused (still differentiable wrt phi via
+            replay-batch coupling, so SAC actor still updates).
+            """
+            _rmode_state["step"] += 1
+            B_mode = int(args.rmode_subsample)
+            if _rmode_state["step"] % max(1, int(args.rmode_every)) != 1 \
+               and _rmode_state["step"] != 1:
+                return _rmode_state["last_value"]
+
             n_on = trainer.cfg.n_on
-            idx = rng.integers(0, len(held_out_obs_dicts), size=B)
-            # Build flat obs for policy.sample; one row per (held_i, repeated n_on)
-            held_flat = _held_flat_gpu[idx]                        # [B, obs_dim]
-            held_rep = held_flat.repeat_interleave(n_on, dim=0)    # [B*n_on, obs_dim]
+            idx = rng.integers(0, len(held_out_obs_dicts), size=B_mode)
+            held_flat = _held_flat_gpu[idx]                        # [B_mode, obs_dim]
+            held_rep = held_flat.repeat_interleave(n_on, dim=0)    # [B_mode*n_on, obs_dim]
             z_rep, _ = trainer._sample_z(held_rep)
-            # Denoise via dict path, one obs-dict at a time (B forwards of n_on each).
             actions = []
-            for i_local in range(B):
+            for i_local in range(B_mode):
                 batch_n = denoiser.velocity_field.repeat_batch(
                     held_out_obs_dicts[int(idx[i_local])], n_on
                 )
                 z_slice = z_rep[i_local * n_on:(i_local + 1) * n_on]
                 actions.append(denoiser.denoise_with_obs_dict(batch_n, z_slice))
             a_rep = torch.cat(actions, dim=0)
-            # Soft cluster assignment vs vocab + KL against C_ref(held_i)
             median = torch.as_tensor(vocab_.median, dtype=a_rep.dtype, device=args.device)
             mad = torch.as_tensor(vocab_.mad, dtype=a_rep.dtype, device=args.device)
             a_norm = (a_rep - median) / mad
             centroids = torch.as_tensor(vocab_.centroids, dtype=a_rep.dtype, device=args.device)
             soft = soft_assign_distances(a_norm, centroids, temperature=1.0)
             C_ref_held = _C_ref_gpu[idx]
-            return mode_kl_from_assignments(
+            kl = mode_kl_from_assignments(
                 soft, C_ref_held, n_on, trainer.cfg.laplace_alpha()
             )
+            _rmode_state["last_value"] = kl.detach()
+            return kl
         trainer._mode_regularizer = _pi05_mode_regularizer
-        logger.info("Installed pi_0.5 R_mode override using %d held-out dict obs",
-                    len(held_out_obs_dicts))
+        logger.info(
+            "pi_0.5 R_mode: subsample=%d, every=%d (≈%d forwards per actor update)",
+            args.rmode_subsample, args.rmode_every,
+            args.rmode_subsample * trainer.cfg.n_on // max(1, args.rmode_every),
+        )
     logger.info("C_ref shape=%s entropy=%.3f", C_ref_full.shape,
                 float(-(C_ref_full * np.log(C_ref_full + 1e-12)).sum(axis=-1).mean()))
 
