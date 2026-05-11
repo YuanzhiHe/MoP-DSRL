@@ -143,15 +143,13 @@ class LiberoEnv:
         )
         self._bddl_file = bddl_file
 
+        # Keep env_args minimal — LIBERO/robosuite's accepted kwargs vary across
+        # versions.  bddl_file_name is mandatory; everything else uses defaults
+        # (agentview camera, 128x128, use_camera_obs=True, use_object_obs=True).
         env_args = {
             "bddl_file_name": bddl_file,
             "camera_heights": 128,
             "camera_widths": 128,
-            "has_renderer": False,
-            "has_offscreen_renderer": True,
-            "render_camera_name": camera,
-            "use_camera_obs": False,  # we only consume proprio in the SAC policy
-            "use_object_obs": True,
         }
         self._env = OffScreenRenderEnv(**env_args)
         # LIBERO 0.1 OffScreenRenderEnv doesn't accept seed in __init__; use the
