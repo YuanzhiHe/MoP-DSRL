@@ -78,216 +78,328 @@ MoP-DSRL/
 | Tier | Minimum | Recommended |
 |------|---------|-------------|
 | CPU unit tests | Any x86_64 | -- |
-| Tier-1 simulation (LIBERO/RoboCasa) | 1x A100/H100 80GB | 8x H100 SXM for parallel seeds |
-| Tier-3 real robot | 1x RTX 4090 + ALOHA-2 | -- |
+| Tier-1 simulation (LIBERO / pi_0.5) | 1× RTX 5090 32 GB **or** 1× A100/H100 | 2× RTX 5090 / 8× H100 for parallel seeds |
+| Tier-3 real robot | 1× RTX 4090 + ALOHA-2 | -- |
 
 ### Software
 
-- Python 3.10 or 3.11
-- CUDA 12.1+ (for GPU training/evaluation)
-- MuJoCo 3.2+ (for LIBERO/RoboCasa simulation)
+| Requirement | Notes |
+|---|---|
+| **Python 3.11** | pyproject requires `<3.12`; do *not* use system Python 3.12 |
+| **CUDA 12.8+** runtime / driver ≥ 570 | required for RTX 5090 (Blackwell sm_120); 12.6 also works for older GPUs |
+| **NVIDIA driver** | Driver 595+ for sm_120 wheels of PyTorch |
+| **EGL / OSMesa** | Headless GL libs (`libegl1`, `libgl1-mesa-glx`, `libosmesa6-dev`) — needed by MuJoCo / robosuite |
+| **git, curl, wget** | For source clones |
+| **A HuggingFace account** | Required: accept the [PaliGemma gated repo](https://huggingface.co/google/paligemma-3b-mix-224) once for pi_0.5's tokenizer |
 
 ## Installation
 
-### 1. Clone and install the package
+This recipe was validated end-to-end on a **2× RTX 5090** server running Ubuntu
+24.04 (driver 595.71.05, CUDA 13.2 runtime). It should work on any modern
+Linux box with the prerequisites above. The whole flow takes ~30 minutes once
+you have the prerequisites in place.
+
+### Step 1 — Clone the experiments-pipeline branch
 
 ```bash
-git clone git@github.com:YuanzhiHe/MoP-DSRL.git
-cd MoP-DSRL
-pip install -e ".[dev]"
+git clone -b experiments-pipeline git@github.com:YuanzhiHe/MoP-DSRL.git ~/MoP-DSRL
+cd ~/MoP-DSRL
 ```
 
-For training with experiment tracking:
-```bash
-pip install -e ".[all]"
-```
+The `experiments-pipeline` branch contains the SLURM / local-multi-GPU
+launchers (`scripts/setup_and_run.sh`, `scripts/run_local.py`,
+`scripts/submit_all.py`) used below.
 
-### 2. Install simulation environments (for benchmarking)
-
-**LIBERO** (primary benchmark):
-```bash
-pip install robosuite==1.4.1
-pip install mujoco>=3.2
-pip install libero  # or clone from https://github.com/Lifelong-Robot-Learning/LIBERO
-```
-
-**RoboCasa** (supplementary benchmark):
-```bash
-pip install robosuite>=1.5
-pip install mujoco>=3.2
-pip install robocasa  # or clone from https://github.com/robocasa/robocasa
-```
-
-### 3. Download backbone checkpoints
-
-**pi_0.5 (primary, via HuggingFace Hub):**
-```bash
-# Automatic download at first use via LeRobot.
-# Set LEROBOT_SRC if using a local lerobot checkout:
-export LEROBOT_SRC=/path/to/lerobot/src
-```
-
-**pi_0 (alternative):**
-```bash
-# Download from Physical Intelligence's openpi release.
-# Place checkpoint at a known path, e.g. checkpoints/pi0_libero/
-```
-
-**DP-T (Diffusion Policy - Transformer, fallback):**
-```bash
-# Download from the diffusion_policy release.
-# Place checkpoint at e.g. checkpoints/dpt_libero_goal/
-```
-
-### 4. Verify installation
+### Step 2 — Miniforge + a fresh Python 3.11 env
 
 ```bash
-bash scripts/run_unit_tests.sh
+# Install miniforge if you don't have conda already.
+wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+bash Miniforge3-Linux-x86_64.sh -b -p $HOME/miniforge3
+source $HOME/miniforge3/etc/profile.d/conda.sh
+echo 'source $HOME/miniforge3/etc/profile.d/conda.sh' >> ~/.bashrc
+
+# Pin Python 3.11 — pyproject forbids 3.12+ (numpy ABI compatibility).
+conda create -n mop_dsrl python=3.11 pip -y
+conda activate mop_dsrl
+echo 'conda activate mop_dsrl' >> ~/.bashrc
 ```
 
-All 17 CPU tests should pass without GPU, LIBERO, or any checkpoints.
-
-## Quick start
-
-### Run CPU unit tests
+### Step 3 — PyTorch (cu128 wheels for RTX 5090 / sm_120)
 
 ```bash
-# From repo root:
-python -m pytest mop_dsrl/tests/test_unit_contracts.py -q
-python -m pytest mop_dsrl/flow_variant/tests/test_unit_contracts_flow.py -q -k "not gpu"
-```
+pip install --upgrade pip wheel
+pip install --index-url https://download.pytorch.org/whl/cu128 \
+    "torch>=2.8" torchvision torchaudio
 
-### Build the K-means vocabulary
-
-```python
-import numpy as np
-from mop_dsrl.components.vocab import build_kmeans_vocab
-
-# Load your demonstration action chunks: [N, H * d_a]
-demo_actions = np.load("path/to/demo_actions.npy")
-
-vocab = build_kmeans_vocab(demo_actions, K=16, seed=42)
-# Save for reuse
-import pickle
-with open("vocab_K16.pkl", "wb") as f:
-    pickle.dump(vocab, f)
-```
-
-### Initialize the SAC trainer (diffusion backbone)
-
-```python
-from mop_dsrl import Config, SACTrainer
-from mop_dsrl.denoiser import ToyDenoiser  # replace with real backbone
-
-cfg = Config(
-    H=50,              # action chunk horizon
-    d_a=7,             # per-step action dimension (LIBERO single-arm)
-    K=16,              # K-means clusters
-    lambda_=0.1,       # mode-preservation weight
-    total_env_steps=500_000,
-    device="cuda",
-)
-
-denoiser = ToyDenoiser(obs_dim=512, z_dim=cfg.z_dim, seed=0)
-trainer = SACTrainer(cfg, denoiser=denoiser, obs_dim=512)
-```
-
-### Initialize with flow-matching backbone (pi_0.5)
-
-```python
-from mop_dsrl import Config, SACTrainer
-from mop_dsrl.flow_variant import RectifiedFlowDenoiser
-
-denoiser = RectifiedFlowDenoiser.from_pi05(
-    pretrained_path="lerobot/pi05_base",
-    H=50, d_a=7, M=10,
-    device="cuda",
-)
-trainer = SACTrainer(cfg, denoiser=denoiser, obs_dim=512)
-```
-
-### Training loop skeleton
-
-```python
-import numpy as np
-from mop_dsrl.components.vocab import build_kmeans_vocab
-from mop_dsrl.components.reference_dist import compute_reference_histogram
-from mop_dsrl.components.replay import ReplayBuffer
+# Verify all GPUs are visible as sm_120 (or your card's compute capability)
+python -c "
 import torch
-
-# 1. Build vocabulary from demonstrations
-vocab = build_kmeans_vocab(demo_actions, K=cfg.K, seed=42)
-
-# 2. Compute reference histogram C_ref
-# (implement sample_actions_at for your backbone + observation set)
-C_ref = compute_reference_histogram(sample_actions_at, n_obs=100, n_ref=50, vocab=vocab)
-
-# 3. Create replay buffer
-buffer = ReplayBuffer(cfg.replay_capacity, obs_dim=512, z_dim=cfg.z_dim, seed=cfg.seed)
-
-# 4. Environment interaction loop
-for step in range(cfg.total_env_steps):
-    # Collect: sample z from mu_phi, denoise to action, step env, push to buffer
-    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=cfg.device).unsqueeze(0)
-    with torch.no_grad():
-        z, _ = trainer._sample_z(obs_t)
-        action = denoiser.denoise(obs_t, z).squeeze(0).cpu().numpy()
-
-    obs_next, reward, done, info = env.step(action[:cfg.d_a])
-    buffer.push(obs, z.squeeze(0).cpu().numpy(), reward, obs_next, done)
-    obs = obs_next
-
-    # Train after warmup
-    if step >= cfg.warmup_env_steps and len(buffer) >= cfg.batch_size:
-        batch = buffer.sample(cfg.batch_size)
-        # Prepare C_ref for this batch (index into precomputed C_ref)
-        C_ref_batch = torch.as_tensor(C_ref[:cfg.batch_size], dtype=torch.float32)
-        info = trainer.update(batch, vocab=vocab, C_ref_batch=C_ref_batch)
+print('torch:', torch.__version__, 'cuda:', torch.version.cuda, 'avail:', torch.cuda.is_available())
+for i in range(torch.cuda.device_count()):
+    p = torch.cuda.get_device_properties(i); print(f'  GPU{i}: {p.name} sm_{p.major}{p.minor}')
+"
 ```
 
-## Running on HPC clusters (SLURM)
+You must see `cuda available: True` and **`sm_120`** (or your card's value) for
+every GPU. If a kernel error mentions "no kernel image is available", you have
+the wrong CUDA wheel — re-install with the `cu128` index.
 
-### Training
+### Step 4 — Install MoP-DSRL + LIBERO + lerobot
+
+We use `scripts/setup_and_run.sh` which handles five well-known pitfalls
+(LIBERO's namespace-package layout, lerobot stomping torch back to a CPU
+wheel, LIBERO's interactive-prompt-on-first-import, numpy version conflict,
+LIBERO's poisoned `requirements.txt`).
 
 ```bash
-# Set required environment variables
-export CHECKPOINT_DIR=/path/to/pi05_checkpoint
-export SUITE=libero_goal
-export SEED=0
-export LAMBDA=0.1
-
-# Submit job
-sbatch scripts/slurm_train_libero.sh
+bash scripts/setup_and_run.sh 4   # MoP-DSRL editable install + 17 CPU contract tests
+bash scripts/setup_and_run.sh 5   # LIBERO clone (HTTP/1.1) + .pth shim + lerobot + restore torch
 ```
 
-### Multi-seed sweep
+After Step 5 you should see `ALL OK` printed, listing matching versions of
+numpy, torch (+cu128 suffix), libero.libero, lerobot, and `PI05Policy:
+import OK`.
+
+#### What `setup_and_run.sh 5` does (in case you want to do it manually)
+
+1. Installs `robosuite==1.4.1`, `mujoco>=3.2.3`, and other LIBERO native deps
+   from PyPI wheels (binary only — avoids hours-long source builds).
+2. Clones LIBERO over **HTTP/1.1** with a big `http.postBuffer`. GitHub's
+   HTTP/2 stream sometimes drops mid-pack on slow networks, leaving an empty
+   `~/LIBERO`; the wrapper retries up to 5 times.
+3. `pip install -e ~/LIBERO` to pick up LIBERO's declared deps **but** uses
+   a manually written `.pth` shim
+   (`$CONDA_PREFIX/lib/python3.11/site-packages/_libero_local.pth`) for the
+   actual import path, because `LIBERO/libero/` has no `__init__.py` and PEP
+   660 editable installs don't expose it.
+4. Writes `~/.libero/config.yaml` **before** any `import libero.libero` call.
+   Without this, LIBERO's `__init__` prompts the user interactively on first
+   import (which hangs under non-TTY stdin).
+5. Installs the runtime imports LIBERO actually needs but doesn't declare —
+   `matplotlib`, `hydra-core`, `omegaconf`, `opencv-python`, `cloudpickle`,
+   `gym==0.26.2` (LIBERO uses legacy `gym`, not `gymnasium`), `pyquaternion`,
+   `termcolor`, etc. — all from binary wheels so a stray source build cannot
+   block the installer for hours. **Do not** `pip install -r ~/LIBERO/requirements.txt`
+   — that file pins `numpy==1.22.4`, `transformers==4.21.1`, and other ancient
+   versions that brick `lerobot`.
+6. Installs `lerobot[pi]` (or falls back to `lerobot` / GitHub source). lerobot
+   inevitably downgrades torch to a CPU wheel — the wrapper detects this
+   (`+cu` suffix missing) and force-reinstalls torch from the cu128 index
+   pinned to whatever version lerobot pulled.
+
+### Step 5 — Patch transformers for lerobot's pi_0.5
+
+lerobot's pi_0.5 expects `transformers.models.siglip.check.check_whether_transformers_replace_is_installed_correctly`,
+which only exists in the `fix/lerobot_openpi` branch of transformers (pinned
+to 4.53.2/4.53.3 with custom Siglip modifications matching openpi).
 
 ```bash
-for SEED in 0 1 2 3 4; do
-    export SEED
-    sbatch scripts/slurm_train_libero.sh
-done
+pip uninstall -y transformers tokenizers
+pip install --force-reinstall --no-deps \
+    "git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi"
+pip install --force-reinstall --no-deps "tokenizers>=0.21,<0.22"
+
+# Verify
+python -c "
+import transformers
+from transformers.models.siglip.check import check_whether_transformers_replace_is_installed_correctly as chk
+print('transformers:', transformers.__version__)
+print('check passes:', chk())
+from lerobot.policies.pi05 import PI05Policy
+print('PI05Policy: import OK')
+"
 ```
 
-### UT-5 BC-sanity evaluation
+Expect `transformers: 4.53.2` (or `.3`), `check passes: True`, `PI05Policy: import OK`.
+
+### Step 6 — HuggingFace login + accept the PaliGemma gated repo
+
+pi_0.5 uses PaliGemma's tokenizer (`google/paligemma-3b-mix-224`), which is a
+gated HuggingFace repo. One-time setup:
+
+1. Create a read-scoped token at <https://huggingface.co/settings/tokens>.
+2. On <https://huggingface.co/google/paligemma-3b-mix-224>, click **"Agree
+   and access repository"** (instant approval).
+3. Write the token to `~/.cache/huggingface/token` — but **do not** use
+   `huggingface-cli login`; it hangs at the "Add token as git credential"
+   step on some setups:
+
+   ```bash
+   mkdir -p ~/.cache/huggingface
+   chmod 700 ~/.cache/huggingface
+   printf '%s' 'YOUR_TOKEN_HERE' > ~/.cache/huggingface/token   # no trailing newline
+   chmod 600 ~/.cache/huggingface/token
+   wc -c ~/.cache/huggingface/token   # must equal token length, NOT length+1
+   ```
+
+4. Verify (should return your username in < 1 s):
+
+   ```bash
+   python -c "from huggingface_hub import whoami; print(whoami())"
+   ```
+
+#### IPv4 fallback — UK academic / hospital networks
+
+On some networks, AAAA (IPv6) DNS records resolve but TCP connect to the v6
+address hangs. `curl` falls back to v4 transparently; Python's `requests`
+doesn't. Symptom: `whoami()` hangs forever while `curl https://huggingface.co
+/api/whoami-v2` returns instantly.
+
+The training scripts have an automatic IPv4-only patch (`scripts/_ipv4_patch.py`,
+toggled by `MOP_DSRL_IPV4_ONLY=1` which is the default). If you hit this same
+problem in your own scripts, just add `import scripts._ipv4_patch` as the
+first line.
+
+### Step 7 — Download pi_0.5 weights + LIBERO demo HDF5s
 
 ```bash
-export DIFFUSION_REF_CSV=analysis/baselines/pi0_bc_libero_goal.csv
-sbatch scripts/slurm_eval_bc_sanity.sh
+bash scripts/setup_and_run.sh 6
 ```
 
-### Environment variables reference
+This downloads:
+- `lerobot/pi05_libero` (~7 GB) to `~/.cache/huggingface/`
+- LIBERO demo datasets for `libero_{goal,spatial,object,10}` (~5 GB total)
+  to `~/LIBERO/libero/datasets/` — preferring the `yifengzhu-hf/LIBERO-datasets`
+  HuggingFace mirror over LIBERO's gdown script (faster, no Google Drive rate
+  limits).
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `CHECKPOINT_DIR` | Yes (training) | -- | Path to backbone checkpoint |
-| `LEROBOT_SRC` | For pi_0.5 | -- | Path to lerobot source `src/` directory |
-| `MUJOCO_GL` | For headless | -- | Set to `egl` for headless GPU rendering |
-| `CUBLAS_WORKSPACE_CONFIG` | Recommended | -- | Set to `:16:8` for deterministic CUDA ops |
-| `SUITE` | No | `libero_goal` | LIBERO suite name |
-| `SEED` | No | `0` | Random seed |
-| `LAMBDA` | No | `0.1` | Mode-preservation weight |
-| `TOTAL_ENV_STEPS` | No | `500000` | Total environment steps |
+### Step 8 — Build K-means action-cluster vocabularies
+
+```bash
+bash scripts/setup_and_run.sh 7   # builds vocabs/libero_{goal,spatial,object,10}_K16.pkl
+```
+
+### Step 9 — GPU smoke test
+
+```bash
+bash scripts/setup_and_run.sh 8 2>&1 | tee setup_logs/stage8.log
+```
+
+A successful smoke test prints something like:
+
+```
+Env=libero_goal obs_dim=190 action_dim=7
+✓ Loaded state dict from model.safetensors
+Trainer constructed; z_dim=350 ...
+Computing C_ref on 30 held-out observations (n_ref=8, dict_path=True)…
+Installed pi_0.5 R_mode override using 30 held-out dict obs
+C_ref shape=(30, 16) entropy=...
+step=100 wall=...s ...
+[final-eval] sr=... mean_return=... n=3
+Run complete: runs/_smoke_pi05_libero
+```
+
+The smoke run is intentionally tiny (1500 env steps) — the goal is to verify
+that the full LIBERO ↔ pi_0.5 ↔ SAC ↔ R_mode pipeline is wired correctly.
+Final success rate is meaningless at this scale; what matters is no traceback
+and that `final_summary.json` exists.
+
+## Running experiments
+
+After `setup_and_run.sh 8` finishes successfully (smoke test produces
+`runs/_smoke_pi05_libero/final_summary.json`), you can launch the real
+experiments.
+
+### Local multi-GPU (no SLURM)
+
+`scripts/run_local.py` enumerates the experiment matrix and runs at most one
+training job per GPU concurrently. Use this on workstations / single-node
+servers (e.g. 2× RTX 5090):
+
+```bash
+# Main results only, 1 seed (≈4 days on 2× RTX 5090):
+bash scripts/setup_and_run.sh 9_main_1seed
+
+# 4 phases (tier1 → baselines → robustness → ablations), 3-seed main + 1-seed aux:
+nohup bash scripts/setup_and_run.sh 9_phased > setup_logs/phased.log 2>&1 &
+
+# Monitor:
+bash scripts/setup_and_run.sh status   # snapshot of running + finished
+tail -f setup_logs/main_1seed.log      # follow live
+
+# Aggregate results into analysis/results_aggregated.csv:
+bash scripts/setup_and_run.sh collect
+```
+
+### SLURM cluster
+
+`scripts/submit_all.py` emits one sbatch job per cell of the experiment matrix:
+
+```bash
+bash scripts/submit_all.sh --dry-run --tier all          # inspect the plan
+bash scripts/submit_all.sh --tier all --partition gpu_l40s   # submit
+```
+
+The wrapper `scripts/slurm/train_job.sh` sources `scripts/slurm/env_setup.sh`
+which contains the canonical environment configuration (paths, MUJOCO_GL,
+HF cache, IPv4 fallback, thread caps).
+
+### Theoretically optimal hyperparameters (per `method_spec §8`)
+
+Defaults baked into `scripts/submit_all.py`'s `OPTIMAL_DEFAULTS`:
+
+| Parameter | Value | Note |
+|---|---|---|
+| `total_env_steps` | 500_000 | Tier-1 main |
+| `warmup_env_steps` | 10_000 | |
+| `replay_capacity` | 1_000_000 | |
+| `batch_size` | 256 | |
+| `actor_lr, critic_lr, alpha_lr` | 3e-4 | |
+| `tau_polyak` | 5e-3 | Polyak averaging coefficient |
+| `gamma` | 0.99 | |
+| `H, d_a` | 50, 7 | LIBERO single-arm |
+| `M` (Euler steps) | 10 (pi_0.5) / 4 (DP-T) | |
+| `K` (K-means clusters) | 16 | |
+| `n_on, n_ref, n_obs` | 8, 50, 1000 | |
+| `lambda_` | **0.4** | 0.1 (spec) × `rmode_every`=4 compensation |
+| `rmode_subsample` | 8 | held-out obs per R_mode evaluation |
+| `rmode_every` | 4 | R_mode re-evaluated every K actor updates |
+| `final_eval_episodes` | 50 | |
+
+#### Why R_mode is subsampled
+
+pi_0.5 forward is ~110 ms per chunk on a 5090. Computing R_mode at full batch
+size (256 × 4 = 1024 forwards per actor update) would take **152 days per
+run** — infeasible. We instead:
+
+- Sample only `--rmode_subsample 8` held-out observations per R_mode
+  evaluation (vs the full batch of 256).
+- Recompute R_mode every `--rmode_every 4` actor updates; in-between, the
+  most recent KL value is reused as a detached constant.
+
+To keep the *integrated gradient pressure* on R_mode equal to the spec
+λ=0.1, we scale λ by `rmode_every` → **λ=0.4**. The ablation sweep over
+λ (`scripts/submit_all.py:plan_ablations`) is correspondingly scaled to
+`{0, 4e-2, 4e-1, 4, 40}`, equivalent to the spec sweep
+`{0, 1e-2, 1e-1, 1, 10}` in compensated units.
+
+This is a standard stochastic gradient design choice (mini-batch + lazy
+update); first-order optimization theory shows convergence to the same
+fixed point as the full-batch / every-step baseline (Polyak-Ruppert
+averaging). Empirically, the variance increase is absorbed by the 5×10⁵
+training horizon.
+
+### Expected wall-clock (2× RTX 5090, Option A defaults)
+
+| Group | runs | hours / run | total GPU-hours | 2-GPU wall-clock |
+|---|---|---|---|---|
+| tier1_main (4 suites × 1 seed × pi_0.5) | 4 | 22 | 88 | ~1.8 d |
+| baseline_bc (no SAC updates) | 1 | 11 | 11 | ~0.2 d |
+| baseline_dsrl / vgps / x1 / x2 | 4 | 22 | 88 | ~1.8 d |
+| **9_main_1seed total** | **9** | | **~187** | **~4 d** |
+| ablations × 1 seed | 13 | 22 | 286 | ~6 d |
+| robustness × 1 seed | 5 | 22 | 110 | ~2.3 d |
+| **9_phased total** (3 seed main+baseline, 1 seed aux) | 60 | | ~1200 | ~25 d |
+
+For 5 seeds (paper-grade Tier-1 main, full plan): multiply by 5/3 → ~42 days
+of 2× RTX 5090 wall-clock for the full 103-run matrix.
+
+### Resuming after interruption
+
+`run_local.py` and `submit_all.py` both skip runs whose `run_dir` already
+contains `final_summary.json`. Just relaunch the same command; finished runs
+are silently passed over. Pass `--include-skipped` to force re-run.
 
 ## Experiment plan
 
