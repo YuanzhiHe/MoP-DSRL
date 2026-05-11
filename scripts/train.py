@@ -197,11 +197,11 @@ def compute_C_ref(
     )
 
     if use_dict_path:
-        from scripts.envs import repeat_pi05_batch
+        repeat = denoiser.velocity_field.repeat_batch
 
         def _sample_at(i: int, n: int) -> np.ndarray:
             batch_one = obs_dicts[i]
-            batch_n = repeat_pi05_batch(batch_one, n)
+            batch_n = repeat(batch_one, n)
             with torch.no_grad():
                 z = torch.randn(n, z_dim, device=device, dtype=torch.float32)
                 a = denoiser.denoise_with_obs_dict(batch_n, z)
@@ -219,6 +219,19 @@ def compute_C_ref(
     )
 
 
+def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
+             env=None, use_dict_path: bool = False) -> torch.Tensor:
+    """Denoise wrapper that picks flat vs dict path based on backbone capability."""
+    if use_dict_path and env is not None and hasattr(denoiser, "denoise_with_obs_dict"):
+        batch = denoiser.velocity_field.prepare_libero_batch(
+            env.last_obs_dict, env.task_instruction
+        )
+        if obs_t.shape[0] > 1:
+            batch = denoiser.velocity_field.repeat_batch(batch, obs_t.shape[0])
+        return denoiser.denoise_with_obs_dict(batch, z)
+    return denoiser.denoise(obs_t, z)
+
+
 def evaluate(
     trainer: SACTrainer,
     denoiser,
@@ -227,6 +240,7 @@ def evaluate(
     d_a: int,
     device: str,
     deterministic: bool = False,
+    use_dict_path: bool = False,
 ) -> dict:
     """Run ``n_episodes`` rollouts and return mean success / return / length."""
     successes = 0
@@ -244,7 +258,7 @@ def evaluate(
                     z = mean
                 else:
                     z, _ = trainer._sample_z(obs_t)
-                a = denoiser.denoise(obs_t, z)
+                a = _denoise(denoiser, obs_t, z, env=env, use_dict_path=use_dict_path)
             action_chunk = a.squeeze(0).cpu().numpy()
             first_action = action_chunk[:d_a]
             obs, reward, done, info = env.step(first_action)
@@ -357,17 +371,17 @@ def main() -> int:
         flat = env.reset()
         held_out_obs_list.append(flat)
         if needs_obs_dicts:
-            from scripts.envs import libero_obs_to_pi05_batch
             try:
-                batch = libero_obs_to_pi05_batch(
-                    env.last_obs_dict, env.task_instruction, device=args.device
+                batch = denoiser.velocity_field.prepare_libero_batch(
+                    env.last_obs_dict, env.task_instruction
                 )
                 held_out_obs_dicts.append(batch)
             except Exception as e:
-                logger.warning("libero_obs_to_pi05_batch failed at #%d: %s", len(held_out_obs_dicts), e)
+                logger.warning("prepare_libero_batch failed at #%d: %s", len(held_out_obs_dicts), e)
                 # Fall back: disable dict path entirely
                 needs_obs_dicts = False
                 held_out_obs_dicts = None
+                break
     held_out_obs = np.stack(held_out_obs_list, axis=0).astype(np.float32)
     obs0 = env.reset()
     logger.info("Computing C_ref on %d held-out observations (n_ref=%d, dict_path=%s)…",
@@ -376,6 +390,55 @@ def main() -> int:
         denoiser, held_out_obs, z_dim, args.n_ref, vocab, args.device,
         obs_dicts=held_out_obs_dicts,
     )
+
+    # --- pi_0.5 R_mode override: use aligned held-out (flat, dict) pairs ---
+    # The SAC actor loss calls trainer._mode_regularizer(o, vocab, C_ref_batch) on the
+    # replay batch's flat obs.  For pi_0.5 we can't denoise from a flat tensor, so we
+    # ignore the replay obs and instead sample held-out dict obs for R_mode.  This is
+    # methodologically valid: R_mode constrains the cluster histogram on a held-out
+    # distribution, which is what C_ref was computed on anyway.
+    if needs_obs_dicts:
+        from mop_dsrl.components.mode_regularizer import (
+            soft_assign_distances, mode_kl_from_assignments,
+        )
+        _held_flat_gpu = torch.as_tensor(
+            held_out_obs, dtype=torch.float32, device=args.device
+        )
+        _C_ref_gpu = torch.as_tensor(
+            C_ref_full, dtype=torch.float32, device=args.device
+        )
+
+        def _pi05_mode_regularizer(o, vocab_, C_ref_batch_):
+            """Compute R_mode using held-out (flat, dict) pairs aligned by index."""
+            B = o.shape[0]
+            n_on = trainer.cfg.n_on
+            idx = rng.integers(0, len(held_out_obs_dicts), size=B)
+            # Build flat obs for policy.sample; one row per (held_i, repeated n_on)
+            held_flat = _held_flat_gpu[idx]                        # [B, obs_dim]
+            held_rep = held_flat.repeat_interleave(n_on, dim=0)    # [B*n_on, obs_dim]
+            z_rep, _ = trainer._sample_z(held_rep)
+            # Denoise via dict path, one obs-dict at a time (B forwards of n_on each).
+            actions = []
+            for i_local in range(B):
+                batch_n = denoiser.velocity_field.repeat_batch(
+                    held_out_obs_dicts[int(idx[i_local])], n_on
+                )
+                z_slice = z_rep[i_local * n_on:(i_local + 1) * n_on]
+                actions.append(denoiser.denoise_with_obs_dict(batch_n, z_slice))
+            a_rep = torch.cat(actions, dim=0)
+            # Soft cluster assignment vs vocab + KL against C_ref(held_i)
+            median = torch.as_tensor(vocab_.median, dtype=a_rep.dtype, device=args.device)
+            mad = torch.as_tensor(vocab_.mad, dtype=a_rep.dtype, device=args.device)
+            a_norm = (a_rep - median) / mad
+            centroids = torch.as_tensor(vocab_.centroids, dtype=a_rep.dtype, device=args.device)
+            soft = soft_assign_distances(a_norm, centroids, temperature=1.0)
+            C_ref_held = _C_ref_gpu[idx]
+            return mode_kl_from_assignments(
+                soft, C_ref_held, n_on, trainer.cfg.laplace_alpha()
+            )
+        trainer._mode_regularizer = _pi05_mode_regularizer
+        logger.info("Installed pi_0.5 R_mode override using %d held-out dict obs",
+                    len(held_out_obs_dicts))
     logger.info("C_ref shape=%s entropy=%.3f", C_ref_full.shape,
                 float(-(C_ref_full * np.log(C_ref_full + 1e-12)).sum(axis=-1).mean()))
 
@@ -416,7 +479,8 @@ def main() -> int:
                 z = torch.randn(1, z_dim, device=args.device, dtype=obs_t.dtype)
             else:
                 z, _ = trainer._sample_z(obs_t)
-            action_chunk = denoiser.denoise(obs_t, z).squeeze(0).cpu().numpy()
+            a_chunk = _denoise(denoiser, obs_t, z, env=env, use_dict_path=needs_obs_dicts)
+            action_chunk = a_chunk.squeeze(0).cpu().numpy()
             first_action = action_chunk[: args.d_a]
 
         obs_next, reward, done, info = env.step(first_action)
@@ -494,7 +558,8 @@ def main() -> int:
         # ---- periodic eval ----
         if args.eval_interval > 0 and step > 0 and step % args.eval_interval == 0:
             ev = evaluate(
-                trainer, denoiser, env, args.eval_episodes, args.d_a, args.device
+                trainer, denoiser, env, args.eval_episodes, args.d_a, args.device,
+                use_dict_path=needs_obs_dicts,
             )
             eval_w.writerow([
                 step, ev["n_episodes"], ev["success_rate"],
@@ -526,7 +591,8 @@ def main() -> int:
 
     # ---- final eval & checkpoint ----
     final_eval = evaluate(
-        trainer, denoiser, env, args.final_eval_episodes, args.d_a, args.device
+        trainer, denoiser, env, args.final_eval_episodes, args.d_a, args.device,
+        use_dict_path=needs_obs_dicts,
     )
     eval_w.writerow([
         "final", final_eval["n_episodes"], final_eval["success_rate"],

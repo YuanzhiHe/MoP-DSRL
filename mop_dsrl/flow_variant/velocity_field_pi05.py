@@ -203,6 +203,130 @@ class Pi05VelocityField(nn.Module):
         self._raw_obs = None
 
     # ------------------------------------------------------------------
+    # LIBERO → pi_0.5 batch adapter
+    # ------------------------------------------------------------------
+
+    def _resolve_tokenizer(self):
+        """Best-effort lookup of the policy's language tokenizer."""
+        from transformers import AutoTokenizer
+
+        for attr in (
+            "language_tokenizer", "tokenizer", "_language_tokenizer",
+            "text_tokenizer",
+        ):
+            tok = getattr(self._policy, attr, None)
+            if tok is not None:
+                return tok
+        # The PaliGemma processor sometimes exposes the tokenizer at policy.model.*
+        for path in (("model", "tokenizer"),
+                     ("model", "paligemma_with_expert", "paligemma", "tokenizer")):
+            obj = self._policy
+            for part in path:
+                obj = getattr(obj, part, None)
+                if obj is None: break
+            if obj is not None:
+                return obj
+        # Last resort: load PaliGemma's tokenizer fresh.
+        cfg = getattr(self._policy, "config", None)
+        tok_id = (getattr(cfg, "paligemma_pretrained_path", None)
+                  or "google/paligemma-3b-mix-224")
+        return AutoTokenizer.from_pretrained(tok_id)
+
+    def _resolve_max_token_length(self) -> int:
+        cfg = getattr(self._policy, "config", None)
+        for key in ("tokenizer_max_length", "max_decoder_prompt_length",
+                    "max_language_tokens", "max_prompt_length"):
+            v = getattr(cfg, key, None) if cfg is not None else None
+            if isinstance(v, int) and v > 0:
+                return v
+        return 48  # pi_0.5 default
+
+    def prepare_libero_batch(
+        self, raw_obs: dict, instruction: str, image_size: int = 224
+    ) -> Dict[str, torch.Tensor]:
+        """Convert a raw LIBERO obs dict + language instruction into a fully-
+        prepared batch ready for ``bind_obs_dict``.
+
+        Image keys produced: ``observation.images.image`` and (when LIBERO emits
+        a wrist camera) ``observation.images.wrist_image``.  pi_0.5's
+        ``_preprocess_images`` introspects whatever keys are present.
+
+        Language is tokenized with the policy's tokenizer using padding =
+        max_length so the resulting tensors are batch-compatible.
+        """
+        import numpy as np
+        import torch
+        import torch.nn.functional as F
+        from lerobot.utils.constants import (
+            OBS_LANGUAGE_ATTENTION_MASK,
+            OBS_LANGUAGE_TOKENS,
+        )
+
+        device = self._device
+        batch: Dict[str, torch.Tensor] = {}
+
+        # --- 1. Images: HWC uint8 → CHW float in [0, 1], resized to image_size ---
+        for src_key, dst_key in [
+            ("agentview_image",          "observation.images.image"),
+            ("robot0_eye_in_hand_image", "observation.images.wrist_image"),
+        ]:
+            if src_key in raw_obs:
+                arr = raw_obs[src_key]
+                if not isinstance(arr, np.ndarray):
+                    continue
+                img = torch.from_numpy(arr.copy()).float() / 255.0
+                if img.ndim == 3 and img.shape[-1] == 3:
+                    img = img.permute(2, 0, 1)
+                if img.shape[-1] != image_size or img.shape[-2] != image_size:
+                    img = F.interpolate(
+                        img.unsqueeze(0), size=(image_size, image_size),
+                        mode="bilinear", align_corners=False,
+                    ).squeeze(0)
+                batch[dst_key] = img.unsqueeze(0).to(device)
+
+        # --- 2. Proprio state: concat eef pos + quat + gripper qpos ---
+        state_parts = []
+        for k in ("robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"):
+            if k in raw_obs:
+                v = raw_obs[k]
+                if isinstance(v, np.ndarray):
+                    state_parts.append(torch.from_numpy(v.copy()).float().flatten())
+        if state_parts:
+            state = torch.cat(state_parts, dim=0).unsqueeze(0).to(device)
+        else:
+            state = torch.zeros(1, 8, device=device, dtype=torch.float32)
+        batch["observation.state"] = state
+
+        # --- 3. Tokenize language ---
+        tok = self._resolve_tokenizer()
+        max_len = self._resolve_max_token_length()
+        tok_out = tok(
+            instruction,
+            return_tensors="pt",
+            padding="max_length",
+            max_length=max_len,
+            truncation=True,
+        )
+        batch[OBS_LANGUAGE_TOKENS] = tok_out["input_ids"].to(device)
+        batch[OBS_LANGUAGE_ATTENTION_MASK] = tok_out["attention_mask"].to(device)
+
+        return batch
+
+    @staticmethod
+    def repeat_batch(batch: Dict[str, torch.Tensor], n: int) -> Dict[str, torch.Tensor]:
+        """Repeat every tensor in ``batch`` n times along dim 0 (broadcasts B=1)."""
+        out: Dict[str, torch.Tensor] = {}
+        for k, v in batch.items():
+            if isinstance(v, torch.Tensor):
+                if v.shape[0] == 1:
+                    out[k] = v.expand(n, *v.shape[1:]).contiguous()
+                else:
+                    out[k] = v.repeat(n, *([1] * (v.ndim - 1)))
+            else:
+                out[k] = v
+        return out
+
+    # ------------------------------------------------------------------
     # Velocity field
     # ------------------------------------------------------------------
 
