@@ -398,6 +398,44 @@ stage_9d() { _launch "baselines_3seed"   --tier baselines  --seeds-main 0 1 2; }
 stage_9e() { _launch "all_full"          --tier all; }
 stage_9_ut5() { _launch "ut5_bc_sanity"  --tier ut5; }
 
+# Sequential 9a → 9b → 9c → 9d under a single nohup-able launcher.
+# Each phase runs run_local.py in the FOREGROUND so they don't compete for GPUs.
+# Designed for `nohup bash scripts/setup_and_run.sh 9_phased &` — survives ssh disconnects.
+stage_9_phased() {
+    stage_header "9_phased: ablations → robustness → tier1 → baselines (sequential)"
+    ensure_env_active || return 1
+    export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl CUBLAS_WORKSPACE_CONFIG=":16:8"
+    mkdir -p "$LOG_DIR"
+
+    local started=$(date -Is)
+    log "Phased run started at $started — will sequence 9a → 9b → 9c → 9d"
+    log "Each phase logs to $LOG_DIR/phase_*.log; this dispatcher logs to dispatch_*.log."
+
+    _phase() {
+        local tag="$1"; shift
+        log "─── PHASE: $tag ───  (args: $*)"
+        local t0=$(date +%s)
+        # Run run_local.py in the foreground so the next phase only starts after it finishes.
+        python -u scripts/run_local.py --n-gpus 2 "$@" \
+            > "$LOG_DIR/phase_${tag}.log" 2>&1
+        local rc=$?
+        local dt=$(( $(date +%s) - t0 ))
+        if [ $rc -eq 0 ]; then
+            ok "phase $tag completed in $((dt/3600))h$(( (dt%3600)/60 ))m"
+        else
+            err "phase $tag exited non-zero ($rc). Continuing to next phase anyway."
+        fi
+    }
+
+    _phase ablations_seed0   --tier ablations  --seeds-aux 0
+    _phase robustness_seed0  --tier robustness --seeds-aux 0
+    _phase tier1_main_3seed  --tier main       --seeds-main 0 1 2
+    _phase baselines_3seed   --tier baselines  --seeds-main 0 1 2
+
+    ok "All 4 phases done.  Started: $started   Finished: $(date -Is)"
+    log "Aggregate with:  bash scripts/setup_and_run.sh collect"
+}
+
 # =============================================================================
 # Status + collect
 # =============================================================================
@@ -467,6 +505,7 @@ main() {
         9c)       stage_9c ;;
         9d)       stage_9d ;;
         9e)       stage_9e ;;
+        9_phased|phased) stage_9_phased ;;
         9_ut5|ut5) stage_9_ut5 ;;
         status)   stage_status ;;
         collect)  stage_collect ;;
