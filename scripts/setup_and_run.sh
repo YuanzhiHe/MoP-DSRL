@@ -255,7 +255,8 @@ stage_5() {
     log "Installing LIBERO's runtime imports (no version pins, binary wheels only)"
     pip install --only-binary :all: \
         matplotlib hydra-core omegaconf opencv-python cloudpickle \
-        ipython imageio thop easydict future seaborn 2>&1 | tail -5
+        ipython imageio thop easydict future seaborn \
+        gym pyquaternion termcolor 2>&1 | tail -5
 
     # --- .pth shim: add LIBERO_DIR to sys.path so `import libero` works ---
     local SP
