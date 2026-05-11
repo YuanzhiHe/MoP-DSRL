@@ -364,37 +364,45 @@ path = snapshot_download(repo_id="${PI05_HF_ID}", repo_type="model")
 print("pi_0.5 cached at:", path)
 PY
 
-    log "LIBERO demo HDF5s (~5 GB total across 4 suites) — via LIBERO's official downloader"
-    if [ -f "$LIBERO_DIR/benchmark_scripts/download_libero_datasets.py" ]; then
-        # Each call appends to ~/LIBERO/libero/datasets/<suite>/.  --datasets all
-        # is supported but we list explicitly so we know which suite errored.
-        for SUITE in libero_goal libero_spatial libero_object libero_10; do
-            log "  downloading $SUITE"
-            (cd "$LIBERO_DIR" && python benchmark_scripts/download_libero_datasets.py --datasets "$SUITE") \
-                2>&1 | tail -5 || err "  download of $SUITE failed (continuing)"
-        done
-    else
-        err "LIBERO/benchmark_scripts/download_libero_datasets.py not found"
-        err "Falling back to manual hf_hub mirror"
-        python - <<'PY'
-import os, pathlib
+    log "LIBERO demo HDF5s (~5 GB total across 4 suites)"
+    log "Strategy: try HuggingFace mirror first (fast), fall back to LIBERO's gdown script."
+
+    log "Attempt 1: HuggingFace mirror (yifengzhu-hf/LIBERO-datasets)"
+    LIBERO_DIR="$LIBERO_DIR" python - <<'PY' || HF_FAILED=1
+import os, pathlib, sys
 from huggingface_hub import snapshot_download
-import yaml
-cfg = yaml.safe_load((pathlib.Path.home()/'.libero/config.yaml').read_text())
-root = pathlib.Path(cfg['datasets']); root.mkdir(parents=True, exist_ok=True)
-for s in ('libero_goal','libero_spatial','libero_object','libero_10'):
+DEST = pathlib.Path(os.environ["LIBERO_DIR"]) / "libero" / "datasets"
+DEST.mkdir(parents=True, exist_ok=True)
+ok_count = 0
+for suite in ("libero_goal","libero_spatial","libero_object","libero_10"):
+    print(f"  downloading {suite} via HF…", flush=True)
     try:
-        # LIBERO datasets are mirrored under yifengzhu-hf/LIBERO-datasets on HF.
-        path = snapshot_download(
-            repo_id=f"yifengzhu-hf/LIBERO-datasets",
-            allow_patterns=[f"{s}/*"],
+        local = snapshot_download(
+            repo_id="yifengzhu-hf/LIBERO-datasets",
+            allow_patterns=[f"{suite}/*"],
             repo_type="dataset",
-            local_dir=str(root.parent / "datasets_hf"),
+            local_dir=str(DEST.parent / "datasets_hf"),
         )
-        print(f"  {s} → {path}")
+        src = pathlib.Path(local) / suite
+        dst = DEST / suite
+        if src.exists() and not dst.exists():
+            dst.symlink_to(src)
+        n_hdf5 = len(list(src.glob("*.hdf5"))) if src.exists() else 0
+        print(f"    {suite}: {n_hdf5} hdf5 files at {dst}", flush=True)
+        if n_hdf5 > 0: ok_count += 1
     except Exception as e:
-        print(f"  ! {s} failed: {e}")
+        print(f"    {suite} FAILED: {e}", flush=True)
+sys.exit(0 if ok_count >= 4 else 1)
 PY
+
+    if [ "${HF_FAILED:-0}" = "1" ] && \
+       [ -f "$LIBERO_DIR/benchmark_scripts/download_libero_datasets.py" ]; then
+        log "HF mirror incomplete — falling back to LIBERO's official downloader (gdown)"
+        for SUITE in libero_goal libero_spatial libero_object libero_10; do
+            log "  downloading $SUITE (gdown)…"
+            (cd "$LIBERO_DIR" && python -u benchmark_scripts/download_libero_datasets.py --datasets "$SUITE") \
+                || err "  download of $SUITE failed (continuing)"
+        done
     fi
 
     log "Listing dataset folder"
