@@ -9,7 +9,7 @@
 #     bash scripts/setup_and_run.sh 2     # install conda (if missing)
 #     bash scripts/setup_and_run.sh 3     # create venv + install PyTorch
 #     bash scripts/setup_and_run.sh 4     # install MoP-DSRL + run unit tests
-#     bash scripts/setup_and_run.sh 5     # install LIBERO + lerobot + EGL
+#     bash scripts/setup_and_run.sh 5     # install LIBERO + lerobot + EGL (idempotent)
 #     bash scripts/setup_and_run.sh 6     # download pi_0.5 weights + LIBERO demos
 #     bash scripts/setup_and_run.sh 7     # build K-means vocabularies
 #     bash scripts/setup_and_run.sh 8     # GPU smoke test (pi_0.5 + LIBERO)
@@ -197,6 +197,15 @@ stage_4() {
 # =============================================================================
 # Stage 5: LIBERO + lerobot + EGL + libero config.
 # =============================================================================
+# Idempotent.  Handles all the gotchas we hit on the 2× RTX 5090 server:
+#   * `git clone` over HTTP/2 dies mid-pack — use HTTP/1.1 + big postBuffer + retries.
+#   * `LIBERO/libero/` has no __init__.py (namespace pkg) → `pip install -e` says
+#     "Successfully installed libero" but `import libero` fails.  Use a `.pth` shim.
+#   * `lerobot` install downgrades torch from cu128 to a CPU wheel — force-restore.
+#   * LIBERO's `libero/libero/__init__.py` prompts interactively on first import
+#     ("Do you want to specify a custom path for the dataset folder? (Y/N):").
+#     Pre-write `~/.libero/config.yaml` BEFORE the first `import libero.libero`.
+# =============================================================================
 stage_5() {
     stage_header "5: LIBERO + lerobot + EGL"
     ensure_env_active || return 1
@@ -207,84 +216,126 @@ stage_5() {
         err "Continuing — install may still succeed if EGL is in a non-standard path."
     }
 
-    log "Installing robosuite + mujoco + h5py (LIBERO deps)"
+    log "Installing robosuite + mujoco + h5py (LIBERO native deps)"
     pip install "robosuite==1.4.1" "mujoco>=3.2.3" h5py easydict thop bddl future 2>&1 | tail -5
 
-    if [ ! -d "$LIBERO_DIR" ]; then
-        log "Cloning LIBERO → $LIBERO_DIR"
-        git clone --depth=1 https://github.com/Lifelong-Robot-Learning/LIBERO.git "$LIBERO_DIR" || {
-            err "git clone failed.  Check internet / SSL cert."
-            return 1
-        }
-    fi
-    log "pip install -e $LIBERO_DIR  (LIBERO from source)"
-    pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || {
-        err "LIBERO install failed.  Trying without -e:"
-        pip install "$LIBERO_DIR" 2>&1 | tail -5
-    }
-
-    log "Sanity: can we import libero?"
-    python -c "import libero, libero.libero; print('libero OK:', libero.__file__)" || {
-        err "libero import still broken; STOP and report stage 5 log."
-        return 1
-    }
-
-    log "Installing lerobot (try a few install paths — the extras keep changing)"
-    # Latest lerobot has bundled pi_0 / pi_0.5 support without a specific extra.
-    # Fall back to plain `lerobot`, then to a github source install if HF release lags.
-    if pip install "lerobot[pi]" transformers accelerate 2>&1 | tail -10; then
-        ok "lerobot[pi] installed"
-    elif pip install "lerobot[pi05]" transformers accelerate 2>&1 | tail -10; then
-        ok "lerobot[pi05] installed"
-    elif pip install "lerobot" transformers accelerate 2>&1 | tail -10; then
-        ok "lerobot (no extras) installed"
+    # --- LIBERO clone (HTTP/2 stream cancel is common; fall back to HTTP/1.1) ---
+    if [ -z "$(ls -A "$LIBERO_DIR" 2>/dev/null)" ]; then
+        log "Cloning LIBERO → $LIBERO_DIR  (HTTP/1.1 + retries)"
+        rm -rf "$LIBERO_DIR"
+        git config --global http.postBuffer 524288000
+        git config --global http.version HTTP/1.1
+        local tries=0 max_tries=5 success=0
+        while [ $tries -lt $max_tries ]; do
+            tries=$((tries + 1))
+            log "clone attempt $tries/$max_tries"
+            if git clone --depth=1 https://github.com/Lifelong-Robot-Learning/LIBERO.git "$LIBERO_DIR"; then
+                success=1; break
+            fi
+            rm -rf "$LIBERO_DIR"
+            sleep $((tries * 5))
+        done
+        [ $success -eq 0 ] && { err "LIBERO clone failed after $max_tries tries — STOP"; return 1; }
+        ok "LIBERO cloned"
     else
-        err "PyPI lerobot install failed; trying github source"
-        pip install "git+https://github.com/huggingface/lerobot.git" transformers accelerate 2>&1 | tail -10
+        ok "LIBERO already at $LIBERO_DIR (skip clone)"
     fi
 
-    log "Sanity: can we import lerobot + the PI05 policy?"
-    python -c "
-import lerobot; print('lerobot:', lerobot.__version__, '@', lerobot.__file__)
-try:
-    from lerobot.policies.pi05 import PI05Policy
-    print('PI05Policy import OK')
-except Exception as e:
-    print('PI05Policy import failed:', e)
-    print('You may need a newer lerobot or an env var LEROBOT_SRC pointing at a checkout.')
-" || true
+    # --- LIBERO install (mostly for its declared deps).  We rely on the .pth
+    # shim below for actual importability since LIBERO/libero has no __init__.py
+    # and PEP 660 editable installs don't expose it. ---
+    log "pip install -e $LIBERO_DIR  (gets LIBERO's declared deps; import via .pth shim)"
+    pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || pip install "$LIBERO_DIR" 2>&1 | tail -5 || true
 
-    log "Writing ~/.libero/config.yaml"
-    python - <<'PY'
-import yaml, pathlib, libero
-root = pathlib.Path(libero.__file__).parent / 'libero'
+    # --- .pth shim: add LIBERO_DIR to sys.path so `import libero` works ---
+    local SP
+    SP=$(python -c "import site; print(site.getsitepackages()[0])")
+    local PTH_FILE="$SP/_libero_local.pth"
+    echo "$LIBERO_DIR" > "$PTH_FILE"
+    ok "Wrote $PTH_FILE → $LIBERO_DIR  (makes 'import libero' work)"
+
+    # --- Pre-write ~/.libero/config.yaml BEFORE the first libero.libero import ---
+    log "Writing ~/.libero/config.yaml (must precede first 'import libero.libero')"
+    LIBERO_ROOT="$LIBERO_DIR/libero/libero" python - <<'PY'
+import os, yaml, pathlib
+root = pathlib.Path(os.environ["LIBERO_ROOT"])
 cfg = {
     'benchmark_root': str(root),
     'bddl_files':    str(root / 'bddl_files'),
     'init_states':   str(root / 'init_files'),
-    'datasets':      str(root.parent / 'datasets'),
+    'datasets':      str(root.parent / 'datasets'),  # LIBERO/libero/datasets
     'assets':        str(root / 'assets'),
 }
 out = pathlib.Path.home() / '.libero' / 'config.yaml'
 out.parent.mkdir(exist_ok=True)
 out.write_text(yaml.safe_dump(cfg))
 print('wrote', out)
-print('benchmark_root:', cfg['benchmark_root'])
-print('datasets:', cfg['datasets'])
+for k, v in cfg.items():
+    print(f"  {k}: {v}  ({'exists' if pathlib.Path(v).exists() else 'MISSING (download in stage 6)'})")
 PY
 
-    log "Importing LIBERO + enumerating libero_goal tasks (sanity)"
+    # --- lerobot (latest pyPI; extras vary across versions, try several) ---
+    log "Installing lerobot — will likely downgrade torch to CPU wheel; we restore right after"
+    if pip install "lerobot[pi]" transformers accelerate 2>&1 | tail -5; then
+        ok "lerobot[pi] installed"
+    elif pip install "lerobot[pi05]" transformers accelerate 2>&1 | tail -5; then
+        ok "lerobot[pi05] installed"
+    elif pip install "lerobot" transformers accelerate 2>&1 | tail -5; then
+        ok "lerobot (no extras) installed"
+    else
+        err "PyPI lerobot install failed; trying github source"
+        pip install "git+https://github.com/huggingface/lerobot.git" transformers accelerate 2>&1 | tail -5
+    fi
+
+    # --- Force-restore torch cu128 (lerobot stomped it to CPU wheel) ---
+    local cur_ver cur_cuda
+    cur_ver=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "missing")
+    cur_cuda=$(python -c "import torch; print(torch.version.cuda or 'CPU')" 2>/dev/null || echo "CPU")
+    log "After lerobot: torch=$cur_ver  cuda=$cur_cuda"
+    if [[ "$cur_ver" != *"+cu"* ]]; then
+        local base_ver="${cur_ver%%+*}"
+        log "Force-reinstalling torch==$base_ver from cu128 index (keeps lerobot's version pin)"
+        pip install --force-reinstall --no-deps \
+            --index-url https://download.pytorch.org/whl/cu128 \
+            "torch==$base_ver" 2>&1 | tail -5
+        pip install --force-reinstall --no-deps \
+            --index-url https://download.pytorch.org/whl/cu128 \
+            torchvision torchaudio 2>&1 | tail -5 || true
+    else
+        ok "torch already has +cu suffix — no restore needed"
+    fi
+
+    # --- Reinstall mop-dsrl so the relaxed numpy<… pin applies ---
+    log "Reinstalling mop-dsrl in editable mode (numpy>=1.26, no upper cap)"
+    pip install -e ".[dev,rl]" 2>&1 | tail -5
+
+    # --- Final sanity (must NOT prompt; use </dev/null to be safe) ---
+    log "Full sanity check"
     export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
-    python - <<'PY'
+    python - </dev/null <<'PY'
 import os
 os.environ.setdefault('MUJOCO_GL', 'egl')
+import numpy, torch
+print("numpy:", numpy.__version__)
+print("torch:", torch.__version__, "  cuda:", torch.version.cuda, "  avail:", torch.cuda.is_available())
+assert torch.cuda.is_available(), "GPU not available after torch restore — STOP"
+for i in range(torch.cuda.device_count()):
+    p = torch.cuda.get_device_properties(i)
+    print(f"  GPU{i}: {p.name}  sm_{p.major}{p.minor}")
+import libero, libero.libero
 from libero.libero import benchmark
 b = benchmark.get_benchmark('libero_goal')()
-print('libero_goal tasks:')
-for i in range(b.n_tasks):
-    print(f"  {i:2d} {b.get_task(i).name}")
+print("libero.libero at:", libero.libero.__file__)
+print("libero_goal n_tasks:", b.n_tasks)
+for i in range(min(3, b.n_tasks)):
+    print(f"  task[{i}]: {b.get_task(i).name}")
+import lerobot
+print("lerobot:", lerobot.__version__)
+from lerobot.policies.pi05 import PI05Policy
+print("PI05Policy: import OK")
+print("ALL OK")
 PY
-    ok "LIBERO + lerobot installed."
+    ok "Stage 5 complete.  Continue with stage 6."
 }
 
 # =============================================================================
@@ -538,322 +589,6 @@ stage_status() {
     ls -1t "$REPO_ROOT/submissions/local_manifest_"*.tsv 2>/dev/null | head -3
 }
 
-# =============================================================================
-# Stage 5d: Finalize after stage 5c.
-#
-# After 5c installed the .pth shim, we still have two issues:
-#   - LIBERO/libero/ has no __init__.py (it's a namespace package), so
-#     `libero.__file__` is None → previous yaml-writer crashed.
-#   - LIBERO's inner __init__ prompts interactively for the dataset path
-#     on first import → EOFError under non-tty stdin.
-# Both go away once ~/.libero/config.yaml exists, so write it BEFORE importing
-# `libero.libero`.
-# =============================================================================
-stage_5d() {
-    stage_header "5d: write libero config + verify PI05 import"
-    ensure_env_active || return 1
-
-    if [ ! -d "$LIBERO_DIR/libero/libero" ]; then
-        err "Cannot find $LIBERO_DIR/libero/libero — re-run stage 5c first."
-        return 1
-    fi
-
-    log "Writing ~/.libero/config.yaml (using \$LIBERO_DIR — must precede first libero.libero import)"
-    LIBERO_ROOT="$LIBERO_DIR/libero/libero" python - <<'PY'
-import os, yaml, pathlib
-root = pathlib.Path(os.environ["LIBERO_ROOT"])
-cfg = {
-    'benchmark_root': str(root),
-    'bddl_files':    str(root / 'bddl_files'),
-    'init_states':   str(root / 'init_files'),
-    'datasets':      str(root.parent / 'datasets'),  # LIBERO/libero/datasets
-    'assets':        str(root / 'assets'),
-}
-out = pathlib.Path.home() / '.libero' / 'config.yaml'
-out.parent.mkdir(exist_ok=True)
-out.write_text(yaml.safe_dump(cfg))
-print('wrote', out)
-for k, v in cfg.items():
-    print(f"  {k}: {v}  ({'exists' if pathlib.Path(v).exists() else 'MISSING'})")
-PY
-
-    log "Re-import test (must NOT prompt anymore)"
-    export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
-    # Use </dev/null so any stray input() would EOF instead of hanging.
-    python - </dev/null <<'PY'
-import os
-os.environ.setdefault('MUJOCO_GL', 'egl')
-import numpy, torch
-print("numpy:", numpy.__version__)
-print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
-import libero, libero.libero
-from libero.libero import benchmark
-b = benchmark.get_benchmark('libero_goal')()
-print("libero.libero at:", libero.libero.__file__)
-print("libero_goal n_tasks:", b.n_tasks)
-for i in range(min(3, b.n_tasks)):
-    print(f"  task[{i}]: {b.get_task(i).name}")
-import lerobot
-print("lerobot:", lerobot.__version__)
-from lerobot.policies.pi05 import PI05Policy
-print("PI05Policy: import OK")
-print("ALL OK")
-PY
-
-    ok "Stage 5d complete.  LIBERO + PI05 importable, no interactive prompt."
-    log "Now run:  bash scripts/setup_and_run.sh 6   (download LIBERO demos)"
-}
-
-# =============================================================================
-# Stage 5c: Last-resort libero loader fix.
-#
-# Some LIBERO commits ship a setup.py whose `find_packages()` call doesn't
-# play nicely with PEP 660 editable installs, leaving `import libero` broken
-# even after `pip install -e` reports success.  This stage:
-#   1. Diagnoses what got installed.
-#   2. Tries a fresh non-editable install.
-#   3. As a last resort, writes a `.pth` file pointing site-packages at
-#      ``$LIBERO_DIR`` so plain `import libero` works.
-#
-# Run this if stage 5b's "Sanity: import libero" step fails.
-# =============================================================================
-stage_5c() {
-    stage_header "5c: force-fix libero importability"
-    ensure_env_active || return 1
-
-    log "Diagnostic: pip show libero"
-    pip show libero 2>&1 | head -20 || true
-    echo
-    log "Diagnostic: pip show -f libero (first 30 lines)"
-    pip show -f libero 2>&1 | head -30 || true
-    echo
-    log "Diagnostic: any libero .pth files?"
-    find "$CONDA_PREFIX/lib/python"*/site-packages -maxdepth 1 \
-        \( -iname "*libero*" -o -iname "__editable_*libero*" \) 2>/dev/null
-    echo
-    log "Diagnostic: LIBERO repo layout (relevant top files)"
-    ls -la "$LIBERO_DIR" 2>&1 | head -20
-    echo
-    [ -d "$LIBERO_DIR/libero" ] && {
-        log "LIBERO/libero/ contents:"; ls -la "$LIBERO_DIR/libero" | head -10
-    }
-
-    log "Uninstalling libero (clean slate)"
-    pip uninstall -y libero 2>&1 | tail -3 || true
-
-    log "Reinstalling LIBERO non-editable (avoids PEP 660 quirks)"
-    pip install "$LIBERO_DIR" 2>&1 | tail -5 || {
-        err "Non-editable install also failed; falling back to .pth shim"
-    }
-
-    log "Probe: does 'import libero' work now?"
-    if python -c "import libero; print('libero at', libero.__file__)"; then
-        ok "libero now imports."
-    else
-        log "Still broken.  Installing .pth shim that adds $LIBERO_DIR to sys.path."
-        local SP
-        SP=$(python -c "import site, sys; print(site.getsitepackages()[0])")
-        log "  site-packages: $SP"
-        local PTH_FILE="$SP/_libero_local.pth"
-        echo "$LIBERO_DIR" > "$PTH_FILE"
-        ok "wrote $PTH_FILE -> $LIBERO_DIR"
-        if python -c "import libero; print('libero at', libero.__file__)"; then
-            ok "libero now imports via .pth shim."
-        else
-            err "Still failing.  Showing the inner LIBERO/libero/ structure:"
-            ls -la "$LIBERO_DIR/libero" 2>&1 | head -20
-            err "And what python actually sees:"
-            python - <<'PY'
-import sys, importlib.util
-print("sys.path entries containing 'libero' or 'LIBERO':")
-for p in sys.path:
-    if 'libero' in p.lower() or 'LIBERO' in p:
-        print(" ", p)
-spec = importlib.util.find_spec("libero")
-print("importlib.util.find_spec('libero'):", spec)
-PY
-            err "Manual fix: append $LIBERO_DIR to PYTHONPATH or move libero/ up one level."
-            return 1
-        fi
-    fi
-
-    log "Final sanity (numpy + torch + libero + lerobot + PI05Policy)"
-    python - <<'PY'
-import os
-os.environ.setdefault('MUJOCO_GL','egl')
-import numpy, torch
-print("numpy:", numpy.__version__)
-print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
-import libero, libero.libero
-from libero.libero import benchmark
-b = benchmark.get_benchmark('libero_goal')()
-print("libero:", libero.__file__, " tasks:", b.n_tasks)
-import lerobot
-print("lerobot:", lerobot.__version__)
-from lerobot.policies.pi05 import PI05Policy
-print("PI05Policy: import OK")
-print("ALL OK")
-PY
-
-    log "Writing ~/.libero/config.yaml"
-    python - <<'PY'
-import yaml, pathlib, libero
-root = pathlib.Path(libero.__file__).parent / 'libero'
-cfg = {
-    'benchmark_root': str(root),
-    'bddl_files':    str(root / 'bddl_files'),
-    'init_states':   str(root / 'init_files'),
-    'datasets':      str(root.parent / 'datasets'),
-    'assets':        str(root / 'assets'),
-}
-out = pathlib.Path.home() / '.libero' / 'config.yaml'
-out.parent.mkdir(exist_ok=True)
-out.write_text(yaml.safe_dump(cfg))
-print('wrote', out)
-print('benchmark_root:', cfg['benchmark_root'])
-print('datasets:', cfg['datasets'])
-PY
-
-    ok "Stage 5c complete.  Continue with stage 6."
-}
-
-# =============================================================================
-# Stage 5b: Repair a partially-installed Stage 5.
-#
-# Run this if Stage 5 reported "LIBERO + lerobot installed" but:
-#  - LIBERO clone died mid-stream (curl 92 / HTTP/2 cancel) and ~/LIBERO is empty
-#  - lerobot install downgraded torch to a CPU wheel (no +cu128 suffix)
-#  - numpy got bumped to 2.x and broke the pyproject pin
-#
-# Idempotent: skip what's already good, fix what's not.
-# =============================================================================
-stage_5b() {
-    stage_header "5b: repair LIBERO clone + restore torch cu128 + reinstall mop-dsrl"
-    ensure_env_active || return 1
-
-    # --- 1. Restore torch with cu128 build (lerobot may have stomped it) ---
-    log "Checking current torch build…"
-    local cur_ver cur_cuda
-    cur_ver=$(python -c "import torch; print(torch.__version__)" 2>/dev/null || echo "missing")
-    cur_cuda=$(python -c "import torch; print(torch.version.cuda or 'CPU')" 2>/dev/null || echo "CPU")
-    log "  torch=$cur_ver  cuda=$cur_cuda"
-    if [[ "$cur_ver" != *"+cu"* ]]; then
-        local base_ver="${cur_ver%%+*}"
-        if [ "$base_ver" = "missing" ] || [ -z "$base_ver" ]; then base_ver="2.10.0"; fi
-        log "Reinstalling torch==$base_ver from cu128 index (force)"
-        pip install --force-reinstall --no-deps \
-            --index-url https://download.pytorch.org/whl/cu128 \
-            "torch==$base_ver" 2>&1 | tail -5
-        # Match torchvision/torchaudio to whatever the cu128 index has paired with torch==base_ver.
-        pip install --force-reinstall --no-deps \
-            --index-url https://download.pytorch.org/whl/cu128 \
-            torchvision torchaudio 2>&1 | tail -5 || true
-    else
-        ok "torch already has +cu suffix — skip force-reinstall"
-    fi
-
-    log "Re-verifying GPU"
-    python - <<'PY'
-import torch
-print("torch:", torch.__version__, " built with cuda:", torch.version.cuda)
-print("cuda available:", torch.cuda.is_available(),
-      " device_count:", torch.cuda.device_count())
-assert torch.cuda.is_available(), "GPU not available after restore — STOP"
-for i in range(torch.cuda.device_count()):
-    p = torch.cuda.get_device_properties(i)
-    print(f"  GPU{i}: {p.name}  sm_{p.major}{p.minor}")
-a = torch.randn(512, 512, device="cuda:0", dtype=torch.bfloat16)
-print("  bf16 matmul OK:", (a @ a).shape)
-PY
-
-    # --- 2. Re-clone LIBERO if missing/empty ---
-    if [ -z "$(ls -A "$LIBERO_DIR" 2>/dev/null)" ]; then
-        log "LIBERO dir empty.  Reclone with HTTP/1.1 + big postBuffer + retries."
-        rm -rf "$LIBERO_DIR"
-        git config --global http.postBuffer 524288000
-        git config --global http.version HTTP/1.1
-        local tries=0 max_tries=5 success=0
-        while [ $tries -lt $max_tries ]; do
-            tries=$((tries + 1))
-            log "clone attempt $tries/$max_tries"
-            if git clone --depth=1 https://github.com/Lifelong-Robot-Learning/LIBERO.git "$LIBERO_DIR"; then
-                success=1; break
-            fi
-            rm -rf "$LIBERO_DIR"
-            sleep $((tries * 5))
-        done
-        if [ $success -eq 0 ]; then
-            err "LIBERO clone still failing after $max_tries tries.  Try manually:"
-            err "  git clone https://github.com/Lifelong-Robot-Learning/LIBERO.git $LIBERO_DIR"
-            return 1
-        fi
-        ok "LIBERO cloned"
-    else
-        ok "LIBERO already present at $LIBERO_DIR"
-    fi
-
-    log "pip install -e $LIBERO_DIR  (LIBERO from source)"
-    pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || {
-        err "LIBERO editable install failed; trying non-editable"
-        pip install "$LIBERO_DIR" 2>&1 | tail -5
-    }
-
-    log "Sanity: import libero"
-    python -c "import libero, libero.libero; print('libero OK:', libero.__file__)" || {
-        err "libero still doesn't import — STOP"
-        return 1
-    }
-
-    # --- 3. Reinstall mop-dsrl in editable mode so pyproject changes apply ---
-    log "Reinstalling mop-dsrl (picks up relaxed numpy constraint)"
-    pip install -e ".[dev,rl]" 2>&1 | tail -5
-
-    # --- 4. Write ~/.libero/config.yaml ---
-    log "Writing ~/.libero/config.yaml"
-    python - <<'PY'
-import yaml, pathlib, libero
-root = pathlib.Path(libero.__file__).parent / 'libero'
-cfg = {
-    'benchmark_root': str(root),
-    'bddl_files':    str(root / 'bddl_files'),
-    'init_states':   str(root / 'init_files'),
-    'datasets':      str(root.parent / 'datasets'),
-    'assets':        str(root / 'assets'),
-}
-out = pathlib.Path.home() / '.libero' / 'config.yaml'
-out.parent.mkdir(exist_ok=True)
-out.write_text(yaml.safe_dump(cfg))
-print('wrote', out)
-print('benchmark_root:', cfg['benchmark_root'])
-print('datasets:', cfg['datasets'])
-PY
-
-    # --- 5. Comprehensive sanity check ---
-    log "Full sanity check"
-    export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
-    python - <<'PY'
-import os, sys
-os.environ.setdefault('MUJOCO_GL','egl')
-import numpy, torch
-print("numpy:", numpy.__version__)
-print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
-import libero, libero.libero
-from libero.libero import benchmark
-print("libero:", libero.__file__)
-b = benchmark.get_benchmark('libero_goal')()
-print("libero_goal tasks:", b.n_tasks)
-import lerobot
-print("lerobot:", lerobot.__version__)
-try:
-    from lerobot.policies.pi05 import PI05Policy
-    print("PI05Policy: import OK")
-except Exception as e:
-    print("PI05Policy import failed:", e); sys.exit(1)
-print("ALL OK")
-PY
-    ok "Stage 5b repair complete.  Re-run stage 6, 7, 8."
-}
-
 stage_collect() {
     stage_header "collect results"
     ensure_env_active || return 1
@@ -882,9 +617,6 @@ main() {
         3)        stage_3 ;;
         4)        stage_4 ;;
         5)        stage_5 ;;
-        5b|repair) stage_5b ;;
-        5c|fix_libero) stage_5c ;;
-        5d|finalize_libero) stage_5d ;;
         6)        stage_6 ;;
         7)        stage_7 ;;
         8)        stage_8 ;;
