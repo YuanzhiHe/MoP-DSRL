@@ -539,6 +539,72 @@ stage_status() {
 }
 
 # =============================================================================
+# Stage 5d: Finalize after stage 5c.
+#
+# After 5c installed the .pth shim, we still have two issues:
+#   - LIBERO/libero/ has no __init__.py (it's a namespace package), so
+#     `libero.__file__` is None → previous yaml-writer crashed.
+#   - LIBERO's inner __init__ prompts interactively for the dataset path
+#     on first import → EOFError under non-tty stdin.
+# Both go away once ~/.libero/config.yaml exists, so write it BEFORE importing
+# `libero.libero`.
+# =============================================================================
+stage_5d() {
+    stage_header "5d: write libero config + verify PI05 import"
+    ensure_env_active || return 1
+
+    if [ ! -d "$LIBERO_DIR/libero/libero" ]; then
+        err "Cannot find $LIBERO_DIR/libero/libero — re-run stage 5c first."
+        return 1
+    fi
+
+    log "Writing ~/.libero/config.yaml (using \$LIBERO_DIR — must precede first libero.libero import)"
+    LIBERO_ROOT="$LIBERO_DIR/libero/libero" python - <<'PY'
+import os, yaml, pathlib
+root = pathlib.Path(os.environ["LIBERO_ROOT"])
+cfg = {
+    'benchmark_root': str(root),
+    'bddl_files':    str(root / 'bddl_files'),
+    'init_states':   str(root / 'init_files'),
+    'datasets':      str(root.parent / 'datasets'),  # LIBERO/libero/datasets
+    'assets':        str(root / 'assets'),
+}
+out = pathlib.Path.home() / '.libero' / 'config.yaml'
+out.parent.mkdir(exist_ok=True)
+out.write_text(yaml.safe_dump(cfg))
+print('wrote', out)
+for k, v in cfg.items():
+    print(f"  {k}: {v}  ({'exists' if pathlib.Path(v).exists() else 'MISSING'})")
+PY
+
+    log "Re-import test (must NOT prompt anymore)"
+    export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl
+    # Use </dev/null so any stray input() would EOF instead of hanging.
+    python - </dev/null <<'PY'
+import os
+os.environ.setdefault('MUJOCO_GL', 'egl')
+import numpy, torch
+print("numpy:", numpy.__version__)
+print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
+import libero, libero.libero
+from libero.libero import benchmark
+b = benchmark.get_benchmark('libero_goal')()
+print("libero.libero at:", libero.libero.__file__)
+print("libero_goal n_tasks:", b.n_tasks)
+for i in range(min(3, b.n_tasks)):
+    print(f"  task[{i}]: {b.get_task(i).name}")
+import lerobot
+print("lerobot:", lerobot.__version__)
+from lerobot.policies.pi05 import PI05Policy
+print("PI05Policy: import OK")
+print("ALL OK")
+PY
+
+    ok "Stage 5d complete.  LIBERO + PI05 importable, no interactive prompt."
+    log "Now run:  bash scripts/setup_and_run.sh 6   (download LIBERO demos)"
+}
+
+# =============================================================================
 # Stage 5c: Last-resort libero loader fix.
 #
 # Some LIBERO commits ship a setup.py whose `find_packages()` call doesn't
@@ -818,6 +884,7 @@ main() {
         5)        stage_5 ;;
         5b|repair) stage_5b ;;
         5c|fix_libero) stage_5c ;;
+        5d|finalize_libero) stage_5d ;;
         6)        stage_6 ;;
         7)        stage_7 ;;
         8)        stage_8 ;;
