@@ -338,6 +338,7 @@ class Pi05VelocityField(nn.Module):
 
         # --- 3. Tokenize language ---
         max_len = self._resolve_max_token_length()
+        warned = getattr(self, "_tokenizer_fallback_warned", False)
         try:
             tok = self._resolve_tokenizer()
             tok_out = tok(
@@ -347,20 +348,21 @@ class Pi05VelocityField(nn.Module):
                 max_length=max_len,
                 truncation=True,
             )
-            batch[OBS_LANGUAGE_TOKENS] = tok_out["input_ids"].to(device)
-            batch[OBS_LANGUAGE_ATTENTION_MASK] = tok_out["attention_mask"].to(device)
+            batch[OBS_LANGUAGE_TOKENS] = tok_out["input_ids"].long().to(device)
+            # lerobot pi05's _prepare_attention_masks_4d uses torch.where with bool.
+            batch[OBS_LANGUAGE_ATTENTION_MASK] = tok_out["attention_mask"].bool().to(device)
         except Exception as e:
-            # If tokenizer is gated / unavailable, fall back to zero tokens
-            # with a single attention position so the rest of the model runs.
-            import logging as _log
-            _log.warning(
-                "Tokenizer fallback engaged (%s).  Using zero tokens — pi_0.5 "
-                "output will not reflect the language goal.",
-                e,
-            )
+            if not warned:
+                import logging as _log
+                _log.warning(
+                    "Tokenizer fallback engaged (%s).  Using zero tokens — pi_0.5 "
+                    "output will not reflect the language goal.",
+                    e,
+                )
+                self._tokenizer_fallback_warned = True
             zeros = torch.zeros(1, max_len, dtype=torch.long, device=device)
-            mask = torch.zeros(1, max_len, dtype=torch.long, device=device)
-            mask[0, 0] = 1
+            mask = torch.zeros(1, max_len, dtype=torch.bool, device=device)
+            mask[0, 0] = True
             batch[OBS_LANGUAGE_TOKENS] = zeros
             batch[OBS_LANGUAGE_ATTENTION_MASK] = mask
 
