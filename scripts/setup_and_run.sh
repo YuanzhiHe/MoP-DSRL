@@ -539,6 +539,119 @@ stage_status() {
 }
 
 # =============================================================================
+# Stage 5c: Last-resort libero loader fix.
+#
+# Some LIBERO commits ship a setup.py whose `find_packages()` call doesn't
+# play nicely with PEP 660 editable installs, leaving `import libero` broken
+# even after `pip install -e` reports success.  This stage:
+#   1. Diagnoses what got installed.
+#   2. Tries a fresh non-editable install.
+#   3. As a last resort, writes a `.pth` file pointing site-packages at
+#      ``$LIBERO_DIR`` so plain `import libero` works.
+#
+# Run this if stage 5b's "Sanity: import libero" step fails.
+# =============================================================================
+stage_5c() {
+    stage_header "5c: force-fix libero importability"
+    ensure_env_active || return 1
+
+    log "Diagnostic: pip show libero"
+    pip show libero 2>&1 | head -20 || true
+    echo
+    log "Diagnostic: pip show -f libero (first 30 lines)"
+    pip show -f libero 2>&1 | head -30 || true
+    echo
+    log "Diagnostic: any libero .pth files?"
+    find "$CONDA_PREFIX/lib/python"*/site-packages -maxdepth 1 \
+        \( -iname "*libero*" -o -iname "__editable_*libero*" \) 2>/dev/null
+    echo
+    log "Diagnostic: LIBERO repo layout (relevant top files)"
+    ls -la "$LIBERO_DIR" 2>&1 | head -20
+    echo
+    [ -d "$LIBERO_DIR/libero" ] && {
+        log "LIBERO/libero/ contents:"; ls -la "$LIBERO_DIR/libero" | head -10
+    }
+
+    log "Uninstalling libero (clean slate)"
+    pip uninstall -y libero 2>&1 | tail -3 || true
+
+    log "Reinstalling LIBERO non-editable (avoids PEP 660 quirks)"
+    pip install "$LIBERO_DIR" 2>&1 | tail -5 || {
+        err "Non-editable install also failed; falling back to .pth shim"
+    }
+
+    log "Probe: does 'import libero' work now?"
+    if python -c "import libero; print('libero at', libero.__file__)"; then
+        ok "libero now imports."
+    else
+        log "Still broken.  Installing .pth shim that adds $LIBERO_DIR to sys.path."
+        local SP
+        SP=$(python -c "import site, sys; print(site.getsitepackages()[0])")
+        log "  site-packages: $SP"
+        local PTH_FILE="$SP/_libero_local.pth"
+        echo "$LIBERO_DIR" > "$PTH_FILE"
+        ok "wrote $PTH_FILE -> $LIBERO_DIR"
+        if python -c "import libero; print('libero at', libero.__file__)"; then
+            ok "libero now imports via .pth shim."
+        else
+            err "Still failing.  Showing the inner LIBERO/libero/ structure:"
+            ls -la "$LIBERO_DIR/libero" 2>&1 | head -20
+            err "And what python actually sees:"
+            python - <<'PY'
+import sys, importlib.util
+print("sys.path entries containing 'libero' or 'LIBERO':")
+for p in sys.path:
+    if 'libero' in p.lower() or 'LIBERO' in p:
+        print(" ", p)
+spec = importlib.util.find_spec("libero")
+print("importlib.util.find_spec('libero'):", spec)
+PY
+            err "Manual fix: append $LIBERO_DIR to PYTHONPATH or move libero/ up one level."
+            return 1
+        fi
+    fi
+
+    log "Final sanity (numpy + torch + libero + lerobot + PI05Policy)"
+    python - <<'PY'
+import os
+os.environ.setdefault('MUJOCO_GL','egl')
+import numpy, torch
+print("numpy:", numpy.__version__)
+print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
+import libero, libero.libero
+from libero.libero import benchmark
+b = benchmark.get_benchmark('libero_goal')()
+print("libero:", libero.__file__, " tasks:", b.n_tasks)
+import lerobot
+print("lerobot:", lerobot.__version__)
+from lerobot.policies.pi05 import PI05Policy
+print("PI05Policy: import OK")
+print("ALL OK")
+PY
+
+    log "Writing ~/.libero/config.yaml"
+    python - <<'PY'
+import yaml, pathlib, libero
+root = pathlib.Path(libero.__file__).parent / 'libero'
+cfg = {
+    'benchmark_root': str(root),
+    'bddl_files':    str(root / 'bddl_files'),
+    'init_states':   str(root / 'init_files'),
+    'datasets':      str(root.parent / 'datasets'),
+    'assets':        str(root / 'assets'),
+}
+out = pathlib.Path.home() / '.libero' / 'config.yaml'
+out.parent.mkdir(exist_ok=True)
+out.write_text(yaml.safe_dump(cfg))
+print('wrote', out)
+print('benchmark_root:', cfg['benchmark_root'])
+print('datasets:', cfg['datasets'])
+PY
+
+    ok "Stage 5c complete.  Continue with stage 6."
+}
+
+# =============================================================================
 # Stage 5b: Repair a partially-installed Stage 5.
 #
 # Run this if Stage 5 reported "LIBERO + lerobot installed" but:
@@ -704,6 +817,7 @@ main() {
         4)        stage_4 ;;
         5)        stage_5 ;;
         5b|repair) stage_5b ;;
+        5c|fix_libero) stage_5c ;;
         6)        stage_6 ;;
         7)        stage_7 ;;
         8)        stage_8 ;;
