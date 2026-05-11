@@ -247,6 +247,16 @@ stage_5() {
     log "pip install -e $LIBERO_DIR  (gets LIBERO's declared deps; import via .pth shim)"
     pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || pip install "$LIBERO_DIR" 2>&1 | tail -5 || true
 
+    # `pip install -e` sometimes silently skips LIBERO's requirements.txt
+    # (depending on setup.py's install_requires).  Belt-and-braces: install
+    # requirements.txt explicitly + the modules LIBERO imports without declaring.
+    if [ -f "$LIBERO_DIR/requirements.txt" ]; then
+        log "pip install -r $LIBERO_DIR/requirements.txt"
+        pip install -r "$LIBERO_DIR/requirements.txt" 2>&1 | tail -5 || true
+    fi
+    log "Belt-and-braces: ensure matplotlib + LIBERO's commonly-undeclared imports"
+    pip install matplotlib hydra-core opencv-python omegaconf cloudpickle 2>&1 | tail -3
+
     # --- .pth shim: add LIBERO_DIR to sys.path so `import libero` works ---
     local SP
     SP=$(python -c "import site; print(site.getsitepackages()[0])")
@@ -354,37 +364,51 @@ path = snapshot_download(repo_id="${PI05_HF_ID}", repo_type="model")
 print("pi_0.5 cached at:", path)
 PY
 
-    log "LIBERO demo HDF5s (~5 GB total across 4 suites)"
-    python - <<'PY'
-import os, sys
-os.environ.setdefault('MUJOCO_GL', 'egl')
-try:
-    from libero.libero.libero_utils import download_libero_datasets
-except Exception:
-    from libero.libero import download_libero  # older layouts
-    download_libero_datasets = download_libero.download_datasets
-import yaml, pathlib
+    log "LIBERO demo HDF5s (~5 GB total across 4 suites) — via LIBERO's official downloader"
+    if [ -f "$LIBERO_DIR/benchmark_scripts/download_libero_datasets.py" ]; then
+        # Each call appends to ~/LIBERO/libero/datasets/<suite>/.  --datasets all
+        # is supported but we list explicitly so we know which suite errored.
+        for SUITE in libero_goal libero_spatial libero_object libero_10; do
+            log "  downloading $SUITE"
+            (cd "$LIBERO_DIR" && python benchmark_scripts/download_libero_datasets.py --datasets "$SUITE") \
+                2>&1 | tail -5 || err "  download of $SUITE failed (continuing)"
+        done
+    else
+        err "LIBERO/benchmark_scripts/download_libero_datasets.py not found"
+        err "Falling back to manual hf_hub mirror"
+        python - <<'PY'
+import os, pathlib
+from huggingface_hub import snapshot_download
+import yaml
 cfg = yaml.safe_load((pathlib.Path.home()/'.libero/config.yaml').read_text())
-print("dataset root:", cfg['datasets'])
+root = pathlib.Path(cfg['datasets']); root.mkdir(parents=True, exist_ok=True)
 for s in ('libero_goal','libero_spatial','libero_object','libero_10'):
-    print("downloading", s); sys.stdout.flush()
     try:
-        download_libero_datasets([s])
+        # LIBERO datasets are mirrored under yifengzhu-hf/LIBERO-datasets on HF.
+        path = snapshot_download(
+            repo_id=f"yifengzhu-hf/LIBERO-datasets",
+            allow_patterns=[f"{s}/*"],
+            repo_type="dataset",
+            local_dir=str(root.parent / "datasets_hf"),
+        )
+        print(f"  {s} → {path}")
     except Exception as e:
         print(f"  ! {s} failed: {e}")
 PY
+    fi
 
     log "Listing dataset folder"
     python - <<'PY'
-import yaml, pathlib, os
+import yaml, pathlib
 cfg = yaml.safe_load((pathlib.Path.home()/'.libero/config.yaml').read_text())
 root = pathlib.Path(cfg['datasets'])
-print("datasets at:", root)
-for sub in sorted(root.glob('libero_*')):
-    files = list(sub.glob('*.hdf5'))
-    print(f"  {sub.name}: {len(files)} hdf5 files")
+print("datasets at:", root, " (exists:", root.exists(), ")")
+if root.exists():
+    for sub in sorted(root.glob('libero_*')):
+        files = list(sub.glob('*.hdf5'))
+        print(f"  {sub.name}: {len(files)} hdf5 files")
 PY
-    ok "Weights + demos in place."
+    ok "Stage 6 complete."
 }
 
 # =============================================================================
