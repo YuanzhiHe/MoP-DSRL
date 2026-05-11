@@ -38,5 +38,11 @@ logs/
 # pytest
 .pytest_cache/
 
+# Local experiment artifacts (kept out of git)
+runs/
+submissions/
+setup_logs/
+vocabs/
+
 # Jupyter
 .ipynb_checkpoints/
