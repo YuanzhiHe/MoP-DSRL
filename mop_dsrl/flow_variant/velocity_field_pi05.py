@@ -248,7 +248,43 @@ class Pi05VelocityField(nn.Module):
                 self._cached_tokenizer = obj
                 return obj
 
-        # 3. Public lerobot pi05 repos (no auth required, already cached locally).
+        # 3. lerobot's preprocessor builder may construct a tokenizer for us.
+        try:
+            from lerobot.policies.pi05 import make_pi05_pre_post_processors
+            cfg = getattr(self._policy, "config", None)
+            pre, _ = make_pi05_pre_post_processors(config=cfg, dataset_stats=None)
+            for attr in ("tokenizer", "language_tokenizer", "_tokenizer"):
+                tok = getattr(pre, attr, None)
+                if tok is not None:
+                    self._cached_tokenizer = tok
+                    return tok
+            # Sometimes the tokenizer is on a sub-step of the preprocessor.
+            for step in getattr(pre, "steps", []) or []:
+                for attr in ("tokenizer", "_tokenizer"):
+                    tok = getattr(step, attr, None)
+                    if tok is not None:
+                        self._cached_tokenizer = tok
+                        return tok
+        except Exception:
+            pass
+
+        # 4. Public mirrors of the PaliGemma / Gemma tokenizer (same vocab,
+        # no gating).  Try a few well-known ones.
+        for repo in (
+            "google/paligemma-3b-mix-224",   # works if user did huggingface-cli login
+            "philschmid/gemma-tokenizer-chatml",
+            "unsloth/gemma-2b",
+            "google/gemma-2b",
+        ):
+            try:
+                tok = AutoTokenizer.from_pretrained(repo)
+                self._cached_tokenizer = tok
+                return tok
+            except Exception:
+                continue
+
+        # 5. lerobot pi05 repos as last resort (usually have no tokenizer files,
+        # but try anyway in case a newer release bundles them).
         for repo in ("lerobot/pi05_libero", "lerobot/pi05_libero_base",
                      "lerobot/pi05_base"):
             try:
@@ -258,17 +294,11 @@ class Pi05VelocityField(nn.Module):
             except Exception:
                 continue
 
-        # 4. Last resort — try siglip's tokenizer (public, no auth)
-        try:
-            tok = AutoTokenizer.from_pretrained("google/siglip-base-patch16-224")
-            self._cached_tokenizer = tok
-            return tok
-        except Exception:
-            pass
-
         raise RuntimeError(
-            "Could not locate pi_0.5's tokenizer.  Set the policy's tokenizer "
-            "attribute or pre-download a lerobot/pi05_* repo with tokenizer files."
+            "Could not locate pi_0.5's tokenizer.  Run `huggingface-cli login` "
+            "and accept the google/paligemma-3b-mix-224 gated repo, OR "
+            "`pip install --upgrade transformers` to a version that bundles a "
+            "public Gemma tokenizer."
         )
 
     def _resolve_max_token_length(self) -> int:
