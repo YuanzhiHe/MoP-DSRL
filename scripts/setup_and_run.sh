@@ -363,7 +363,8 @@ stage_6() {
     export HF_HOME
 
     log "pi_0.5 weights → HF cache at $HF_HOME (~7 GB)"
-    python - <<PY
+    PYTHONPATH="$REPO_ROOT/scripts:${PYTHONPATH:-}" python - <<PY
+import _ipv4_patch  # force IPv4 (UK academic IPv6 hang workaround)
 from huggingface_hub import snapshot_download
 path = snapshot_download(repo_id="${PI05_HF_ID}", repo_type="model")
 print("pi_0.5 cached at:", path)
@@ -373,7 +374,9 @@ PY
     log "Strategy: try HuggingFace mirror first (fast), fall back to LIBERO's gdown script."
 
     log "Attempt 1: HuggingFace mirror (yifengzhu-hf/LIBERO-datasets)"
-    LIBERO_DIR="$LIBERO_DIR" python - <<'PY' || HF_FAILED=1
+    LIBERO_DIR="$LIBERO_DIR" PYTHONPATH="$REPO_ROOT/scripts:${PYTHONPATH:-}" \
+        python - <<'PY' || HF_FAILED=1
+import _ipv4_patch  # force IPv4 (UK academic IPv6 hang workaround)
 import os, pathlib, sys
 from huggingface_hub import snapshot_download
 DEST = pathlib.Path(os.environ["LIBERO_DIR"]) / "libero" / "datasets"

@@ -36,13 +36,16 @@ export HF_HOME="${HF_HOME:-/shared/scratch/SCWF00111/HPTD/hf_cache}"
 export HUGGINGFACE_HUB_CACHE="${HUGGINGFACE_HUB_CACHE:-$HF_HOME/hub}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
 
-# Use the public HF mirror when the main host times out (common from
-# certain regions).  Override by exporting HF_ENDPOINT before sbatch /
-# before run_local.py.
-export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
-# If everything you need is already cached, set HF_HUB_OFFLINE=1 to skip
-# the HEAD checks entirely.
+# HF_ENDPOINT: leave UNSET on UK / EU servers — direct HF is fastest.
+# Set explicitly to "https://hf-mirror.com" only for China / restricted regions.
+# export HF_ENDPOINT=https://hf-mirror.com
 # export HF_HUB_OFFLINE=1
+
+# Force IPv4 for huggingface_hub / requests.  On some networks (UK academic IPv6
+# in particular), Python's requests doesn't fall back to v4 like curl does, and
+# AAAA hits hang at TCP connect time.  This is read by scripts/_ipv4_patch.py.
+export MOP_DSRL_IPV4_ONLY="${MOP_DSRL_IPV4_ONLY:-1}"
+export HF_HUB_DOWNLOAD_TIMEOUT="${HF_HUB_DOWNLOAD_TIMEOUT:-120}"
 
 # ---- demo / dataset roots ---------------------------------------------------
 export LIBERO_DATA_ROOT="${LIBERO_DATA_ROOT:-/shared/scratch/SCWF00111/Sam2RL/libero_datasets}"

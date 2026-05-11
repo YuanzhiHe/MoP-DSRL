@@ -24,13 +24,19 @@ M=10 (pi_0.5) / 4 (DP-T legacy), n_on=8, n_ref=50, n_obs=1000.
 
 from __future__ import annotations
 
+# --- IPv4-only socket patch (MUST be first, before requests/urllib/hf_hub) ---
+# On some networks (e.g. UK academic IPv6) Python's requests doesn't fall back
+# to v4 the way curl does; AAAA lookups hang on TCP connect.  See
+# scripts/_ipv4_patch.py.
+import os, sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import _ipv4_patch  # noqa: F401,E402
+
 import argparse
 import csv
 import json
 import logging
-import os
 import pickle
-import sys
 import time
 from dataclasses import asdict
 from pathlib import Path

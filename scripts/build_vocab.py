@@ -14,6 +14,11 @@ Usage:
 
 from __future__ import annotations
 
+# Force IPv4 for HF / requests; see scripts/_ipv4_patch.py
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import _ipv4_patch  # noqa: F401,E402
+
 import argparse
 import logging
 import pickle
