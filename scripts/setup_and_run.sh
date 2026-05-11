@@ -247,15 +247,15 @@ stage_5() {
     log "pip install -e $LIBERO_DIR  (gets LIBERO's declared deps; import via .pth shim)"
     pip install -e "$LIBERO_DIR" 2>&1 | tail -5 || pip install "$LIBERO_DIR" 2>&1 | tail -5 || true
 
-    # `pip install -e` sometimes silently skips LIBERO's requirements.txt
-    # (depending on setup.py's install_requires).  Belt-and-braces: install
-    # requirements.txt explicitly + the modules LIBERO imports without declaring.
-    if [ -f "$LIBERO_DIR/requirements.txt" ]; then
-        log "pip install -r $LIBERO_DIR/requirements.txt"
-        pip install -r "$LIBERO_DIR/requirements.txt" 2>&1 | tail -5 || true
-    fi
-    log "Belt-and-braces: ensure matplotlib + LIBERO's commonly-undeclared imports"
-    pip install matplotlib hydra-core opencv-python omegaconf cloudpickle 2>&1 | tail -3
+    # `pip install -e LIBERO` sometimes skips LIBERO's requirements.txt; that
+    # file is ALSO dangerous because LIBERO pins numpy==1.22.4 which conflicts
+    # with lerobot (needs numpy 2.x) and has no Python 3.11 wheel.
+    # Workaround: install the packages LIBERO actually imports, unpinned,
+    # from binary wheels only (so a stray source build can't hang the install).
+    log "Installing LIBERO's runtime imports (no version pins, binary wheels only)"
+    pip install --only-binary :all: \
+        matplotlib hydra-core omegaconf opencv-python cloudpickle \
+        ipython imageio thop easydict future seaborn 2>&1 | tail -5
 
     # --- .pth shim: add LIBERO_DIR to sys.path so `import libero` works ---
     local SP
