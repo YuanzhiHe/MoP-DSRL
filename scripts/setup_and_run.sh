@@ -437,6 +437,40 @@ stage_9_phased() {
     log "Aggregate with:  bash scripts/setup_and_run.sh collect"
 }
 
+# Minimal "main results only, 1 seed" phased run: 9c + 9d at seed 0 only.
+# 27 runs → 9 runs (4 tier1 + 5 baselines).  Used for first-pass results.
+# Wall clock on 2× RTX 5090 ≈ 4 days.
+stage_9_main_1seed() {
+    stage_header "9_main_1seed: tier1 main (4 runs) + baselines (5 runs), seed 0 only"
+    ensure_env_active || return 1
+    export MUJOCO_GL=egl PYOPENGL_PLATFORM=egl CUBLAS_WORKSPACE_CONFIG=":16:8"
+    mkdir -p "$LOG_DIR"
+
+    local started=$(date -Is)
+    log "Started at $started — sequencing tier1_main(seed0) → baselines(seed0)"
+
+    _phase() {
+        local tag="$1"; shift
+        log "─── PHASE: $tag ───  (args: $*)"
+        local t0=$(date +%s)
+        python -u scripts/run_local.py --n-gpus 2 "$@" \
+            > "$LOG_DIR/phase_${tag}.log" 2>&1
+        local rc=$?
+        local dt=$(( $(date +%s) - t0 ))
+        if [ $rc -eq 0 ]; then
+            ok "phase $tag completed in $((dt/3600))h$(( (dt%3600)/60 ))m"
+        else
+            err "phase $tag exited non-zero ($rc). Continuing anyway."
+        fi
+    }
+
+    _phase tier1_main_1seed  --tier main       --seeds-main 0
+    _phase baselines_1seed   --tier baselines  --seeds-main 0
+
+    ok "Both phases done.  Started: $started   Finished: $(date -Is)"
+    log "Aggregate with:  bash scripts/setup_and_run.sh collect"
+}
+
 # =============================================================================
 # Status + collect
 # =============================================================================
@@ -507,6 +541,7 @@ main() {
         9d)       stage_9d ;;
         9e)       stage_9e ;;
         9_phased|phased) stage_9_phased ;;
+        9_main_1seed|main_1seed) stage_9_main_1seed ;;
         9_ut5|ut5) stage_9_ut5 ;;
         status)   stage_status ;;
         collect)  stage_collect ;;
