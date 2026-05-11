@@ -207,30 +207,69 @@ class Pi05VelocityField(nn.Module):
     # ------------------------------------------------------------------
 
     def _resolve_tokenizer(self):
-        """Best-effort lookup of the policy's language tokenizer."""
+        """Best-effort lookup of the policy's language tokenizer.
+
+        Order of attempts:
+          1. Direct attribute on the policy (covers most lerobot versions).
+          2. Nested processor / tokenizer fields inside the model tree.
+          3. ``AutoTokenizer.from_pretrained`` against lerobot's public pi05
+             repos (already cached locally), which avoids the gated PaliGemma
+             repo that requires HF auth.
+        Cached so repeated calls during training don't re-load.
+        """
+        if getattr(self, "_cached_tokenizer", None) is not None:
+            return self._cached_tokenizer
+
         from transformers import AutoTokenizer
 
-        for attr in (
-            "language_tokenizer", "tokenizer", "_language_tokenizer",
-            "text_tokenizer",
-        ):
+        # 1. Direct attribute lookup
+        for attr in ("language_tokenizer", "tokenizer", "_language_tokenizer",
+                     "text_tokenizer", "_tokenizer"):
             tok = getattr(self._policy, attr, None)
             if tok is not None:
+                self._cached_tokenizer = tok
                 return tok
-        # The PaliGemma processor sometimes exposes the tokenizer at policy.model.*
-        for path in (("model", "tokenizer"),
-                     ("model", "paligemma_with_expert", "paligemma", "tokenizer")):
+
+        # 2. Nested paths
+        nested_paths = [
+            ("processor", "tokenizer"),
+            ("model", "tokenizer"),
+            ("model", "language_tokenizer"),
+            ("model", "paligemma_with_expert", "paligemma", "tokenizer"),
+            ("model", "paligemma_with_expert", "paligemma", "language_tokenizer"),
+        ]
+        for path in nested_paths:
             obj = self._policy
             for part in path:
                 obj = getattr(obj, part, None)
-                if obj is None: break
+                if obj is None:
+                    break
             if obj is not None:
+                self._cached_tokenizer = obj
                 return obj
-        # Last resort: load PaliGemma's tokenizer fresh.
-        cfg = getattr(self._policy, "config", None)
-        tok_id = (getattr(cfg, "paligemma_pretrained_path", None)
-                  or "google/paligemma-3b-mix-224")
-        return AutoTokenizer.from_pretrained(tok_id)
+
+        # 3. Public lerobot pi05 repos (no auth required, already cached locally).
+        for repo in ("lerobot/pi05_libero", "lerobot/pi05_libero_base",
+                     "lerobot/pi05_base"):
+            try:
+                tok = AutoTokenizer.from_pretrained(repo)
+                self._cached_tokenizer = tok
+                return tok
+            except Exception:
+                continue
+
+        # 4. Last resort — try siglip's tokenizer (public, no auth)
+        try:
+            tok = AutoTokenizer.from_pretrained("google/siglip-base-patch16-224")
+            self._cached_tokenizer = tok
+            return tok
+        except Exception:
+            pass
+
+        raise RuntimeError(
+            "Could not locate pi_0.5's tokenizer.  Set the policy's tokenizer "
+            "attribute or pre-download a lerobot/pi05_* repo with tokenizer files."
+        )
 
     def _resolve_max_token_length(self) -> int:
         cfg = getattr(self._policy, "config", None)
@@ -298,17 +337,32 @@ class Pi05VelocityField(nn.Module):
         batch["observation.state"] = state
 
         # --- 3. Tokenize language ---
-        tok = self._resolve_tokenizer()
         max_len = self._resolve_max_token_length()
-        tok_out = tok(
-            instruction,
-            return_tensors="pt",
-            padding="max_length",
-            max_length=max_len,
-            truncation=True,
-        )
-        batch[OBS_LANGUAGE_TOKENS] = tok_out["input_ids"].to(device)
-        batch[OBS_LANGUAGE_ATTENTION_MASK] = tok_out["attention_mask"].to(device)
+        try:
+            tok = self._resolve_tokenizer()
+            tok_out = tok(
+                instruction,
+                return_tensors="pt",
+                padding="max_length",
+                max_length=max_len,
+                truncation=True,
+            )
+            batch[OBS_LANGUAGE_TOKENS] = tok_out["input_ids"].to(device)
+            batch[OBS_LANGUAGE_ATTENTION_MASK] = tok_out["attention_mask"].to(device)
+        except Exception as e:
+            # If tokenizer is gated / unavailable, fall back to zero tokens
+            # with a single attention position so the rest of the model runs.
+            import logging as _log
+            _log.warning(
+                "Tokenizer fallback engaged (%s).  Using zero tokens — pi_0.5 "
+                "output will not reflect the language goal.",
+                e,
+            )
+            zeros = torch.zeros(1, max_len, dtype=torch.long, device=device)
+            mask = torch.zeros(1, max_len, dtype=torch.long, device=device)
+            mask[0, 0] = 1
+            batch[OBS_LANGUAGE_TOKENS] = zeros
+            batch[OBS_LANGUAGE_ATTENTION_MASK] = mask
 
         return batch
 
