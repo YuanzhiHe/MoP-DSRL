@@ -211,16 +211,30 @@ def compute_C_ref(
         and hasattr(denoiser.velocity_field, "bind_obs_dict")
     )
 
+    # pi_0.5 with KV cache at batch=50 needs >32GB on a 5090.  Chunk the per-obs
+    # n_ref samples through the model in groups of `pi05_chunk`.
+    pi05_chunk = int(os.environ.get("MOP_DSRL_PI05_BATCH", "4"))
+    _i_seen = [0]
+
     if use_dict_path:
         repeat = denoiser.velocity_field.repeat_batch
 
         def _sample_at(i: int, n: int) -> np.ndarray:
             batch_one = obs_dicts[i]
-            batch_n = repeat(batch_one, n)
-            with torch.no_grad():
-                z = torch.randn(n, z_dim, device=device, dtype=torch.float32)
-                a = denoiser.denoise_with_obs_dict(batch_n, z)
-            return a.cpu().numpy().astype(np.float64)
+            outs = []
+            for j in range(0, n, pi05_chunk):
+                m = min(pi05_chunk, n - j)
+                batch_m = repeat(batch_one, m)
+                with torch.no_grad():
+                    z = torch.randn(m, z_dim, device=device, dtype=torch.float32)
+                    a = denoiser.denoise_with_obs_dict(batch_m, z)
+                outs.append(a.cpu().numpy().astype(np.float64))
+                del batch_m, z, a
+            # Empty cache every 16 obs so peak doesn't grow with the loop.
+            _i_seen[0] += 1
+            if _i_seen[0] % 16 == 0:
+                torch.cuda.empty_cache()
+            return np.concatenate(outs, axis=0)
     else:
         def _sample_at(i: int, n: int) -> np.ndarray:
             o_b = obs_t[i].unsqueeze(0).expand(n, -1).contiguous()
@@ -449,13 +463,20 @@ def main() -> int:
             held_flat = _held_flat_gpu[idx]                        # [B_mode, obs_dim]
             held_rep = held_flat.repeat_interleave(n_on, dim=0)    # [B_mode*n_on, obs_dim]
             z_rep, _ = trainer._sample_z(held_rep)
+            # Chunk through pi_0.5 to keep peak memory bounded (32GB at batch=8
+            # × M=10 Euler is already ~24GB; halving keeps headroom for
+            # SAC critic/policy graphs).
             actions = []
+            chunk = int(os.environ.get("MOP_DSRL_PI05_BATCH", "4"))
             for i_local in range(B_mode):
-                batch_n = denoiser.velocity_field.repeat_batch(
-                    held_out_obs_dicts[int(idx[i_local])], n_on
-                )
-                z_slice = z_rep[i_local * n_on:(i_local + 1) * n_on]
-                actions.append(denoiser.denoise_with_obs_dict(batch_n, z_slice))
+                z_slice_full = z_rep[i_local * n_on:(i_local + 1) * n_on]
+                for j in range(0, n_on, chunk):
+                    m = min(chunk, n_on - j)
+                    batch_n = denoiser.velocity_field.repeat_batch(
+                        held_out_obs_dicts[int(idx[i_local])], m
+                    )
+                    z_chunk = z_slice_full[j:j + m]
+                    actions.append(denoiser.denoise_with_obs_dict(batch_n, z_chunk))
             a_rep = torch.cat(actions, dim=0)
             median = torch.as_tensor(vocab_.median, dtype=a_rep.dtype, device=args.device)
             mad = torch.as_tensor(vocab_.mad, dtype=a_rep.dtype, device=args.device)

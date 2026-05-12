@@ -237,6 +237,13 @@ def _common_args(
     pretrained = BACKBONES[backbone].get("pretrained_path")
     if pretrained:
         args.append(f"--pretrained_path {pretrained}")
+
+    # Pre-built K-means vocab (one per LIBERO suite).  libero_long maps to the
+    # libero_10 vocab since LIBERO calls that suite "libero_10" canonically.
+    if suite.startswith("libero_"):
+        vocab_suite = "libero_10" if suite == "libero_long" else suite
+        vocab_path = f"vocabs/{vocab_suite}_K16.pkl"
+        args.append(f"--vocab_path {vocab_path}")
     if extra:
         for k, v in extra.items():
             if isinstance(v, bool):
