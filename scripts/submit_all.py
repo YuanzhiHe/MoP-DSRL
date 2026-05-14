@@ -79,17 +79,11 @@ OPTIMAL_DEFAULTS = {
     "alpha_lr": 3e-4,
     "tau_polyak": 5e-3,
     "gamma": 0.99,
-    # Mode regularizer.
-    #
-    # NOTE on lambda compensation: pi_0.5 forwards are ~110ms each on a 5090,
-    # so computing R_mode fully every actor update is infeasible.  The pi_0.5
-    # path subsamples ``rmode_subsample`` held-out obs per evaluation and only
-    # re-evaluates every ``rmode_every`` actor updates (in-between the most
-    # recent KL value is reused as a detached constant).  To keep the integrated
-    # gradient pressure on R_mode equal to spec §8's nominal lambda=0.1, we
-    # scale lambda by rmode_every (= 4) → effective lambda = 0.4.  Ablation
-    # sweeps below use the same x4 compensation.
-    "lambda_": 4e-1,             # = 0.1 × rmode_every=4 compensation
+    # Mode regularizer.  Empirically lambda=0.4 (4× spec compensation) was too
+    # aggressive on libero_goal — r_mode escalated to ~4 with no learning.  Reverted
+    # to spec value 0.1; the 4× subsample frequency reduction effectively softens
+    # R_mode pressure, which is desirable when the SAC actor is otherwise unstable.
+    "lambda_": 1e-1,
     "epsilon": 0.1,
     "alpha_lambda": 1e-3,
     "n_on": 8,
@@ -97,6 +91,17 @@ OPTIMAL_DEFAULTS = {
     "n_obs": 1000,
     "rmode_subsample": 8,        # held-out obs sampled per R_mode evaluation
     "rmode_every": 4,            # only evaluate R_mode every K actor updates
+
+    # SAC entropy / clip — pi_0.5 specific.
+    # method_spec §5 says target_entropy = -dim(z) = -350 for z_dim=350.  In our
+    # first 92k-step run alpha auto-tuner collapsed to 0 (policy deterministic),
+    # which then killed exploration and let r_mode blow up.  pi_0.5 outputs are
+    # only weakly sensitive to z, so demanding super-low entropy is unphysical.
+    # Loosen target_entropy to -z_dim/12 ≈ -30 (≈ -1/12 nat per coord), and
+    # shrink the L2 clip radius from 4*sqrt(z_dim) ≈ 75 to 1.5*sqrt(z_dim) ≈ 28
+    # so z stays in the range pi_0.5 actually responds to.
+    "target_entropy": -30.0,
+    "clip_radius_sigma_factor": 1.5,
     # Eval
     "eval_interval": 25_000,
     "eval_episodes": 10,
@@ -224,6 +229,8 @@ def _common_args(
         f"--n_obs {OPTIMAL_DEFAULTS['n_obs']}",
         f"--rmode_subsample {OPTIMAL_DEFAULTS['rmode_subsample']}",
         f"--rmode_every {OPTIMAL_DEFAULTS['rmode_every']}",
+        f"--target_entropy {OPTIMAL_DEFAULTS['target_entropy']}",
+        f"--clip_radius_sigma_factor {OPTIMAL_DEFAULTS['clip_radius_sigma_factor']}",
         f"--eval_interval {OPTIMAL_DEFAULTS['eval_interval']}",
         f"--eval_episodes {OPTIMAL_DEFAULTS['eval_episodes']}",
         f"--final_eval_episodes {OPTIMAL_DEFAULTS['final_eval_episodes']}",
@@ -336,10 +343,10 @@ def plan_robustness(seeds: list[int]) -> list[Run]:
 def plan_ablations(seeds: list[int]) -> list[Run]:
     runs = []
     suite, backbone = "libero_goal", "pi05"
-    # lambda axis.  Values are scaled by rmode_every=4 to keep the *effective*
-    # gradient pressure on R_mode equal to the spec sweep {0, 1e-2, 1e-1, 1, 10}.
+    # lambda axis (spec values, no compensation — let the rmode_every=4 softening
+    # apply uniformly so the sweep measures the *intended* R_mode strength).
     for seed in seeds:
-        for lam in (0.0, 4e-2, 4e-1, 4.0, 40.0):
+        for lam in (0.0, 1e-2, 1e-1, 1.0, 10.0):
             runs.append(Run(
                 group="ablation_lambda", name=f"lam{lam}_seed{seed}",
                 args=_common_args(backbone, suite, seed, lambda_=lam),

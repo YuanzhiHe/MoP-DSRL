@@ -104,6 +104,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--alpha_lr", type=float, default=3e-4)
     p.add_argument("--tau_polyak", type=float, default=5e-3)
     p.add_argument("--gamma", type=float, default=0.99)
+    p.add_argument("--target_entropy", type=float, default=float("nan"),
+                   help="SAC entropy target.  Default NaN = -dim(z) per method_spec §5; "
+                        "for pi_0.5 (z_dim=350) the spec value is too aggressive and "
+                        "causes alpha→0 policy collapse — use a less negative value "
+                        "like -30 (= -z_dim/12).")
+    p.add_argument("--clip_radius_sigma_factor", type=float, default=4.0,
+                   help="L2 clip radius factor: r_z = factor * sqrt(z_dim).  "
+                        "Spec default 4.0; reduce to 1.5 for pi_0.5 where the noise "
+                        "input has limited dynamic range.")
 
     # Mode regularizer (method_spec §4)
     p.add_argument("--lambda_", type=float, default=0.1, dest="lambda_")
@@ -372,6 +381,8 @@ def main() -> int:
         pref_reward=args.pref_reward, hierarchical=args.hierarchical,
         weight_level=args.weight_level, imitation_only=args.imitation_only,
         seed=args.seed, device=args.device,
+        target_entropy=args.target_entropy,
+        clip_radius_sigma_factor=args.clip_radius_sigma_factor,
     )
     trainer = SACTrainer(cfg, denoiser=denoiser, obs_dim=obs_dim)
     logger.info("Trainer constructed; z_dim=%d clip_radius=%.3f target_entropy=%.3f",
