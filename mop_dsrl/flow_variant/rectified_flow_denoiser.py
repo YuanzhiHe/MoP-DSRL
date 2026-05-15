@@ -138,26 +138,33 @@ class RectifiedFlowDenoiser(FrozenDenoiser):
         vf = ToyVelocityField(z_dim=z_dim, seed=seed)
         return cls(velocity_field=vf, M=M)
 
-    def denoise(self, o: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+    def denoise(self, o: torch.Tensor, z: torch.Tensor,
+                with_grad: bool = False) -> torch.Tensor:
         """Map (o, z_0) to action chunk a via M-step Euler integration.
 
         Args:
             o: ``[B, obs_dim]`` observation batch.
             z: ``[B, H*d_a]`` coupling endpoint ``z_0``.
+            with_grad: if True, build the autograd graph so gradients can
+                       flow from a back to z (used by R_mode for the actor
+                       update).  Default False keeps the legacy behaviour
+                       (no_grad), which is appropriate for data collection.
 
         Returns:
             a: ``[B, H*d_a]`` action chunk ``x(1)``.
         """
         self.velocity_field.bind_obs(o)
         try:
-            with torch.no_grad():
+            ctx = torch.enable_grad() if with_grad else torch.no_grad()
+            with ctx:
                 a = euler_integrate(self.velocity_field, z, M=self.M)
         finally:
             self.velocity_field.unbind_obs()
         return a
 
     def denoise_with_obs_dict(
-        self, batch: Dict[str, torch.Tensor], z: torch.Tensor
+        self, batch: Dict[str, torch.Tensor], z: torch.Tensor,
+        with_grad: bool = False,
     ) -> torch.Tensor:
         """Denoise using a fully-preprocessed LeRobot observation dict.
 
@@ -167,19 +174,24 @@ class RectifiedFlowDenoiser(FrozenDenoiser):
         Args:
             batch: preprocessed LeRobot observation dict.
             z: ``[B, H*d_a]`` coupling endpoint ``z_0``.
+            with_grad: if True, build the autograd graph so gradients can
+                       flow from a back to z (required for R_mode in the
+                       SAC actor update).  Default False = no_grad path,
+                       which is correct for data collection / C_ref /
+                       evaluation rollouts where we only need values.
 
         Returns:
             a: ``[B, H*d_a]`` action chunk ``x(1)``.
         """
-        if hasattr(self.velocity_field, "bind_obs_dict"):
-            self.velocity_field.bind_obs_dict(batch)
-        else:
+        if not hasattr(self.velocity_field, "bind_obs_dict"):
             raise TypeError(
                 f"{type(self.velocity_field).__name__} does not support "
                 f"bind_obs_dict; use denoise(o, z) instead."
             )
+        self.velocity_field.bind_obs_dict(batch)
         try:
-            with torch.no_grad():
+            ctx = torch.enable_grad() if with_grad else torch.no_grad()
+            with ctx:
                 a = euler_integrate(self.velocity_field, z, M=self.M)
         finally:
             self.velocity_field.unbind_obs()

@@ -229,14 +229,19 @@ def compute_C_ref(
         repeat = denoiser.velocity_field.repeat_batch
 
         def _sample_at(i: int, n: int) -> np.ndarray:
-            batch_one = obs_dicts[i]
+            batch_one_cpu = obs_dicts[i]
+            # Move to GPU on demand (obs_dicts are kept on CPU to save memory).
+            batch_one = {
+                k: (v.to(device, non_blocking=True) if hasattr(v, "to") else v)
+                for k, v in batch_one_cpu.items()
+            }
             outs = []
             for j in range(0, n, pi05_chunk):
                 m = min(pi05_chunk, n - j)
                 batch_m = repeat(batch_one, m)
                 with torch.no_grad():
                     z = torch.randn(m, z_dim, device=device, dtype=torch.float32)
-                    a = denoiser.denoise_with_obs_dict(batch_m, z)
+                    a = denoiser.denoise_with_obs_dict(batch_m, z)  # with_grad=False default
                 outs.append(a.cpu().numpy().astype(np.float64))
                 del batch_m, z, a
             # Empty cache every 16 obs so peak doesn't grow with the loop.
@@ -407,7 +412,15 @@ def main() -> int:
     )
     held_out_obs_list = []
     held_out_obs_dicts: list | None = [] if needs_obs_dicts else None
-    for _ in range(args.n_obs):
+
+    # Keep held-out obs dicts on CPU (each batch is ~1 MB of images); only move
+    # to GPU just before pi_0.5 forward.  1000 obs × 1 MB ≈ 1 GB CPU RAM, vs
+    # ~3 GB if kept on GPU (after dtype upcasting), which would compete with
+    # the 15 GB of pi_0.5 weights + KV cache.
+    def _to_cpu(batch: dict) -> dict:
+        return {k: (v.detach().cpu() if hasattr(v, "detach") else v) for k, v in batch.items()}
+
+    for i in range(args.n_obs):
         flat = env.reset()
         held_out_obs_list.append(flat)
         if needs_obs_dicts:
@@ -415,13 +428,21 @@ def main() -> int:
                 batch = denoiser.velocity_field.prepare_libero_batch(
                     env.last_obs_dict, env.task_instruction
                 )
-                held_out_obs_dicts.append(batch)
+                # Move to CPU before stashing; pi_0.5 forward will copy back.
+                held_out_obs_dicts.append(_to_cpu(batch))
             except Exception as e:
-                logger.warning("prepare_libero_batch failed at #%d: %s", len(held_out_obs_dicts), e)
-                # Fall back: disable dict path entirely
-                needs_obs_dicts = False
-                held_out_obs_dicts = None
-                break
+                logger.error(
+                    "prepare_libero_batch failed at #%d/%d: %s.  pi_0.5 path needs dict obs; STOPPING.",
+                    i, args.n_obs, e,
+                )
+                # Pi_0.5 flat-tensor denoise is BROKEN (bind_obs doesn't set the
+                # prefix KV cache), so falling back to flat path would crash
+                # later anyway.  Better to abort here with a clear message so
+                # the operator can lower n_obs or free GPU memory.
+                raise SystemExit(
+                    f"pi_0.5 requires per-obs dict batches for R_mode; built only "
+                    f"{i} of {args.n_obs}.  Reduce --n_obs (e.g. 200) or free GPU memory."
+                )
     held_out_obs = np.stack(held_out_obs_list, axis=0).astype(np.float32)
     obs0 = env.reset()
     logger.info("Computing C_ref on %d held-out observations (n_ref=%d, dict_path=%s)…",
@@ -481,13 +502,21 @@ def main() -> int:
             chunk = int(os.environ.get("MOP_DSRL_PI05_BATCH", "4"))
             for i_local in range(B_mode):
                 z_slice_full = z_rep[i_local * n_on:(i_local + 1) * n_on]
+                # Move this obs dict to GPU (we stored on CPU to save memory).
+                batch_cpu = held_out_obs_dicts[int(idx[i_local])]
+                batch_gpu = {
+                    k: (v.to(args.device, non_blocking=True) if hasattr(v, "to") else v)
+                    for k, v in batch_cpu.items()
+                }
                 for j in range(0, n_on, chunk):
                     m = min(chunk, n_on - j)
-                    batch_n = denoiser.velocity_field.repeat_batch(
-                        held_out_obs_dicts[int(idx[i_local])], m
-                    )
+                    batch_n = denoiser.velocity_field.repeat_batch(batch_gpu, m)
                     z_chunk = z_slice_full[j:j + m]
-                    actions.append(denoiser.denoise_with_obs_dict(batch_n, z_chunk))
+                    # with_grad=True → autograd through z; this is the gradient
+                    # path that lets R_mode actually constrain the policy.
+                    actions.append(
+                        denoiser.denoise_with_obs_dict(batch_n, z_chunk, with_grad=True)
+                    )
             a_rep = torch.cat(actions, dim=0)
             median = torch.as_tensor(vocab_.median, dtype=a_rep.dtype, device=args.device)
             mad = torch.as_tensor(vocab_.mad, dtype=a_rep.dtype, device=args.device)

@@ -88,7 +88,12 @@ OPTIMAL_DEFAULTS = {
     "alpha_lambda": 1e-3,
     "n_on": 8,
     "n_ref": 50,
-    "n_obs": 1000,
+    # n_obs reduced from spec's 1000 → 200 because pi_0.5's per-obs batch (2
+    # images + state + tokens) is ~1 MB CPU / ~3 MB GPU, and 1000 of them
+    # competes with the 15 GB pi_0.5 weights + KV cache when two runs share a
+    # GPU.  200 is plenty for the held-out C_ref / R_mode estimator (Monte
+    # Carlo variance scales as 1/sqrt(n_obs * n_ref) = 1/sqrt(200*50) = 1/100).
+    "n_obs": 200,
     "rmode_subsample": 8,        # held-out obs sampled per R_mode evaluation
     "rmode_every": 4,            # only evaluate R_mode every K actor updates
 
