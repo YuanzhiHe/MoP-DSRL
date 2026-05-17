@@ -79,38 +79,32 @@ OPTIMAL_DEFAULTS = {
     "alpha_lr": 3e-4,
     "tau_polyak": 5e-3,
     "gamma": 0.99,
-    # Mode regularizer.  Empirically lambda=0.4 (4× spec compensation) was too
-    # aggressive on libero_goal — r_mode escalated to ~4 with no learning.  Reverted
-    # to spec value 0.1; the 4× subsample frequency reduction effectively softens
-    # R_mode pressure, which is desirable when the SAC actor is otherwise unstable.
-    "lambda_": 1e-1,
-    "epsilon": 0.1,
-    "alpha_lambda": 1e-3,
-    "n_on": 8,
-    "n_ref": 50,
-    # n_obs reduced from spec's 1000 → 200 because pi_0.5's per-obs batch (2
-    # images + state + tokens) is ~1 MB CPU / ~3 MB GPU, and 1000 of them
-    # competes with the 15 GB pi_0.5 weights + KV cache when two runs share a
-    # GPU.  200 is plenty for the held-out C_ref / R_mode estimator (Monte
-    # Carlo variance scales as 1/sqrt(n_obs * n_ref) = 1/sqrt(200*50) = 1/100).
-    "n_obs": 200,
-    "rmode_subsample": 8,        # held-out obs sampled per R_mode evaluation
-    "rmode_every": 4,            # only evaluate R_mode every K actor updates
+    # Mode regularizer — paper-aligned values.
+    #
+    # lambda compensation: pi_0.5 evaluation cost forces us to compute R_mode
+    # only every K=`rmode_every`=4 actor updates (with the last KL reused as
+    # a detached constant in between).  To keep the *integrated gradient
+    # pressure* on R_mode over training equal to spec §8's nominal λ=0.1, we
+    # scale the per-evaluation weight by K → λ=0.4.  Ablation sweep below
+    # uses the same ×4 compensation.
+    "lambda_": 4e-1,             # = 0.1 (spec) × rmode_every=4 compensation
+    "epsilon": 0.1,              # spec §4.5
+    "alpha_lambda": 1e-3,        # spec §4.5
+    "n_on": 8,                   # spec §4.3
+    "n_ref": 50,                 # spec §4.2
+    "n_obs": 1000,               # spec §4.2 — held-out obs dicts CPU-stashed
+    "rmode_subsample": 8,        # implementation: held-out obs sampled per eval
+    "rmode_every": 4,            # implementation: K actor updates per eval
 
-    # SAC entropy / clip — pi_0.5 specific.
-    # method_spec §5 says target_entropy = -dim(z) = -350 for z_dim=350.  In our
-    # first 92k-step run alpha auto-tuner collapsed to 0 (policy deterministic),
-    # which then killed exploration and let r_mode blow up.  pi_0.5 outputs are
-    # only weakly sensitive to z, so demanding super-low entropy is unphysical.
-    # Loosen target_entropy to -z_dim/12 ≈ -30 (≈ -1/12 nat per coord), and
-    # shrink the L2 clip radius from 4*sqrt(z_dim) ≈ 75 to 1.5*sqrt(z_dim) ≈ 28
-    # so z stays in the range pi_0.5 actually responds to.
-    "target_entropy": -30.0,
-    "clip_radius_sigma_factor": 1.5,
-    # Action chunking — pi_0.5 paper executes 10 of the 50-step chunk per
-    # inference.  Without this BC mode gets 0% on LIBERO because actions
-    # are out-of-distribution vs training.
-    "n_action_steps": 10,
+    # SAC entropy + L2 clip — spec §5 defaults (target_entropy = -dim(z),
+    # clip_radius = 4*sqrt(z_dim) ≈ 75).  Earlier overrides (-30, 1.5) were
+    # workarounds for an alpha-collapse symptom that we now believe was
+    # caused by BC=0% (no chunking) + R_mode having no gradient.  With both
+    # of those fixed (n_action_steps=10 + gradient-checkpointed pi_0.5
+    # forward), spec values should be stable again.
+    "target_entropy": float("nan"),    # NaN → falls back to -dim(z) = -350
+    "clip_radius_sigma_factor": 4.0,   # spec §5
+    "n_action_steps": 10,              # PI openpi default; standard pi_0.5 inference protocol
     # Eval
     "eval_interval": 25_000,
     "eval_episodes": 10,
@@ -353,10 +347,11 @@ def plan_robustness(seeds: list[int]) -> list[Run]:
 def plan_ablations(seeds: list[int]) -> list[Run]:
     runs = []
     suite, backbone = "libero_goal", "pi05"
-    # lambda axis (spec values, no compensation — let the rmode_every=4 softening
-    # apply uniformly so the sweep measures the *intended* R_mode strength).
+    # lambda axis — spec sweep {0, 1e-2, 1e-1, 1, 10} × 4 compensation to keep
+    # the *effective* R_mode strength matched to the spec values given that
+    # rmode_every=4.
     for seed in seeds:
-        for lam in (0.0, 1e-2, 1e-1, 1.0, 10.0):
+        for lam in (0.0, 4e-2, 4e-1, 4.0, 40.0):
             runs.append(Run(
                 group="ablation_lambda", name=f"lam{lam}_seed{seed}",
                 args=_common_args(backbone, suite, seed, lambda_=lam),
