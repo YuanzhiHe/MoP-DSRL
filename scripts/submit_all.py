@@ -107,6 +107,10 @@ OPTIMAL_DEFAULTS = {
     # so z stays in the range pi_0.5 actually responds to.
     "target_entropy": -30.0,
     "clip_radius_sigma_factor": 1.5,
+    # Action chunking — pi_0.5 paper executes 10 of the 50-step chunk per
+    # inference.  Without this BC mode gets 0% on LIBERO because actions
+    # are out-of-distribution vs training.
+    "n_action_steps": 10,
     # Eval
     "eval_interval": 25_000,
     "eval_episodes": 10,
@@ -236,6 +240,7 @@ def _common_args(
         f"--rmode_every {OPTIMAL_DEFAULTS['rmode_every']}",
         f"--target_entropy {OPTIMAL_DEFAULTS['target_entropy']}",
         f"--clip_radius_sigma_factor {OPTIMAL_DEFAULTS['clip_radius_sigma_factor']}",
+        f"--n_action_steps {OPTIMAL_DEFAULTS['n_action_steps']}",
         f"--eval_interval {OPTIMAL_DEFAULTS['eval_interval']}",
         f"--eval_episodes {OPTIMAL_DEFAULTS['eval_episodes']}",
         f"--final_eval_episodes {OPTIMAL_DEFAULTS['final_eval_episodes']}",

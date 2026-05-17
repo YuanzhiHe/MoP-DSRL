@@ -176,9 +176,12 @@ class RectifiedFlowDenoiser(FrozenDenoiser):
             z: ``[B, H*d_a]`` coupling endpoint ``z_0``.
             with_grad: if True, build the autograd graph so gradients can
                        flow from a back to z (required for R_mode in the
-                       SAC actor update).  Default False = no_grad path,
-                       which is correct for data collection / C_ref /
-                       evaluation rollouts where we only need values.
+                       SAC actor update).  Uses gradient checkpointing per
+                       Euler step to keep peak activation memory at
+                       ~1 step's worth instead of M.
+                       Default False = no_grad path, which is correct for
+                       data collection / C_ref / evaluation rollouts where
+                       we only need values.
 
         Returns:
             a: ``[B, H*d_a]`` action chunk ``x(1)``.
@@ -190,9 +193,25 @@ class RectifiedFlowDenoiser(FrozenDenoiser):
             )
         self.velocity_field.bind_obs_dict(batch)
         try:
-            ctx = torch.enable_grad() if with_grad else torch.no_grad()
-            with ctx:
-                a = euler_integrate(self.velocity_field, z, M=self.M)
+            if with_grad:
+                # Gradient checkpointing across the M Euler steps: only the
+                # CURRENT step's activations are kept; backward recomputes.
+                # Without this, pi_0.5 (3.4B params) × M=10 steps overflows
+                # any single-GPU memory budget.
+                from torch.utils.checkpoint import checkpoint as _ckpt
+                with torch.enable_grad():
+                    dt = 1.0 / self.M
+                    x = z
+                    vf = self.velocity_field
+                    for m in range(self.M):
+                        t_m = float(m * dt)
+                        def _step(x_in, t=t_m, vf=vf, dt=dt):
+                            return x_in + dt * vf(x_in, t)
+                        x = _ckpt(_step, x, use_reentrant=False)
+                    a = x
+            else:
+                with torch.no_grad():
+                    a = euler_integrate(self.velocity_field, z, M=self.M)
         finally:
             self.velocity_field.unbind_obs()
         return a

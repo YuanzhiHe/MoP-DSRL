@@ -152,6 +152,14 @@ def parse_args() -> argparse.Namespace:
                    help="For pi_0.5: only evaluate R_mode every K actor updates.  "
                         "The most recent KL value is reused for the skipped updates.")
 
+    # Action chunking — pi_0.5 paper executes ~10 actions per inference (it's a
+    # chunk-predicting policy).  Executing only the first action of each H=50
+    # chunk causes severe distribution shift vs the model's training regime,
+    # which manifests as ~0% success rate even in pure BC mode.
+    p.add_argument("--n_action_steps", type=int, default=10,
+                   help="Number of actions from each action chunk to execute "
+                        "before re-inferring.  pi_0.5 default = 10.")
+
     # Eval / I/O
     p.add_argument("--eval_interval", type=int, default=25_000)
     p.add_argument("--eval_episodes", type=int, default=10,
@@ -284,16 +292,24 @@ def evaluate(
     device: str,
     deterministic: bool = False,
     use_dict_path: bool = False,
+    n_action_steps: int = 10,
+    H: int = 50,
 ) -> dict:
-    """Run ``n_episodes`` rollouts and return mean success / return / length."""
+    """Run ``n_episodes`` rollouts and return mean success / return / length.
+
+    Executes ``n_action_steps`` actions from each predicted chunk before
+    re-inferring — matches pi_0.5's training-time action-chunking regime.
+    """
     successes = 0
     returns = []
     lengths = []
+    info = {}
     for _ in range(n_episodes):
         obs = env.reset()
         ep_return = 0.0
         ep_len = 0
-        while True:
+        done = False
+        while not done:
             obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
             with torch.no_grad():
                 if deterministic:
@@ -302,13 +318,13 @@ def evaluate(
                 else:
                     z, _ = trainer._sample_z(obs_t)
                 a = _denoise(denoiser, obs_t, z, env=env, use_dict_path=use_dict_path)
-            action_chunk = a.squeeze(0).cpu().numpy()
-            first_action = action_chunk[:d_a]
-            obs, reward, done, info = env.step(first_action)
-            ep_return += float(reward)
-            ep_len += 1
-            if done:
-                break
+            chunk = a.squeeze(0).cpu().numpy().reshape(H, d_a)
+            for i in range(min(n_action_steps, H)):
+                obs, reward, done, info = env.step(chunk[i])
+                ep_return += float(reward)
+                ep_len += 1
+                if done:
+                    break
         successes += int(info.get("success", False))
         returns.append(ep_return)
         lengths.append(ep_len)
@@ -567,31 +583,40 @@ def main() -> int:
     last_ckpt_step = 0
 
     for step in range(args.total_env_steps):
-        # ---- collect transition ----
+        # ---- collect transition (one inference → n_action_steps env actions) ----
         obs_t = torch.as_tensor(obs, dtype=torch.float32, device=args.device).unsqueeze(0)
         with torch.no_grad():
             if step < args.warmup_env_steps and not args.no_coupling_endpoint:
-                # Bootstrap with z ~ N(0, I) before policy is useful.
                 z = torch.randn(1, z_dim, device=args.device, dtype=obs_t.dtype)
             else:
                 z, _ = trainer._sample_z(obs_t)
             a_chunk = _denoise(denoiser, obs_t, z, env=env, use_dict_path=needs_obs_dicts)
-            action_chunk = a_chunk.squeeze(0).cpu().numpy()
-            first_action = action_chunk[: args.d_a]
+            chunk_2d = a_chunk.squeeze(0).cpu().numpy().reshape(args.H, args.d_a)
 
-        obs_next, reward, done, info = env.step(first_action)
+        # Execute up to n_action_steps actions from the chunk, accumulating reward.
+        chunk_reward_sum = 0.0
+        n_exec = 0
+        done = False
+        info = {}
+        for i in range(min(args.n_action_steps, args.H)):
+            obs_next, reward, done, info = env.step(chunk_2d[i])
+            n_exec += 1
+            chunk_reward_sum += float(reward)
+            if done:
+                break
+
         if args.reward_mode == "sparse":
-            r_eff = float(reward) if done else 0.0
+            r_eff = chunk_reward_sum if done else 0.0
         else:
-            r_eff = float(reward)
+            r_eff = chunk_reward_sum
         if args.pref_reward and args.pref_flip_rate > 0:
             if rng.uniform() < args.pref_flip_rate:
                 r_eff = -r_eff
 
         buffer.push(obs, z.squeeze(0).cpu().numpy(), r_eff, obs_next, done)
         obs = obs_next
-        ep_return += float(reward)
-        ep_len += 1
+        ep_return += chunk_reward_sum
+        ep_len += n_exec
 
         # ---- end-of-episode bookkeeping ----
         if done:
@@ -656,6 +681,7 @@ def main() -> int:
             ev = evaluate(
                 trainer, denoiser, env, args.eval_episodes, args.d_a, args.device,
                 use_dict_path=needs_obs_dicts,
+                n_action_steps=args.n_action_steps, H=args.H,
             )
             eval_w.writerow([
                 step, ev["n_episodes"], ev["success_rate"],
@@ -689,6 +715,7 @@ def main() -> int:
     final_eval = evaluate(
         trainer, denoiser, env, args.final_eval_episodes, args.d_a, args.device,
         use_dict_path=needs_obs_dicts,
+        n_action_steps=args.n_action_steps, H=args.H,
     )
     eval_w.writerow([
         "final", final_eval["n_episodes"], final_eval["success_rate"],
