@@ -192,26 +192,36 @@ class RectifiedFlowDenoiser(FrozenDenoiser):
                 f"bind_obs_dict; use denoise(o, z) instead."
             )
         self.velocity_field.bind_obs_dict(batch)
-        try:
-            if with_grad:
-                # Gradient checkpointing across the M Euler steps: only the
-                # CURRENT step's activations are kept; backward recomputes.
-                # Without this, pi_0.5 (3.4B params) × M=10 steps overflows
-                # any single-GPU memory budget.
-                from torch.utils.checkpoint import checkpoint as _ckpt
-                with torch.enable_grad():
-                    dt = 1.0 / self.M
-                    x = z
-                    vf = self.velocity_field
-                    for m in range(self.M):
-                        t_m = float(m * dt)
-                        def _step(x_in, t=t_m, vf=vf, dt=dt):
-                            return x_in + dt * vf(x_in, t)
-                        x = _ckpt(_step, x, use_reentrant=False)
-                    a = x
-            else:
+        if with_grad:
+            # Gradient checkpointing across the M Euler steps: only the
+            # CURRENT step's activations are kept; backward recomputes.
+            # Without this, pi_0.5 (3.4B params) × M=10 steps overflows
+            # any single-GPU memory budget.
+            #
+            # IMPORTANT: we deliberately DO NOT call unbind_obs() here even
+            # though forward completed.  The checkpointed graph re-runs the
+            # velocity field during backward(), which itself reads
+            # self._prefix_pad_masks / self._past_key_values.  Unbinding now
+            # would crash the next backward() call.  The caller is
+            # responsible for invoking ``velocity_field.unbind_obs()``
+            # after backward() completes — or just leaving it bound, since
+            # the next bind_obs_dict() will overwrite the cache anyway.
+            from torch.utils.checkpoint import checkpoint as _ckpt
+            with torch.enable_grad():
+                dt = 1.0 / self.M
+                x = z
+                vf = self.velocity_field
+                for m in range(self.M):
+                    t_m = float(m * dt)
+                    def _step(x_in, t=t_m, vf=vf, dt=dt):
+                        return x_in + dt * vf(x_in, t)
+                    x = _ckpt(_step, x, use_reentrant=False)
+                a = x
+            # No unbind_obs here — see comment above.
+        else:
+            try:
                 with torch.no_grad():
                     a = euler_integrate(self.velocity_field, z, M=self.M)
-        finally:
-            self.velocity_field.unbind_obs()
+            finally:
+                self.velocity_field.unbind_obs()
         return a
