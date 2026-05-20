@@ -89,10 +89,19 @@ def main():
             batch["observation.images.image2"] = img.unsqueeze(0).to("cuda")
         # Empty placeholder camera (3rd camera not available in LIBERO).
         batch["observation.images.empty_camera_0"] = torch.zeros(1, 3, 224, 224, device="cuda")
+        # pi05_libero_finetuned expects state.shape[-1] == 8:
+        # eef_pos (3) + eef_quat (4) + gripper (1, taking the first / open-close coord).
+        # The full LIBERO gripper_qpos is 2D (one per finger) but pi_0.5 was trained
+        # with a single normalized scalar.
         state_parts = []
-        for k in ("robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"):
+        for k in ("robot0_eef_pos", "robot0_eef_quat"):
             if k in o:
                 state_parts.append(torch.from_numpy(o[k].copy()).float().flatten())
+        gp = o.get("robot0_gripper_qpos", None)
+        if gp is not None:
+            # Use just the first gripper coord; or the mean.  Use first to match
+            # what most pi_0.5 LIBERO recipes do.
+            state_parts.append(torch.from_numpy(gp[:1].copy()).float())
         batch["observation.state"] = torch.cat(state_parts, dim=0).unsqueeze(0).to("cuda")
         batch["task"] = [instruction]
         return batch
