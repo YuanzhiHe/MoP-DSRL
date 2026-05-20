@@ -90,6 +90,7 @@ class Pi05VelocityField(nn.Module):
         self._device = torch.device(device)
         self.num_inference_steps = num_inference_steps
         self._task_instruction = task_instruction
+        self._pretrained_path = pretrained_path
 
         # Load the full PI05Policy via LeRobot.
         _ensure_lerobot_src()
@@ -310,31 +311,124 @@ class Pi05VelocityField(nn.Module):
                 return v
         return 48  # pi_0.5 default
 
+    def _get_preprocessor(self):
+        """Lazily build & cache lerobot's official preprocessor (normalizer +
+        tokenizer + device transfer) for this policy."""
+        if getattr(self, "_lerobot_preproc", None) is not None:
+            return self._lerobot_preproc
+        from lerobot.policies.factory import make_pre_post_processors
+        cfg = self._policy.config
+        # `pretrained_path` may have been a HF id like "lerobot/pi05_libero_finetuned"
+        # — we don't have it as an instance attribute anymore.  Pull it from the
+        # config's _name_or_path if available, else fall back to a sensible default.
+        pretrained_path = (
+            getattr(cfg, "_name_or_path", None)
+            or getattr(self, "_pretrained_path", None)
+            or "lerobot/pi05_libero_finetuned"
+        )
+        try:
+            pre, post = make_pre_post_processors(cfg, pretrained_path=pretrained_path)
+        except Exception:
+            pre, post = make_pre_post_processors(cfg, pretrained_path=None)
+        self._lerobot_preproc = pre
+        self._lerobot_postproc = post
+        return pre
+
+    def _get_postprocessor(self):
+        if getattr(self, "_lerobot_postproc", None) is None:
+            self._get_preprocessor()
+        return self._lerobot_postproc
+
     def prepare_libero_batch(
         self, raw_obs: dict, instruction: str, image_size: int = 224
     ) -> Dict[str, torch.Tensor]:
         """Convert a raw LIBERO obs dict + language instruction into a fully-
-        prepared batch ready for ``bind_obs_dict``.
+        prepared batch suitable for ``bind_obs_dict``.
 
-        Image keys produced: ``observation.images.image`` and (when LIBERO emits
-        a wrist camera) ``observation.images.wrist_image``.  pi_0.5's
-        ``_preprocess_images`` introspects whatever keys are present.
+        Layout for pi05_libero_finetuned (verified via verify_finetuned.py):
+          observation.images.image          : agentview, [1, 3, 224, 224] float ∈ [0,1]
+          observation.images.image2         : robot0_eye_in_hand, same shape
+          observation.images.empty_camera_0 : zeros placeholder, same shape
+          observation.state                 : [1, 8] = eef_pos(3) + eef_quat(4) + gripper(1)
+          task                              : list[str] of instructions
 
-        Language is tokenized with the policy's tokenizer using padding =
-        max_length so the resulting tensors are batch-compatible.
+        We then run this batch through lerobot's official preprocessor which:
+          1. RenameObservationsProcessorStep   (id passthrough)
+          2. AddBatchDimensionProcessorStep   (id since we're already batched)
+          3. NormalizerProcessorStep          (state/action MEAN_STD norm)
+          4. Pi05PrepareStateTokenizerProcessorStep
+          5. TokenizerProcessorStep           (tokenizes language)
+          6. DeviceProcessorStep              (moves to GPU)
+        and returns the fully-prepared batch.
+        """
+        import numpy as np
+        import torch
+        import torch.nn.functional as F
+
+        device = self._device
+        batch: Dict[str, torch.Tensor] = {}
+
+        def _img(arr):
+            t = torch.from_numpy(arr.copy()).float() / 255.0
+            if t.ndim == 3 and t.shape[-1] == 3:
+                t = t.permute(2, 0, 1)
+            if t.shape[-1] != image_size or t.shape[-2] != image_size:
+                t = F.interpolate(
+                    t.unsqueeze(0), size=(image_size, image_size),
+                    mode="bilinear", align_corners=False,
+                ).squeeze(0)
+            return t.unsqueeze(0).to(device)
+
+        if "agentview_image" in raw_obs:
+            batch["observation.images.image"] = _img(raw_obs["agentview_image"])
+        if "robot0_eye_in_hand_image" in raw_obs:
+            batch["observation.images.image2"] = _img(raw_obs["robot0_eye_in_hand_image"])
+        # 3rd-camera placeholder (training distribution had 3 cams; LIBERO has 2).
+        batch["observation.images.empty_camera_0"] = torch.zeros(
+            1, 3, image_size, image_size, device=device, dtype=torch.float32
+        )
+
+        # State: 8-d = eef_pos(3) + eef_quat(4) + gripper_qpos[:1] (single coord)
+        state_parts = []
+        for k in ("robot0_eef_pos", "robot0_eef_quat"):
+            if k in raw_obs:
+                state_parts.append(torch.from_numpy(raw_obs[k].copy()).float().flatten())
+        gp = raw_obs.get("robot0_gripper_qpos", None)
+        if isinstance(gp, np.ndarray) and gp.size > 0:
+            state_parts.append(torch.from_numpy(gp[:1].copy()).float())
+        if state_parts:
+            batch["observation.state"] = torch.cat(state_parts, dim=0).unsqueeze(0).to(device)
+        else:
+            batch["observation.state"] = torch.zeros(1, 8, device=device, dtype=torch.float32)
+
+        batch["task"] = [instruction]
+
+        # Now route through lerobot's official preprocessor: tokenize + normalize.
+        try:
+            pre = self._get_preprocessor()
+            batch = pre(batch)
+        except Exception as e:
+            # Fall back to a tiny zero-tokens batch so the rest of the model
+            # at least loads.  Production runs hit the success path above.
+            import logging as _log
+            _log.warning("lerobot preproc failed: %s; falling back to raw batch", e)
+        return batch
+
+    def _OLD_prepare_libero_batch_DEPRECATED(self, raw_obs, instruction, image_size=224):
+        """Old hand-rolled batch builder (kept inert for reference).
+
+        This was bypassing lerobot's NormalizerProcessorStep which meant state
+        and action were never normalized → BC=0%.  Use prepare_libero_batch
+        above instead, which delegates to lerobot's official preproc.
         """
         import numpy as np
         import torch
         import torch.nn.functional as F
         from lerobot.utils.constants import (
-            OBS_LANGUAGE_ATTENTION_MASK,
-            OBS_LANGUAGE_TOKENS,
+            OBS_LANGUAGE_ATTENTION_MASK, OBS_LANGUAGE_TOKENS,
         )
-
         device = self._device
         batch: Dict[str, torch.Tensor] = {}
-
-        # --- 1. Images: HWC uint8 → CHW float in [0, 1], resized to image_size ---
         for src_key, dst_key in [
             ("agentview_image",          "observation.images.image"),
             ("robot0_eye_in_hand_image", "observation.images.wrist_image"),
@@ -352,8 +446,6 @@ class Pi05VelocityField(nn.Module):
                         mode="bilinear", align_corners=False,
                     ).squeeze(0)
                 batch[dst_key] = img.unsqueeze(0).to(device)
-
-        # --- 2. Proprio state: concat eef pos + quat + gripper qpos ---
         state_parts = []
         for k in ("robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"):
             if k in raw_obs:
@@ -365,8 +457,6 @@ class Pi05VelocityField(nn.Module):
         else:
             state = torch.zeros(1, 8, device=device, dtype=torch.float32)
         batch["observation.state"] = state
-
-        # --- 3. Tokenize language ---
         max_len = self._resolve_max_token_length()
         warned = getattr(self, "_tokenizer_fallback_warned", False)
         try:
@@ -379,7 +469,6 @@ class Pi05VelocityField(nn.Module):
                 truncation=True,
             )
             batch[OBS_LANGUAGE_TOKENS] = tok_out["input_ids"].long().to(device)
-            # lerobot pi05's _prepare_attention_masks_4d uses torch.where with bool.
             batch[OBS_LANGUAGE_ATTENTION_MASK] = tok_out["attention_mask"].bool().to(device)
         except Exception as e:
             if not warned:

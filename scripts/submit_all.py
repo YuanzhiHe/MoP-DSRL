@@ -125,7 +125,10 @@ ROBOCASA_SUITES = ["robocasa_kitchen_atomic", "robocasa_kitchen_composite"]
 
 # Backbones
 BACKBONES = {
-    "pi05": {"M_key": "M_pi05",  "pretrained_path": "lerobot/pi05_libero"},
+    # pi05_libero_finetuned has populated normalizer stats; the plain
+    # pi05_libero repo's policy_preprocessor.json has empty `features: {}` which
+    # makes the normalizer a no-op and pi_0.5 outputs garbage → 0% on LIBERO.
+    "pi05": {"M_key": "M_pi05",  "pretrained_path": "lerobot/pi05_libero_finetuned"},
     "dpt":  {"M_key": "M_dpt",   "checkpoint_dir":  ""},  # to be overridden by env
 }
 

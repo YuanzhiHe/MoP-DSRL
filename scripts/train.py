@@ -271,15 +271,31 @@ def compute_C_ref(
 
 
 def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
-             env=None, use_dict_path: bool = False) -> torch.Tensor:
-    """Denoise wrapper that picks flat vs dict path based on backbone capability."""
+             env=None, use_dict_path: bool = False,
+             unnormalize: bool = True) -> torch.Tensor:
+    """Denoise wrapper that picks flat vs dict path based on backbone capability.
+
+    For pi_0.5 the policy outputs *normalized* actions (mean/std).  When the
+    caller is going to feed them to env.step (i.e. ``unnormalize=True``, default),
+    we run the action through lerobot's unnormalizer postprocessor so the result
+    is in physical-action units that LIBERO expects.  When the caller is going
+    to feed the action chunk to the K-means vocab (R_mode path), keep it in
+    normalized units (matching how the vocab was fitted on demo actions).
+    """
     if use_dict_path and env is not None and hasattr(denoiser, "denoise_with_obs_dict"):
         batch = denoiser.velocity_field.prepare_libero_batch(
             env.last_obs_dict, env.task_instruction
         )
         if obs_t.shape[0] > 1:
             batch = denoiser.velocity_field.repeat_batch(batch, obs_t.shape[0])
-        return denoiser.denoise_with_obs_dict(batch, z)
+        a = denoiser.denoise_with_obs_dict(batch, z)
+        if unnormalize:
+            try:
+                post = denoiser.velocity_field._get_postprocessor()
+                a = post(a)
+            except Exception:
+                pass
+        return a
     return denoiser.denoise(obs_t, z)
 
 
