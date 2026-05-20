@@ -110,23 +110,44 @@ def main() -> int:
     d_a = int(cfg.output_features["action"].shape[0])
     print(f"[cfg] H={H} d_a={d_a} max_action_dim={cfg.max_action_dim}")
 
+    # ---- diagnostic: what obs keys does LIBERO actually emit ----
+    obs0 = env.reset()
+    print(f"[diag] LIBERO obs keys: {sorted(obs0.keys())}")
+    for k in sorted(obs0.keys()):
+        v = obs0[k]
+        if isinstance(v, np.ndarray):
+            print(f"  {k}: shape={v.shape} dtype={v.dtype} range=[{v.min():.3f},{v.max():.3f}]")
+
+    # Try to import lerobot's PolicyAction type — postproc requires it.
+    PolicyAction = None
+    try:
+        from lerobot.processor.policy_processor import PolicyAction
+        print("[load] PolicyAction available")
+    except Exception as e:
+        print(f"[warn] PolicyAction import failed: {e}; postproc will be skipped")
+
     # ---- rollout helper ----
     def build_batch(obs):
-        """LIBERO obs dict → lerobot batch dict that the preprocessor will normalize."""
+        """LIBERO obs dict → lerobot batch dict that the preprocessor will normalize.
+
+        Tries multiple image key conventions; lerobot's pi05_libero was likely
+        trained with specific names (e.g. "observation.images.image" vs ".cam_high").
+        """
         batch = {}
-        # Images: HWC uint8 → CHW float in [0, 1].  lerobot's preproc will
-        # ImageNet-normalize and resize as needed.
         if "agentview_image" in obs:
             img = torch.from_numpy(obs["agentview_image"].copy()).float() / 255.0
             if img.ndim == 3 and img.shape[-1] == 3:
                 img = img.permute(2, 0, 1)
+            # Flip vertically — robosuite renders bottom-up by default; pi_0.5 trained
+            # on top-down (PIL/PNG style).
+            img = torch.flip(img, dims=[-2])
             batch["observation.images.image"] = img.unsqueeze(0).to(args.device)
         if "robot0_eye_in_hand_image" in obs:
             img = torch.from_numpy(obs["robot0_eye_in_hand_image"].copy()).float() / 255.0
             if img.ndim == 3 and img.shape[-1] == 3:
                 img = img.permute(2, 0, 1)
+            img = torch.flip(img, dims=[-2])
             batch["observation.images.wrist_image"] = img.unsqueeze(0).to(args.device)
-        # Proprio: eef pos + quat + gripper qpos
         state_parts = []
         for k in ("robot0_eef_pos", "robot0_eef_quat", "robot0_gripper_qpos"):
             if k in obs:
@@ -136,8 +157,34 @@ def main() -> int:
         state = torch.cat(state_parts, dim=0).unsqueeze(0).to(args.device) \
             if state_parts else torch.zeros(1, 8, device=args.device)
         batch["observation.state"] = state
-        batch["task"] = [instruction]  # list-of-strings — lerobot's expected format
+        batch["task"] = [instruction]
         return batch
+
+    # ---- inference helper ----
+    def get_action(obs):
+        batch = build_batch(obs)
+        if preproc is not None:
+            batch = preproc(batch)
+        with torch.no_grad():
+            action_tensor = policy.select_action(batch)  # [1, d_a] normalized
+        # Try postproc with the correct PolicyAction wrapper.
+        if postproc is not None and PolicyAction is not None:
+            try:
+                pa = PolicyAction(action=action_tensor)
+                pa_out = postproc(pa)
+                action_tensor = pa_out.action
+            except Exception as e:
+                if not get_action._warned:
+                    print(f"[warn] postproc(PolicyAction) failed: {e}; using raw")
+                    get_action._warned = True
+        return action_tensor.detach().cpu().numpy().reshape(-1)[:d_a]
+    get_action._warned = False
+
+    # Diagnostic: print the action range across 5 random obs.
+    print("[diag] sampling 5 actions for range check…")
+    for _ in range(5):
+        a = get_action(obs0)
+        print(f"  action range=[{a.min():.3f}, {a.max():.3f}]  values={a}")
 
     n_success = 0
     t0 = time.time()
@@ -149,24 +196,7 @@ def main() -> int:
         success = False
         info = {}
         for step in range(args.max_steps):
-            batch = build_batch(obs)
-            if preproc is not None:
-                try:
-                    batch = preproc(batch)
-                except Exception as e:
-                    if step == 0 and ep == 0:
-                        print(f"[warn] preproc(batch) raised: {e} — using raw batch")
-                    pass
-            with torch.no_grad():
-                action = policy.select_action(batch)
-            if postproc is not None:
-                try:
-                    action = postproc({"action": action})["action"]
-                except Exception as e:
-                    if step == 0 and ep == 0:
-                        print(f"[warn] postproc(action) raised: {e} — using raw action")
-                    pass
-            a = action.detach().cpu().numpy().reshape(-1)[:d_a]
+            a = get_action(obs)
             obs, reward, done, info = env.step(a)
             if done:
                 success = bool(info.get("success", False))
