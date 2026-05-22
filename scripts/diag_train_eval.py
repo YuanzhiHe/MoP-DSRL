@@ -8,7 +8,10 @@ Usage:  python scripts/diag_train_eval.py
 """
 from __future__ import annotations
 import os, sys, pathlib
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+# Insert repo root so `import scripts.backbones` works (mirrors train.py).
+_REPO = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO))
+sys.path.insert(0, str(_REPO / "scripts"))
 import _ipv4_patch  # noqa: F401,E402
 os.environ.setdefault("MUJOCO_GL", "egl")
 
