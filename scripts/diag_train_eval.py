@@ -73,11 +73,14 @@ def main():
     print(f"  a from denoise_with_obs_dict: shape={tuple(a.shape)} range=[{a.float().min().item():.4f},{a.float().max().item():.4f}]")
     print(f"  a first 14 values: {a.flatten()[:14].cpu().numpy()}")
 
-    print("\n== Apply postproc (lerobot unnormalizer) ==")
+    print("\n== Apply postproc (lerobot unnormalizer, reshape to [B,H,d_a]) ==")
     try:
-        a_post = post(a)
-        print(f"  postproc OK: shape={tuple(a_post.shape)} range=[{a_post.float().min().item():.4f},{a_post.float().max().item():.4f}]")
-        print(f"  a_post first 14 values: {a_post.flatten()[:14].cpu().numpy()}")
+        a3 = a.view(1, 50, 7)
+        pa = post({"action": a3})
+        a3_post = pa["action"] if isinstance(pa, dict) else pa
+        print(f"  postproc OK: shape={tuple(a3_post.shape)} range=[{a3_post.float().min().item():.4f},{a3_post.float().max().item():.4f}]")
+        print(f"  a_post first 14 values: {a3_post.flatten()[:14].cpu().numpy()}")
+        a_post = a3_post.reshape(1, 350)
     except Exception as e:
         print(f"  postproc FAILED: {type(e).__name__}: {e}")
         a_post = a
@@ -94,10 +97,13 @@ def main():
         with torch.no_grad():
             a = denoiser.denoise_with_obs_dict(batch, z)
         try:
-            a_post = post(a)
-        except Exception:
-            a_post = a
-        chunk = a_post.detach().cpu().numpy().reshape(50, 7)
+            a3 = a.view(1, 50, 7)
+            pa = post({"action": a3})
+            a3_post = pa["action"] if isinstance(pa, dict) else pa
+            chunk = a3_post.detach().cpu().numpy().reshape(50, 7)
+        except Exception as e:
+            print(f"  postproc inside loop failed: {e}; using normalized")
+            chunk = a.detach().cpu().numpy().reshape(50, 7)
         # Execute 10 actions per chunk
         for i in range(10):
             obs, reward, done, info = env.step(chunk[i])

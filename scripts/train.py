@@ -272,15 +272,17 @@ def compute_C_ref(
 
 def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
              env=None, use_dict_path: bool = False,
-             unnormalize: bool = True) -> torch.Tensor:
+             unnormalize: bool = True, d_a: int = 7) -> torch.Tensor:
     """Denoise wrapper that picks flat vs dict path based on backbone capability.
 
     For pi_0.5 the policy outputs *normalized* actions (mean/std).  When the
-    caller is going to feed them to env.step (i.e. ``unnormalize=True``, default),
-    we run the action through lerobot's unnormalizer postprocessor so the result
-    is in physical-action units that LIBERO expects.  When the caller is going
-    to feed the action chunk to the K-means vocab (R_mode path), keep it in
-    normalized units (matching how the vocab was fitted on demo actions).
+    caller is going to feed them to env.step (``unnormalize=True``, default),
+    we run the action through lerobot's unnormalizer postprocessor so the
+    result is in physical-action units LIBERO expects.
+
+    The denoiser returns ``[B, H*d_a]`` flat — but lerobot's unnormalizer
+    expects ``[..., d_a]`` (action dim in the last position).  We reshape to
+    ``[B, H, d_a]``, post-process, then flatten back to ``[B, H*d_a]``.
     """
     if use_dict_path and env is not None and hasattr(denoiser, "denoise_with_obs_dict"):
         batch = denoiser.velocity_field.prepare_libero_batch(
@@ -288,13 +290,23 @@ def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
         )
         if obs_t.shape[0] > 1:
             batch = denoiser.velocity_field.repeat_batch(batch, obs_t.shape[0])
-        a = denoiser.denoise_with_obs_dict(batch, z)
+        a = denoiser.denoise_with_obs_dict(batch, z)  # [B, H*d_a]
         if unnormalize:
             try:
                 post = denoiser.velocity_field._get_postprocessor()
-                a = post(a)
-            except Exception:
-                pass
+                B = a.shape[0]
+                H = a.shape[1] // d_a
+                a3 = a.view(B, H, d_a)
+                # lerobot's unnormalizer expects a dict with key "action".
+                pa = post({"action": a3})
+                if isinstance(pa, dict) and "action" in pa:
+                    a3 = pa["action"]
+                else:
+                    a3 = pa  # PolicyAction tensor subclass
+                a = a3.reshape(B, H * d_a)
+            except Exception as e:
+                import logging as _log
+                _log.warning("postproc(action) failed: %s; using normalized action", e)
         return a
     return denoiser.denoise(obs_t, z)
 
@@ -333,7 +345,7 @@ def evaluate(
                     z = mean
                 else:
                     z, _ = trainer._sample_z(obs_t)
-                a = _denoise(denoiser, obs_t, z, env=env, use_dict_path=use_dict_path)
+                a = _denoise(denoiser, obs_t, z, env=env, use_dict_path=use_dict_path, d_a=d_a)
             chunk = a.squeeze(0).cpu().numpy().reshape(H, d_a)
             for i in range(min(n_action_steps, H)):
                 obs, reward, done, info = env.step(chunk[i])
@@ -606,7 +618,7 @@ def main() -> int:
                 z = torch.randn(1, z_dim, device=args.device, dtype=obs_t.dtype)
             else:
                 z, _ = trainer._sample_z(obs_t)
-            a_chunk = _denoise(denoiser, obs_t, z, env=env, use_dict_path=needs_obs_dicts)
+            a_chunk = _denoise(denoiser, obs_t, z, env=env, use_dict_path=needs_obs_dicts, d_a=args.d_a)
             chunk_2d = a_chunk.squeeze(0).cpu().numpy().reshape(args.H, args.d_a)
 
         # Execute up to n_action_steps actions from the chunk, accumulating reward.
