@@ -294,16 +294,19 @@ def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
         if unnormalize:
             try:
                 post = denoiser.velocity_field._get_postprocessor()
+                # Find PolicyAction class (cached after first lookup).
+                PolicyAction = getattr(_denoise, "_PolicyAction", None)
+                if PolicyAction is None:
+                    from lerobot.processor import PolicyAction as _PA
+                    PolicyAction = _PA
+                    _denoise._PolicyAction = _PA
                 B = a.shape[0]
                 H = a.shape[1] // d_a
                 a3 = a.view(B, H, d_a)
-                # lerobot's unnormalizer expects a dict with key "action".
-                pa = post({"action": a3})
-                if isinstance(pa, dict) and "action" in pa:
-                    a3 = pa["action"]
-                else:
-                    a3 = pa  # PolicyAction tensor subclass
-                a = a3.reshape(B, H * d_a)
+                pa = PolicyAction(a3)
+                pa_out = post(pa)
+                a3_post = pa_out if isinstance(pa_out, torch.Tensor) else pa_out.action
+                a = a3_post.reshape(B, H * d_a)
             except Exception as e:
                 import logging as _log
                 _log.warning("postproc(action) failed: %s; using normalized action", e)

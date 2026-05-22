@@ -73,11 +73,13 @@ def main():
     print(f"  a from denoise_with_obs_dict: shape={tuple(a.shape)} range=[{a.float().min().item():.4f},{a.float().max().item():.4f}]")
     print(f"  a first 14 values: {a.flatten()[:14].cpu().numpy()}")
 
-    print("\n== Apply postproc (lerobot unnormalizer, reshape to [B,H,d_a]) ==")
+    print("\n== Apply postproc (lerobot unnormalizer, PolicyAction wrap) ==")
+    from lerobot.processor import PolicyAction
     try:
         a3 = a.view(1, 50, 7)
-        pa = post({"action": a3})
-        a3_post = pa["action"] if isinstance(pa, dict) else pa
+        pa = PolicyAction(a3)
+        pa_out = post(pa)
+        a3_post = pa_out if isinstance(pa_out, torch.Tensor) else pa_out.action
         print(f"  postproc OK: shape={tuple(a3_post.shape)} range=[{a3_post.float().min().item():.4f},{a3_post.float().max().item():.4f}]")
         print(f"  a_post first 14 values: {a3_post.flatten()[:14].cpu().numpy()}")
         a_post = a3_post.reshape(1, 350)
@@ -98,8 +100,9 @@ def main():
             a = denoiser.denoise_with_obs_dict(batch, z)
         try:
             a3 = a.view(1, 50, 7)
-            pa = post({"action": a3})
-            a3_post = pa["action"] if isinstance(pa, dict) else pa
+            pa = PolicyAction(a3)
+            pa_out = post(pa)
+            a3_post = pa_out if isinstance(pa_out, torch.Tensor) else pa_out.action
             chunk = a3_post.detach().cpu().numpy().reshape(50, 7)
         except Exception as e:
             print(f"  postproc inside loop failed: {e}; using normalized")
