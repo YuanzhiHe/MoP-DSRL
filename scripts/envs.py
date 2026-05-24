@@ -143,13 +143,20 @@ class LiberoEnv:
         )
         self._bddl_file = bddl_file
 
-        # Keep env_args minimal — LIBERO/robosuite's accepted kwargs vary across
-        # versions.  bddl_file_name is mandatory; everything else uses defaults
-        # (agentview camera, 128x128, use_camera_obs=True, use_object_obs=True).
+        # Critical: pi_0.5 was trained on LIBERO with DELTA control (lerobot's
+        # `control_mode="relative"`), but stock OffScreenRenderEnv defaults to
+        # ABSOLUTE OSC.  Mismatch ⇒ pi_0.5 outputs delta but env interprets as
+        # absolute target ⇒ ~0% BC success.  Inject the OSC_POSE controller
+        # with control_delta=True to match lerobot's training distribution.
+        import json
+        from robosuite.controllers import load_controller_config
+        controller_cfg = load_controller_config(default_controller="OSC_POSE")
+        controller_cfg["control_delta"] = True  # use delta actions
         env_args = {
             "bddl_file_name": bddl_file,
-            "camera_heights": 128,
-            "camera_widths": 128,
+            "camera_heights": 224,             # lerobot finetuned uses 224
+            "camera_widths": 224,
+            "controller_configs": controller_cfg,
         }
         self._env = OffScreenRenderEnv(**env_args)
         # LIBERO 0.1 OffScreenRenderEnv doesn't accept seed in __init__; use the
