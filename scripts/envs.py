@@ -166,17 +166,45 @@ class LiberoEnv:
     # ------------------------------------------------------------------
     @staticmethod
     def _unbatch(d):
-        """lerobot vec env returns batched dict with [1, ...] shaped tensors / arrays.
-        Strip the leading 1-dim to recover the raw single-env obs dict."""
-        out = {}
-        for k, v in d.items():
+        """Recursively strip the leading [1, ...] batch dim and convert tensors → np.
+
+        lerobot vec env emits nested dicts:
+            {"pixels": {"image": [1,H,W,3], "image2": [1,H,W,3]},
+             "robot_state": {"eef": {"pos": [1,3], "quat": [1,4], ...},
+                             "gripper": {"qpos": [1,2], ...}, ...}}
+        We flatten one level of batching everywhere.  Also synthesize
+        flat aliases (`agentview_image`, `robot0_eef_pos`, ...) so legacy
+        consumers of the LIBERO obs schema keep working.
+        """
+        import numpy as _np
+        def _strip(v):
+            if isinstance(v, dict):
+                return {k: _strip(x) for k, x in v.items()}
+            if hasattr(v, "cpu"):
+                v = v.cpu().numpy()
             if hasattr(v, "shape") and len(v.shape) > 0 and v.shape[0] == 1:
-                arr = v[0]
-                if hasattr(arr, "cpu"):  # torch tensor
-                    arr = arr.cpu().numpy()
-                out[k] = arr
-            else:
-                out[k] = v
+                v = v[0]
+            return v
+        flat_nested = _strip(d)
+        out = dict(flat_nested)
+        # ---- aliases so old key names still resolve ----
+        try:
+            pixels = flat_nested.get("pixels", {}) or {}
+            if "image" in pixels:
+                out["agentview_image"] = pixels["image"]
+            if "image2" in pixels:
+                out["robot0_eye_in_hand_image"] = pixels["image2"]
+            rs = flat_nested.get("robot_state", {}) or {}
+            eef = rs.get("eef", {}) or {}
+            if "pos" in eef:
+                out["robot0_eef_pos"] = _np.asarray(eef["pos"]).astype(_np.float32)
+            if "quat" in eef:
+                out["robot0_eef_quat"] = _np.asarray(eef["quat"]).astype(_np.float32)
+            grip = rs.get("gripper", {}) or {}
+            if "qpos" in grip:
+                out["robot0_gripper_qpos"] = _np.asarray(grip["qpos"]).astype(_np.float32)
+        except Exception:
+            pass
         return out
 
     # ------------------------------------------------------------------
@@ -244,11 +272,19 @@ class LiberoEnv:
         reward = float(np.asarray(reward).reshape(-1)[0])
         # info is sometimes a list[dict]; normalize to a single dict.
         if isinstance(info, list) and info:
-            info_d = info[0]
+            info_d = dict(info[0])
         elif isinstance(info, dict):
-            info_d = {k: (v[0] if hasattr(v, "__getitem__") else v) for k, v in info.items()}
+            info_d = {k: (v[0] if hasattr(v, "__getitem__") and not isinstance(v, str) else v)
+                      for k, v in info.items()}
         else:
             info_d = {}
+        # lerobot uses "is_success"; map to the conventional "success" key
+        # that our evaluate() / train.py reads.
+        if "success" not in info_d:
+            if "is_success" in info_d:
+                info_d["success"] = bool(info_d["is_success"])
+            elif "task_success" in info_d:
+                info_d["success"] = bool(info_d["task_success"])
         self._last_raw_obs = self._unbatch(obs_vec)
         self._obs = self._flatten_obs(self._last_raw_obs)
         self._t += 1
