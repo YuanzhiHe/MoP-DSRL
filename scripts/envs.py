@@ -122,67 +122,62 @@ class LiberoEnv:
     ):
         _ensure_libero_paths()
         from libero.libero import benchmark as libero_benchmark
-        from libero.libero import get_libero_path
-        from libero.libero.envs import OffScreenRenderEnv
+        # Use lerobot's LIBERO factory — it sets control_mode='relative' which
+        # is what pi_0.5 was trained on (stock OffScreenRenderEnv defaults to
+        # absolute OSC → ~0% BC).  Verified by diag_lerobot_libero_env.py:
+        # native pi_0.5 + this env path gets 100% on libero_goal task[0].
+        from lerobot.envs.configs import LiberoEnv as LeRobotLiberoEnvCfg
+        from lerobot.envs.factory import make_env
 
         self.suite = suite
         self.task_id = int(task_id)
         self.max_steps = int(max_steps)
         self.seed = int(seed)
-        self._BenchmarkCls = libero_benchmark
-        self._OffScreenRenderEnv = OffScreenRenderEnv
 
+        env_cfg = LeRobotLiberoEnvCfg(
+            task=suite, task_ids=[self.task_id], control_mode="relative",
+        )
+        envs_by_suite = make_env(env_cfg, n_envs=1, use_async_envs=False)
+        # envs_by_suite[<suite>][<task_id>] → gym SyncVectorEnv with 1 env
+        suite_envs = envs_by_suite[list(envs_by_suite.keys())[0]]
+        self._vec = suite_envs[list(suite_envs.keys())[0]]
+        self._env_cfg = env_cfg
+
+        # Get task instruction from LIBERO benchmark (lerobot wraps the same).
         bench = libero_benchmark.get_benchmark(suite)()
         task = bench.get_task(self.task_id)
         self._task = task
+        instr = getattr(task, "language", None) or task.name.replace("_", " ")
+        self.task_instruction = instr
 
-        # Build the bddl_file path using LIBERO's canonical API.
-        bddl_root = get_libero_path("bddl_files")
-        bddl_file = os.path.join(
-            bddl_root, task.problem_folder, task.bddl_file
-        )
-        self._bddl_file = bddl_file
-
-        env_args = {
-            "bddl_file_name": bddl_file,
-            "camera_heights": 224,
-            "camera_widths": 224,
-        }
-        self._env = OffScreenRenderEnv(**env_args)
-
-        # Critical: pi_0.5 was trained on LIBERO with DELTA control (lerobot's
-        # `control_mode="relative"`), but stock OffScreenRenderEnv defaults to
-        # ABSOLUTE OSC.  Mismatch ⇒ ~0% BC success.  Flip the underlying robot
-        # controller's `use_delta` flag to True after construction.
+        # Seed the underlying vec env's RNG.
         try:
-            for robot in self._env.env.robots:
-                ctrl = robot.controller
-                if hasattr(ctrl, "use_delta"):
-                    ctrl.use_delta = True
-        except Exception as _e:
-            pass
-        # LIBERO 0.1 OffScreenRenderEnv doesn't accept seed in __init__; use the
-        # underlying robosuite seed if available.
-        try:
-            self._env.seed(self.seed * 1000 + self.task_id)
-        except AttributeError:
-            np.random.seed(self.seed * 1000 + self.task_id)
+            self._vec.reset(seed=self.seed * 1000 + self.task_id)
+        except TypeError:
+            self._vec.reset()
 
-        obs = self._env.reset()
-        self._last_raw_obs = obs                  # full dict (incl. images) for backbone preprocessing
-        self._obs = self._flatten_obs(obs)
+        obs_vec, _info = self._vec.reset()
+        self._last_raw_obs = self._unbatch(obs_vec)
+        self._obs = self._flatten_obs(self._last_raw_obs)
         self.obs_dim = int(self._obs.shape[0])
-        # LIBERO single-arm: 7 (6 DoF + gripper).
         self.action_dim = 7
         self._t = 0
 
-        # Try to extract the task's natural-language goal for pi_0.5/lerobot.
-        # LIBERO Task objects expose `.language` on recent versions; otherwise
-        # fall back to the human-readable task name.
-        instr = getattr(task, "language", None)
-        if not instr:
-            instr = task.name.replace("_", " ")
-        self.task_instruction = instr
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _unbatch(d):
+        """lerobot vec env returns batched dict with [1, ...] shaped tensors / arrays.
+        Strip the leading 1-dim to recover the raw single-env obs dict."""
+        out = {}
+        for k, v in d.items():
+            if hasattr(v, "shape") and len(v.shape) > 0 and v.shape[0] == 1:
+                arr = v[0]
+                if hasattr(arr, "cpu"):  # torch tensor
+                    arr = arr.cpu().numpy()
+                out[k] = arr
+            else:
+                out[k] = v
+        return out
 
     # ------------------------------------------------------------------
     @staticmethod
@@ -226,9 +221,9 @@ class LiberoEnv:
 
     def reset(self) -> np.ndarray:
         self._t = 0
-        obs = self._env.reset()
-        self._last_raw_obs = obs
-        self._obs = self._flatten_obs(obs)
+        obs_vec, _info = self._vec.reset()
+        self._last_raw_obs = self._unbatch(obs_vec)
+        self._obs = self._flatten_obs(self._last_raw_obs)
         return self._obs.copy()
 
     def step(self, action: np.ndarray):
@@ -237,17 +232,33 @@ class LiberoEnv:
             pad = np.zeros(self.action_dim - action.shape[0], dtype=np.float32)
             action = np.concatenate([action, pad], axis=0)
         action = action[: self.action_dim]
-        obs, reward, done, info = self._env.step(action)
-        self._last_raw_obs = obs
-        self._obs = self._flatten_obs(obs)
+        # vec env expects [B, action_dim]
+        action_b = action[None, :].astype(np.float32)
+        out = self._vec.step(action_b)
+        if len(out) == 5:
+            obs_vec, reward, terminated, truncated, info = out
+            done = bool(terminated[0] or truncated[0])
+        else:
+            obs_vec, reward, done, info = out
+            done = bool(np.asarray(done).reshape(-1)[0])
+        reward = float(np.asarray(reward).reshape(-1)[0])
+        # info is sometimes a list[dict]; normalize to a single dict.
+        if isinstance(info, list) and info:
+            info_d = info[0]
+        elif isinstance(info, dict):
+            info_d = {k: (v[0] if hasattr(v, "__getitem__") else v) for k, v in info.items()}
+        else:
+            info_d = {}
+        self._last_raw_obs = self._unbatch(obs_vec)
+        self._obs = self._flatten_obs(self._last_raw_obs)
         self._t += 1
         if self._t >= self.max_steps:
             done = True
-        return self._obs.copy(), float(reward), bool(done), dict(info)
+        return self._obs.copy(), reward, done, info_d
 
     def close(self) -> None:
         try:
-            self._env.close()
+            self._vec.close()
         except Exception:
             pass
 
