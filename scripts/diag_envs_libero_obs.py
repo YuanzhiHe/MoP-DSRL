@@ -73,6 +73,40 @@ def main():
         for k, v in info2.items():
             print(f"  info[{k!r}]: {type(v).__name__} -> {str(v)[:200]}")
 
+    # === Also dump env_pre transformation ===
+    print("\n== env_pre transformer chain ==")
+    from lerobot.policies.factory import make_pre_post_processors
+    from lerobot.envs.factory import make_env_pre_post_processors
+    from lerobot.configs.policies import PreTrainedConfig
+    policy_cfg = PreTrainedConfig.from_pretrained("lerobot/pi05_libero_finetuned")
+    policy_cfg.device = "cuda"
+    env_pre, env_post = make_env_pre_post_processors(env_cfg, policy_cfg)
+    print(f"  env_pre type: {type(env_pre).__name__}")
+    if hasattr(env_pre, "steps"):
+        for i, s in enumerate(env_pre.steps):
+            print(f"    step[{i}] = {type(s).__name__}")
+
+    print("\n== Apply env_pre to raw obs ==")
+    obs2 = env_pre(obs)
+    print(f"  out type: {type(obs2).__name__}")
+    if isinstance(obs2, dict):
+        for k, v in obs2.items():
+            if hasattr(v, "shape"):
+                print(f"  {k}: shape={tuple(v.shape)} dtype={getattr(v,'dtype','?')}", end="")
+                try:
+                    print(f" range=[{float(v.min()):.4f},{float(v.max()):.4f}]")
+                except Exception:
+                    print()
+            elif isinstance(v, dict):
+                print(f"  {k}: nested dict keys={list(v.keys())}")
+                for k2, v2 in v.items():
+                    if hasattr(v2, "shape"):
+                        print(f"    {k2}: shape={tuple(v2.shape)}", end="")
+                        try:
+                            print(f" range=[{float(v2.min()):.4f},{float(v2.max()):.4f}]")
+                        except Exception:
+                            print()
+
     vec.close()
     return 0
 

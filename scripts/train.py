@@ -335,8 +335,16 @@ def evaluate(
     returns = []
     lengths = []
     info = {}
+    # Try to reach pi_0.5's internal policy.reset() for clearing the action queue.
+    inner_policy = None
+    try:
+        inner_policy = denoiser.velocity_field._policy
+    except Exception:
+        pass
     for _ in range(n_episodes):
         obs = env.reset()
+        if inner_policy is not None and hasattr(inner_policy, "reset"):
+            inner_policy.reset()
         ep_return = 0.0
         ep_len = 0
         done = False
