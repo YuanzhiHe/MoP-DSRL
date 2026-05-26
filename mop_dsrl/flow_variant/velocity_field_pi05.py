@@ -359,26 +359,64 @@ class Pi05VelocityField(nn.Module):
     ) -> Dict[str, torch.Tensor]:
         """The CORRECT prepare path: take lerobot vec env raw obs dict
         ({'pixels': {...}, 'robot_state': {...}}) and run it through:
-          1. lerobot's LiberoProcessorStep (env_pre) — renames + image norm + state flatten
-          2. lerobot's PI05 preproc        (NormalizerProcessorStep + tokenizer + device)
+          1. Manual LIBERO→lerobot rename (pixels.X → observation.images.X,
+             robot_state → observation.robot_state) + uint8 HWC → torch BCHW
+          2. LiberoProcessorStep (env_pre): rotates images 180°, eef_quat → axis-angle,
+             state flatten to 8-d observation.state
+          3. lerobot PI05 policy preproc: NormalizerProcessorStep + tokenizer + device
         Returns a batch dict ready for bind_obs_dict.
 
-        verify_finetuned.py confirms this exact pipeline gets 100% on libero_goal.
+        From lerobot/scripts/lerobot_eval.py line 173:
+          observation = env_preprocessor(observation)
+          observation = preprocessor(observation)
+        — both take an OBSERVATION DICT (not a transition).  We mirror that.
         """
+        import torch as _t
+        import numpy as _np
+
+        # ---- Step 1: rename pixels.image → observation.images.image and
+        # convert HWC uint8 ndarray → BCHW float32 torch tensor on device ----
+        device = self._device
+        observation = {}
+        pix = raw_vec_obs.get("pixels", {})
+        for k, v in pix.items():
+            # v shape: [B, H, W, 3] uint8 (vec env adds leading batch dim)
+            if hasattr(v, "shape") and v.ndim == 4:  # batched
+                t = _t.from_numpy(_np.asarray(v).copy()).float() / 255.0
+                t = t.permute(0, 3, 1, 2)  # BHWC → BCHW
+            elif hasattr(v, "shape") and v.ndim == 3:  # unbatched
+                t = _t.from_numpy(_np.asarray(v).copy()).float() / 255.0
+                t = t.permute(2, 0, 1).unsqueeze(0)
+            else:
+                continue
+            observation[f"observation.images.{k}"] = t.to(device)
+
+        # robot_state must stay nested for LiberoProcessorStep to consume:
+        rs = raw_vec_obs.get("robot_state", {})
+        rs_converted = {}
+        def _conv(x):
+            if hasattr(x, "shape"):
+                t = _t.from_numpy(_np.asarray(x).copy()).float().to(device)
+                if t.ndim == 1:
+                    t = t.unsqueeze(0)
+                return t
+            return x
+        for sub_k, sub_v in rs.items():
+            if isinstance(sub_v, dict):
+                rs_converted[sub_k] = {k2: _conv(v2) for k2, v2 in sub_v.items()}
+            else:
+                rs_converted[sub_k] = _conv(sub_v)
+        observation["observation.robot_state"] = rs_converted
+
+        # ---- Step 2: env_pre = LiberoProcessorStep (operates on dict directly) ----
         env_pre = self._get_env_preprocessor()
-        # LiberoProcessorStep is an ObservationProcessorStep — it expects
-        # a transition dict with an "observation" key, not the raw obs dict.
-        # Wrap accordingly.
-        transition = {"observation": raw_vec_obs, "info": {}, "task": [instruction]}
-        out = env_pre(transition)
-        # The result transition has "observation" + "task" populated for the policy.
-        obs_for_policy = out.get("observation", out)
-        # Move to the lerobot policy preprocessor (does normalize + tokenize).
+        observation = env_pre(observation)
+
+        # ---- Step 3: policy preproc = NormalizerProcessorStep + tokenizer + device ----
+        # PI05 preproc expects "task" in the batch alongside the observation keys.
+        observation["task"] = [instruction]
         policy_pre = self._get_preprocessor()
-        batch = dict(obs_for_policy) if isinstance(obs_for_policy, dict) else {}
-        if "task" not in batch:
-            batch["task"] = out.get("task", [instruction])
-        batch = policy_pre(batch)
+        batch = policy_pre(observation)
         return batch
 
     def prepare_libero_batch(
