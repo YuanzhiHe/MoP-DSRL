@@ -339,6 +339,48 @@ class Pi05VelocityField(nn.Module):
             self._get_preprocessor()
         return self._lerobot_postproc
 
+    def _get_env_preprocessor(self):
+        """lerobot's LiberoProcessorStep — converts raw vec env obs into the
+        format the policy's NormalizerProcessorStep expects."""
+        if getattr(self, "_lerobot_env_pre", None) is not None:
+            return self._lerobot_env_pre
+        from lerobot.envs.configs import LiberoEnv as LeRobotLiberoEnvCfg
+        from lerobot.envs.factory import make_env_pre_post_processors
+        cfg = self._policy.config
+        # task/task_ids/control_mode here just affect rename rules in LiberoProcessorStep
+        env_cfg = LeRobotLiberoEnvCfg(task="libero_goal", task_ids=[0], control_mode="relative")
+        env_pre, env_post = make_env_pre_post_processors(env_cfg, cfg)
+        self._lerobot_env_pre = env_pre
+        self._lerobot_env_post = env_post
+        return env_pre
+
+    def prepare_libero_batch_from_vec(
+        self, raw_vec_obs: dict, instruction: str
+    ) -> Dict[str, torch.Tensor]:
+        """The CORRECT prepare path: take lerobot vec env raw obs dict
+        ({'pixels': {...}, 'robot_state': {...}}) and run it through:
+          1. lerobot's LiberoProcessorStep (env_pre) — renames + image norm + state flatten
+          2. lerobot's PI05 preproc        (NormalizerProcessorStep + tokenizer + device)
+        Returns a batch dict ready for bind_obs_dict.
+
+        verify_finetuned.py confirms this exact pipeline gets 100% on libero_goal.
+        """
+        env_pre = self._get_env_preprocessor()
+        # LiberoProcessorStep is an ObservationProcessorStep — it expects
+        # a transition dict with an "observation" key, not the raw obs dict.
+        # Wrap accordingly.
+        transition = {"observation": raw_vec_obs, "info": {}, "task": [instruction]}
+        out = env_pre(transition)
+        # The result transition has "observation" + "task" populated for the policy.
+        obs_for_policy = out.get("observation", out)
+        # Move to the lerobot policy preprocessor (does normalize + tokenize).
+        policy_pre = self._get_preprocessor()
+        batch = dict(obs_for_policy) if isinstance(obs_for_policy, dict) else {}
+        if "task" not in batch:
+            batch["task"] = out.get("task", [instruction])
+        batch = policy_pre(batch)
+        return batch
+
     def prepare_libero_batch(
         self, raw_obs: dict, instruction: str, image_size: int = 224
     ) -> Dict[str, torch.Tensor]:

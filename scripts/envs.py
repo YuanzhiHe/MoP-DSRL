@@ -157,6 +157,7 @@ class LiberoEnv:
             self._vec.reset()
 
         obs_vec, _info = self._vec.reset()
+        self._last_raw_vec_obs = obs_vec   # batched vec env obs (for env_pre)
         self._last_raw_obs = self._unbatch(obs_vec)
         self._obs = self._flatten_obs(self._last_raw_obs)
         self.obs_dim = int(self._obs.shape[0])
@@ -250,6 +251,7 @@ class LiberoEnv:
     def reset(self) -> np.ndarray:
         self._t = 0
         obs_vec, _info = self._vec.reset()
+        self._last_raw_vec_obs = obs_vec
         self._last_raw_obs = self._unbatch(obs_vec)
         self._obs = self._flatten_obs(self._last_raw_obs)
         return self._obs.copy()
@@ -285,6 +287,7 @@ class LiberoEnv:
                 info_d["success"] = bool(info_d["is_success"])
             elif "task_success" in info_d:
                 info_d["success"] = bool(info_d["task_success"])
+        self._last_raw_vec_obs = obs_vec
         self._last_raw_obs = self._unbatch(obs_vec)
         self._obs = self._flatten_obs(self._last_raw_obs)
         self._t += 1

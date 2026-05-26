@@ -285,9 +285,18 @@ def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
     ``[B, H, d_a]``, post-process, then flatten back to ``[B, H*d_a]``.
     """
     if use_dict_path and env is not None and hasattr(denoiser, "denoise_with_obs_dict"):
-        batch = denoiser.velocity_field.prepare_libero_batch(
-            env.last_obs_dict, env.task_instruction
-        )
+        vf = denoiser.velocity_field
+        # Use the OFFICIAL lerobot env_pre → policy_pre chain.  Verified by
+        # diag_our_backbone_eval_policy.py: backbone+this chain gets 80–100%
+        # on libero_goal task[0]; manually-built batch was 0%.
+        if hasattr(vf, "prepare_libero_batch_from_vec") and hasattr(env, "_last_raw_vec_obs"):
+            batch = vf.prepare_libero_batch_from_vec(
+                env._last_raw_vec_obs, env.task_instruction,
+            )
+        else:
+            batch = vf.prepare_libero_batch(
+                env.last_obs_dict, env.task_instruction,
+            )
         if obs_t.shape[0] > 1:
             batch = denoiser.velocity_field.repeat_batch(batch, obs_t.shape[0])
         a = denoiser.denoise_with_obs_dict(batch, z)  # [B, H*d_a]
@@ -480,9 +489,15 @@ def main() -> int:
         held_out_obs_list.append(flat)
         if needs_obs_dicts:
             try:
-                batch = denoiser.velocity_field.prepare_libero_batch(
-                    env.last_obs_dict, env.task_instruction
-                )
+                vf = denoiser.velocity_field
+                if hasattr(vf, "prepare_libero_batch_from_vec") and hasattr(env, "_last_raw_vec_obs"):
+                    batch = vf.prepare_libero_batch_from_vec(
+                        env._last_raw_vec_obs, env.task_instruction,
+                    )
+                else:
+                    batch = vf.prepare_libero_batch(
+                        env.last_obs_dict, env.task_instruction,
+                    )
                 # Move to CPU before stashing; pi_0.5 forward will copy back.
                 held_out_obs_dicts.append(_to_cpu(batch))
             except Exception as e:
