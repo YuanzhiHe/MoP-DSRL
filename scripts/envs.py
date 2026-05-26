@@ -273,11 +273,21 @@ class LiberoEnv:
             done = bool(np.asarray(done).reshape(-1)[0])
         reward = float(np.asarray(reward).reshape(-1)[0])
         # info is sometimes a list[dict]; normalize to a single dict.
+        def _unbatch_one(v):
+            try:
+                if isinstance(v, str) or v is None:
+                    return v
+                if hasattr(v, "shape") and len(v.shape) >= 1 and v.shape[0] >= 1:
+                    return v[0]
+                if isinstance(v, (list, tuple)) and len(v) >= 1:
+                    return v[0]
+            except Exception:
+                pass
+            return v
         if isinstance(info, list) and info:
             info_d = dict(info[0])
         elif isinstance(info, dict):
-            info_d = {k: (v[0] if hasattr(v, "__getitem__") and not isinstance(v, str) else v)
-                      for k, v in info.items()}
+            info_d = {k: _unbatch_one(v) for k, v in info.items()}
         else:
             info_d = {}
         # lerobot uses "is_success"; map to the conventional "success" key
