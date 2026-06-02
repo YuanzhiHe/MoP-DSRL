@@ -87,7 +87,14 @@ OPTIMAL_DEFAULTS = {
     # pressure* on R_mode over training equal to spec §8's nominal λ=0.1, we
     # scale the per-evaluation weight by K → λ=0.4.  Ablation sweep below
     # uses the same ×4 compensation.
-    "lambda_": 4e-1,             # = 0.1 (spec) × rmode_every=4 compensation
+    # lambda: 4× compounded.  First ×4 = rmode_every=4 compensation (spec is
+    # 0.1).  Second ×4 = empirical finding from initial run: spec-equivalent
+    # 0.4 left r_mode growing unbounded (0.0→3.3) on libero_spatial and 0 on
+    # libero_goal, indicating R_mode lambda was insufficient to pull policy
+    # back to C_ref before alpha collapsed.  Raising to 1.6 gives R_mode
+    # enough gradient mass to dominate the actor update once entropy term
+    # weakens.
+    "lambda_": 1.6,
     "epsilon": 0.1,              # spec §4.5
     "alpha_lambda": 1e-3,        # spec §4.5
     "n_on": 8,                   # spec §4.3
@@ -96,14 +103,15 @@ OPTIMAL_DEFAULTS = {
     "rmode_subsample": 8,        # implementation: held-out obs sampled per eval
     "rmode_every": 4,            # implementation: K actor updates per eval
 
-    # SAC entropy + L2 clip — spec §5 defaults (target_entropy = -dim(z),
-    # clip_radius = 4*sqrt(z_dim) ≈ 75).  Earlier overrides (-30, 1.5) were
-    # workarounds for an alpha-collapse symptom that we now believe was
-    # caused by BC=0% (no chunking) + R_mode having no gradient.  With both
-    # of those fixed (n_action_steps=10 + gradient-checkpointed pi_0.5
-    # forward), spec values should be stable again.
-    "target_entropy": float("nan"),    # NaN → falls back to -dim(z) = -350
-    "clip_radius_sigma_factor": 4.0,   # spec §5
+    # SAC entropy + L2 clip.  Spec §5 says target_entropy = -dim(z) = -350
+    # for z_dim=350, but in practice pi_0.5 is only weakly sensitive to z, so
+    # the SAC auto-tuner drove alpha → 0 in 100k steps which collapsed the
+    # policy.  Empirical finding from first 9_main_1seed run: target_entropy
+    # = -30 (≈ -z_dim/12, ≈ -0.085 nat per coord) keeps alpha in the 0.05–0.2
+    # range and exploration alive, while still being strong enough to prevent
+    # the policy from over-fitting to a single z.
+    "target_entropy": -30.0,
+    "clip_radius_sigma_factor": 1.5,   # also reduced from spec's 4.0 → 1.5 to keep z in pi_0.5's responsive range
     "n_action_steps": 10,              # PI openpi default; standard pi_0.5 inference protocol
     # Eval
     "eval_interval": 25_000,
