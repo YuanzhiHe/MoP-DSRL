@@ -117,7 +117,7 @@ OPTIMAL_DEFAULTS = {
     "eval_interval": 25_000,
     "eval_episodes": 10,
     "final_eval_episodes": 50,
-    "ckpt_interval": 100_000,
+    "ckpt_interval": 25_000,           # dense ckpts → power loss costs ≤25k steps; enables --resume
     "log_interval": 1000,
     # Episode length cap (LIBERO default)
     "episode_steps": 300,

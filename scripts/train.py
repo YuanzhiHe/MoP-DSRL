@@ -167,6 +167,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--final_eval_episodes", type=int, default=50)
     p.add_argument("--ckpt_interval", type=int, default=100_000)
     p.add_argument("--log_interval", type=int, default=1000)
+    p.add_argument("--resume", action=argparse.BooleanOptionalAction, default=True,
+                   help="If a checkpoint_step*.pt exists in --run_dir, load the "
+                        "latest one and continue from its step (CSV rows are "
+                        "appended after truncating to that step).  --no-resume "
+                        "starts fresh and overwrites the run dir.")
 
     # Engineering
     p.add_argument("--seed", type=int, default=0)
@@ -615,16 +620,80 @@ def main() -> int:
 
     metrics_path = run_dir / "metrics.csv"
     eval_path = run_dir / "eval.csv"
-    metrics_f = open(metrics_path, "w", newline="")
-    metrics_w = csv.writer(metrics_f)
-    metrics_w.writerow([
+
+    # ---- resume: load latest checkpoint_step*.pt and continue ----
+    start_step = 0
+    if args.resume:
+        ckpts = sorted(
+            run_dir.glob("checkpoint_step*.pt"),
+            key=lambda p: int(p.stem.replace("checkpoint_step", "")),
+        )
+        if ckpts:
+            ckpt_path = ckpts[-1]
+            ck = torch.load(ckpt_path, map_location=args.device, weights_only=False)
+            start_step = int(ck["step"])
+            trainer.policy.load_state_dict(ck["policy"])
+            trainer.critic.load_state_dict(ck["critic"])
+            # Older checkpoints lack target-critic / optimizer state; restore
+            # what's there, fall back to sensible defaults otherwise.
+            if "critic_target" in ck:
+                trainer.critic_target.load_state_dict(ck["critic_target"])
+            else:
+                trainer.critic_target.load_state_dict(trainer.critic.state_dict())
+            with torch.no_grad():
+                trainer.log_alpha.copy_(ck["log_alpha"].to(args.device))
+            if "lambda" in ck:
+                trainer._lambda = float(ck["lambda"])  # lambda_ is a read-only property
+            for opt_key, opt in (("actor_opt", trainer.actor_opt),
+                                 ("critic_opt", trainer.critic_opt),
+                                 ("alpha_opt", trainer.alpha_opt)):
+                if opt_key in ck:
+                    opt.load_state_dict(ck[opt_key])
+            logger.info("[resume] loaded %s → continuing from step %d (opts=%s)",
+                        ckpt_path.name, start_step, "restored" if "actor_opt" in ck else "fresh")
+
+    # CSV files: on resume, keep only rows with step <= start_step, then append;
+    # otherwise truncate and write a fresh header.
+    def _truncate_csv(path: Path, header: list, keep_to_step: int) -> None:
+        kept = []
+        if path.exists():
+            with open(path, newline="") as f:
+                r = csv.reader(f)
+                rows = list(r)
+            for row in rows[1:]:  # skip old header
+                if not row:
+                    continue
+                try:
+                    s = int(row[0])
+                except (ValueError, IndexError):
+                    continue  # drop non-numeric step rows (e.g. "final")
+                if s <= keep_to_step:
+                    kept.append(row)
+        with open(path, "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(header)
+            w.writerows(kept)
+
+    metrics_header = [
         "step", "wall_seconds", "ep_return", "ep_length", "success",
         "critic_loss", "actor_loss_q", "actor_loss_total",
         "r_mode", "alpha", "lambda",
-    ])
-    eval_f = open(eval_path, "w", newline="")
-    eval_w = csv.writer(eval_f)
-    eval_w.writerow(["step", "n_episodes", "success_rate", "mean_return", "mean_length"])
+    ]
+    eval_header = ["step", "n_episodes", "success_rate", "mean_return", "mean_length"]
+    if start_step > 0:
+        _truncate_csv(metrics_path, metrics_header, start_step)
+        _truncate_csv(eval_path, eval_header, start_step)
+        metrics_f = open(metrics_path, "a", newline="")
+        eval_f = open(eval_path, "a", newline="")
+        metrics_w = csv.writer(metrics_f)
+        eval_w = csv.writer(eval_f)
+    else:
+        metrics_f = open(metrics_path, "w", newline="")
+        metrics_w = csv.writer(metrics_f)
+        metrics_w.writerow(metrics_header)
+        eval_f = open(eval_path, "w", newline="")
+        eval_w = csv.writer(eval_f)
+        eval_w.writerow(eval_header)
 
     t_start = time.time()
     obs = obs0
@@ -632,11 +701,11 @@ def main() -> int:
     ep_len = 0
     n_eps = 0
     n_success = 0
-    last_log = 0
+    last_log = start_step
     rng = np.random.default_rng(args.seed + 1)
-    last_ckpt_step = 0
+    last_ckpt_step = start_step
 
-    for step in range(args.total_env_steps):
+    for step in range(start_step, args.total_env_steps):
         # ---- collect transition (one inference → n_action_steps env actions) ----
         obs_t = torch.as_tensor(obs, dtype=torch.float32, device=args.device).unsqueeze(0)
         with torch.no_grad():
@@ -748,14 +817,20 @@ def main() -> int:
         # ---- checkpoint ----
         if args.ckpt_interval > 0 and step > 0 and step % args.ckpt_interval == 0:
             ckpt_path = run_dir / f"checkpoint_step{step}.pt"
+            tmp_path = ckpt_path.with_suffix(".pt.tmp")
             torch.save({
                 "step": step,
                 "policy": trainer.policy.state_dict(),
                 "critic": trainer.critic.state_dict(),
+                "critic_target": trainer.critic_target.state_dict(),
                 "log_alpha": trainer.log_alpha.detach().cpu(),
                 "lambda": trainer.lambda_,
+                "actor_opt": trainer.actor_opt.state_dict(),
+                "critic_opt": trainer.critic_opt.state_dict(),
+                "alpha_opt": trainer.alpha_opt.state_dict(),
                 "args": vars(args),
-            }, ckpt_path)
+            }, tmp_path)
+            os.replace(tmp_path, ckpt_path)  # atomic: never leave a half-written ckpt
             last_ckpt_step = step
             logger.info("[ckpt] step=%d wrote %s", step, ckpt_path)
 
