@@ -64,10 +64,47 @@ if [ -n "$SBATCH_TIME_SEC" ] && [ "$SBATCH_TIME_SEC" -gt 0 ]; then
 fi
 
 # Run training; pass TRAIN_ARGS verbatim, then the wall-budget guardrail.
+# train.py exits 0 both on true completion (writes final_summary.json) and on a
+# clean wall-stop (writes a resumable checkpoint, NO final_summary). A real crash
+# exits non-zero and `set -e` aborts here — we deliberately do NOT resubmit on a
+# crash, only on a wall-stop.
 # shellcheck disable=SC2086
 python -u scripts/train.py \
     $TRAIN_ARGS \
     --run_dir "$RUN_DIR" \
     $WALL_BUDGET_ARG
+
+# ---- self-resubmit chain: continue until the run truly completes -------------
+# A single job cannot exceed the 3-day cluster wall limit, but a 250k-step run
+# needs longer. When train.py stops at the wall budget without a final_summary,
+# resubmit this same wrapper (same RUN_DIR + TRAIN_ARGS); --resume picks up the
+# latest checkpoint. Guarded by a resubmit counter to prevent an infinite loop
+# on a run that never makes progress.
+if [ -f "$RUN_DIR/final_summary.json" ]; then
+    echo "Run COMPLETE (final_summary.json present): $RUN_DIR"
+else
+    COUNT_FILE="$RUN_DIR/.resubmit_count"
+    N=$(cat "$COUNT_FILE" 2>/dev/null || echo 0)
+    N=$((N + 1))
+    echo "$N" > "$COUNT_FILE"
+    MAX_RESUBMIT="${MAX_RESUBMIT:-25}"
+    if [ "$N" -gt "$MAX_RESUBMIT" ]; then
+        echo "ERROR: hit MAX_RESUBMIT=$MAX_RESUBMIT for $RUN_DIR — stopping chain." >&2
+        exit 1
+    fi
+    PART="${SLURM_JOB_PARTITION:-gpu_l40s}"
+    CPUS="${SLURM_CPUS_PER_TASK:-8}"
+    TLIMIT=$(scontrol show job "${SLURM_JOB_ID:-0}" 2>/dev/null | grep -oP 'TimeLimit=\K[0-9:-]+' | head -1)
+    TLIMIT="${TLIMIT:-3-00:00:00}"
+    JNAME="${SLURM_JOB_NAME:-mop_resume}"
+    OUT="$MOP_DSRL_ROOT/logs/resubmit_${JNAME}_%j.out"
+    echo "Run INCOMPLETE — resubmit #$N (partition=$PART time=$TLIMIT)"
+    sbatch \
+        --job-name="$JNAME" --partition="$PART" --nodes=1 --ntasks-per-node=1 \
+        --cpus-per-task="$CPUS" --gres=gpu:1 --time="$TLIMIT" \
+        --output="$OUT" --error="$OUT" \
+        --export=ALL,RUN_DIR="$RUN_DIR",TRAIN_ARGS="$TRAIN_ARGS",SBATCH_TIME_SEC="$SBATCH_TIME_SEC" \
+        "$MOP_DSRL_ROOT/scripts/slurm/train_job.sh"
+fi
 
 echo "Job ${SLURM_JOB_ID:-local} completed."

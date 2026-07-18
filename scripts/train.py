@@ -704,6 +704,7 @@ def main() -> int:
     last_log = start_step
     rng = np.random.default_rng(args.seed + 1)
     last_ckpt_step = start_step
+    wall_stopped = False
 
     for step in range(start_step, args.total_env_steps):
         # ---- collect transition (one inference → n_action_steps env actions) ----
@@ -838,9 +839,38 @@ def main() -> int:
         if args.max_wall_seconds > 0 and time.time() - t_start > args.max_wall_seconds:
             logger.warning("Hit wall-clock budget (%ds), stopping at step %d",
                            args.max_wall_seconds, step)
+            wall_stopped = True
             break
 
-    # ---- final eval & checkpoint ----
+    # ---- wall-stop: save a resumable checkpoint and exit WITHOUT final_summary ----
+    # A job killed by the SLURM wall limit must NOT write final_summary.json, or the
+    # resume/skip logic (in run_local.py and the self-resubmitting SLURM wrapper)
+    # would treat this partial run as complete. Save a checkpoint at the current step
+    # so the next job continues from here, then exit cleanly.
+    if wall_stopped:
+        ckpt_path = run_dir / f"checkpoint_step{step}.pt"
+        tmp_path = ckpt_path.with_suffix(".pt.tmp")
+        torch.save({
+            "step": step,
+            "policy": trainer.policy.state_dict(),
+            "critic": trainer.critic.state_dict(),
+            "critic_target": trainer.critic_target.state_dict(),
+            "log_alpha": trainer.log_alpha.detach().cpu(),
+            "lambda": trainer.lambda_,
+            "actor_opt": trainer.actor_opt.state_dict(),
+            "critic_opt": trainer.critic_opt.state_dict(),
+            "alpha_opt": trainer.alpha_opt.state_dict(),
+            "args": vars(args),
+        }, tmp_path)
+        os.replace(tmp_path, ckpt_path)
+        logger.warning("[wall-stop] saved resumable checkpoint at step %d → %s "
+                       "(no final_summary; resubmit to continue)", step, ckpt_path)
+        metrics_f.close()
+        eval_f.close()
+        env.close()
+        return 0
+
+    # ---- final eval & checkpoint (only reached on true completion) ----
     final_eval = evaluate(
         trainer, denoiser, env, args.final_eval_episodes, args.d_a, args.device,
         use_dict_path=needs_obs_dicts,
