@@ -401,6 +401,14 @@ def main() -> int:
     )
     args = parse_args()
 
+    # Process-start timestamp for the SLURM wall-budget check. This MUST be
+    # taken before the (slow) backbone load + held-out-obs + C_ref build, so the
+    # --max_wall_seconds budget bounds the TOTAL job wall (startup + training).
+    # Measuring from the post-C_ref training t_start instead would let a ~40-min
+    # startup push the job past the SLURM hard limit → TIMEOUT kill (no graceful
+    # checkpoint, no resubmit).
+    proc_start = time.time()
+
     run_dir = Path(args.run_dir)
     run_dir.mkdir(parents=True, exist_ok=True)
     with open(run_dir / "config.json", "w") as f:
@@ -835,9 +843,9 @@ def main() -> int:
             last_ckpt_step = step
             logger.info("[ckpt] step=%d wrote %s", step, ckpt_path)
 
-        # ---- wall-clock budget ----
-        if args.max_wall_seconds > 0 and time.time() - t_start > args.max_wall_seconds:
-            logger.warning("Hit wall-clock budget (%ds), stopping at step %d",
+        # ---- wall-clock budget (measured from process start, incl. startup) ----
+        if args.max_wall_seconds > 0 and time.time() - proc_start > args.max_wall_seconds:
+            logger.warning("Hit wall-clock budget (%ds since proc start), stopping at step %d",
                            args.max_wall_seconds, step)
             wall_stopped = True
             break
