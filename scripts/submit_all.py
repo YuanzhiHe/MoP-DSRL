@@ -440,6 +440,10 @@ def parse_args() -> argparse.Namespace:
                    help="SLURM partition for every job (default gpu_l40s).")
     p.add_argument("--time", default="72:00:00",
                    help="SLURM --time per job.")
+    p.add_argument("--total-env-steps", type=int, default=0,
+                   help="Override OPTIMAL_DEFAULTS total_env_steps for every run "
+                        "(0 = keep the 500k default). Use 250000 for the "
+                        "convergence-saturated budget.")
     p.add_argument("--cpus", type=int, default=8)
     p.add_argument("--mem", default="64G")
     p.add_argument("--gres", default="gpu:1")
@@ -495,6 +499,9 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     args = parse_args()
+    if args.total_env_steps > 0:
+        OPTIMAL_DEFAULTS["total_env_steps"] = args.total_env_steps
+        logger.info("Override: total_env_steps = %d for all runs", args.total_env_steps)
     runs = collect_runs(args)
     if not runs:
         logger.warning("Empty plan — nothing to submit.")
