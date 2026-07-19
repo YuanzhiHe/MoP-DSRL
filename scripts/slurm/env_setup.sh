@@ -17,11 +17,14 @@ export PYTHONPATH="${MOP_DSRL_ROOT}:${PYTHONPATH:-}"
 
 # ---- third-party: lerobot + libero + robocasa -------------------------------
 # These point at the existing checkouts on /shared/scratch.
-export LEROBOT_SRC="${LEROBOT_SRC:-/shared/home1/c.c23089110/HPTD/third_party/lerobot_v044/src}"
+# lerobot is the pip-installed 0.4.4 in the conda env (matches the workstation).
+# Do NOT inject HPTD's lerobot_v044 source — it is an older 0.4.4 that lacks the
+# factory surface our code uses and shadows the pip package on PYTHONPATH.
+export LEROBOT_SRC="${LEROBOT_SRC:-}"
 export LIBERO_SRC="${LIBERO_SRC:-/shared/scratch/SCWF00111/Sam2RL/libero_repo/LIBERO}"
 export ROBOCASA_SRC="${ROBOCASA_SRC:-/shared/scratch/SCWF00111/Sam2RL/robocasa_repo/robocasa}"
 
-if [ -d "$LEROBOT_SRC" ]; then
+if [ -n "$LEROBOT_SRC" ] && [ -d "$LEROBOT_SRC" ]; then
     export PYTHONPATH="${LEROBOT_SRC}:${PYTHONPATH}"
 fi
 if [ -d "$LIBERO_SRC" ]; then
