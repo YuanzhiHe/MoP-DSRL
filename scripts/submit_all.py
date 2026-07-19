@@ -177,9 +177,14 @@ class Run:
             f"--time={self.time}",
             f"--output={log_prefix}_%j.out",
             f"--error={log_prefix}_%j.err",
+            # NOTE: no shlex.quote here — the command list is handed to
+            # subprocess.run() (no shell), so sbatch receives this element
+            # verbatim as one argv. Quoting would embed literal quotes into the
+            # SLURM env var, and train_job.sh's `$TRAIN_ARGS` word-split would
+            # then pass "'--backbone" as a single (broken) token.
             "--export=ALL,RUN_DIR={run_dir},TRAIN_ARGS={train_args},SBATCH_TIME_SEC={tsec}".format(
-                run_dir=shlex.quote(str(run_dir)),
-                train_args=shlex.quote(" ".join(self.args)),
+                run_dir=str(run_dir),
+                train_args=" ".join(self.args),
                 tsec=time_to_seconds(self.time),
             ),
             str(SLURM_DIR / "train_job.sh"),
