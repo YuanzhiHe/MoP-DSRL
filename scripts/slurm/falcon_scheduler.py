@@ -96,33 +96,48 @@ def main() -> int:
           f"live={ {k: live_per_part.get(k, 0) for k in PARTITIONS} }")
 
     submitted = 0
+    def ckpt_step(rd) -> int:
+        """Latest checkpoint step for a run (0 if none / not started)."""
+        best = 0
+        for c in rd.glob("checkpoint_step*.pt"):
+            try:
+                best = max(best, int(c.stem.replace("checkpoint_step", "")))
+            except ValueError:
+                pass
+        return best
+
     for part, cap in PARTITIONS.items():
         live = live_per_part.get(part, 0)
-        # pending runs assigned to this partition, in plan order
+        # Build the pending list for this partition, then order it so IN-PROGRESS
+        # runs (have a checkpoint) resume BEFORE fresh runs start — highest step
+        # first. This prevents the priority inversion where a run that just
+        # wall-stopped at high step waits behind freshly-started 0-step runs.
+        pend = []
         for r in [x for x in plan if x.partition == part]:
-            if live >= cap:
-                break
             rd = r.run_dir(RUNS_ROOT)
             if (rd / "final_summary.json").exists():
                 continue                          # done
             if r.job_name in active_names:
                 continue                          # already running / queued
-            # Race guard: a run that just wall-stopped writes a checkpoint and
-            # then self-resubmits (a few-second window with no queue job). If the
-            # newest checkpoint is fresh (<30 min), assume the resubmit is in
-            # flight and skip this cycle to avoid a duplicate. A genuinely broken
-            # chain (checkpoint older than a cron interval, no queue job) is
-            # restarted normally.
-            ckpts = list(rd.glob("checkpoint_step*.pt"))
-            if ckpts:
-                newest = max(c.stat().st_mtime for c in ckpts)
-                if (time.time() - newest) < 1800:
+            step = ckpt_step(rd)
+            # Tiny freshness guard: skip a checkpoint written seconds ago (job may
+            # still be finalizing). No self-resubmit races anymore, so 90s is plenty.
+            if step > 0:
+                newest = max(c.stat().st_mtime for c in rd.glob("checkpoint_step*.pt"))
+                if (time.time() - newest) < 90:
                     continue
+            pend.append((step, r))
+        pend.sort(key=lambda t: -t[0])            # in-progress (high step) first
+        for step, r in pend:
+            if live >= cap:
+                break
+            rd = r.run_dir(RUNS_ROOT)
             rd.mkdir(parents=True, exist_ok=True)
             cmd = r.sbatch_command(RUNS_ROOT, LOGS_ROOT)
             res = subprocess.run(cmd, capture_output=True, text=True)
             if res.returncode == 0:
-                print(f"[scheduler] SUBMIT {part} {r.group}/{r.name} -> {res.stdout.strip()}")
+                tag = f"resume@{step}" if step else "start"
+                print(f"[scheduler] SUBMIT {part} {r.group}/{r.name} ({tag}) -> {res.stdout.strip()}")
                 live += 1
                 submitted += 1
                 active_names.add(r.job_name)
