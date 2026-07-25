@@ -32,13 +32,17 @@ LOGS_ROOT = Path(DEFAULT_LOGS_ROOT)
 TOTAL_ENV_STEPS = 250_000
 TIME = "72:00:00"
 
-# Per-partition submit caps (QOSMaxSubmitJobPerUser). Only h100 + l40s are
-# usable: V100 (sm_70) can't run the cu13 torch build (no kernel image), and
-# gpu_h200 submits are rejected by a submit-count limit. Filling both to their
-# caps gives ~3 concurrently RUNNING jobs (h100:1, l40s:2).
+# Per-partition caps = QOS *running* limit (MaxJobsPerUser), NOT the submit
+# limit. Filling only to the running cap means we never pre-queue a spare job.
+# Pre-queuing caused a priority inversion: when an in-progress run wall-stopped,
+# SLURM auto-started the already-queued fresh (0-step) job before the next cron
+# tick could resume the high-step run. With no spare queued, each freed slot is
+# filled by the scheduler's own in-progress-first logic (~20 min idle per
+# turnover, negligible vs the 3-day run length). Only h100 + l40s are usable
+# (V100 sm_70 can't run the cu13 torch build; gpu_h200 submits are rejected).
 PARTITIONS = {
-    "gpu_h100": 2,
-    "gpu_l40s": 4,
+    "gpu_h100": 1,
+    "gpu_l40s": 2,
 }
 
 
