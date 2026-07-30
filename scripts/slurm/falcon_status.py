@@ -65,15 +65,14 @@ def main() -> int:
     sq = squeue_map()
     now = time.time()
 
-    # Running jobs per partition — a checkpointed run that is not running is a
-    # real STALL only if its partition has a FREE slot (should have been
-    # resumed). If the partition is at its running cap, the run is just QUEUED
-    # behind higher-priority in-progress runs (normal under the QOS limit; no
-    # compute wasted, it resumes when a slot frees).
+    # LIVE jobs per partition (running + pending) — a checkpointed run that is
+    # not itself in the queue is a real STALL only if its partition has a FREE
+    # slot the scheduler should have filled. Count pending too: a pending resume
+    # (e.g. waiting for a busy node) already occupies a slot from the scheduler's
+    # live<cap perspective, so a run behind it is QUEUED (normal), not stalled.
     run_per_part = {}
     for r in plan:
-        st = sq.get(r.job_name, "")
-        if st.startswith("R"):
+        if r.job_name in sq:                      # running OR pending
             run_per_part[r.partition] = run_per_part.get(r.partition, 0) + 1
 
     done = run = pend = stall = queued = 0
