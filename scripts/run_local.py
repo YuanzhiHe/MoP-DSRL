@@ -96,6 +96,10 @@ def parse_args() -> argparse.Namespace:
                    help="Print the plan + the local command for each run; don't launch.")
     p.add_argument("--print-cmd", action="store_true")
     p.add_argument("--poll-interval", type=float, default=2.0)
+    p.add_argument("--total-env-steps", type=int, default=0,
+                   help="Override OPTIMAL_DEFAULTS total_env_steps for every run "
+                        "(0 = keep the 500k default). Use 250000 to match the "
+                        "Falcon 250k convergence-saturated budget.")
     return p.parse_args()
 
 
@@ -110,6 +114,10 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     args = parse_args()
+    if args.total_env_steps > 0:
+        from scripts.submit_all import OPTIMAL_DEFAULTS
+        OPTIMAL_DEFAULTS["total_env_steps"] = args.total_env_steps
+        logger.info("Override: total_env_steps = %d for all runs", args.total_env_steps)
     runs = collect_runs(args)
     if not runs:
         logger.warning("Empty plan."); return 0
