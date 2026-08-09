@@ -54,6 +54,15 @@ def build_plan() -> list:
     for r in plan_tier1_main(["pi05"], ["libero_goal", "libero_spatial", "libero_object"], [1, 2]):
         r.partition = "gpu_h100"
         plan.append(r)
+    # robustness FIRST among l40s runs: ood + sparse, seeds 0,1. These are the
+    # paper's differentiators (clean suites are saturated — BC alone hits ~1.0,
+    # so MoP-DSRL only shows an edge under distribution shift / reward
+    # corruption). Fresh runs are picked in plan order, so listing robustness
+    # before baselines/ablations gets them onto l40s slots first. -> l40s.
+    for r in plan_robustness([0, 1]):
+        if r.group in ("robustness_ood", "robustness_sparse"):
+            r.partition = "gpu_l40s"
+            plan.append(r)
     # baselines: 5 x seeds 0,1 -> l40s
     for r in plan_tier1_baselines([0, 1]):
         r.partition = "gpu_l40s"
@@ -61,11 +70,6 @@ def build_plan() -> list:
     # lambda ablation only, seeds 0,1 -> l40s (v100 unusable with cu13 torch)
     for r in plan_ablations([0, 1]):
         if r.group == "ablation_lambda":
-            r.partition = "gpu_l40s"
-            plan.append(r)
-    # robustness: ood + sparse, seeds 0,1 -> l40s
-    for r in plan_robustness([0, 1]):
-        if r.group in ("robustness_ood", "robustness_sparse"):
             r.partition = "gpu_l40s"
             plan.append(r)
     # common SLURM resources
