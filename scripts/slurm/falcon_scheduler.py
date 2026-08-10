@@ -24,6 +24,7 @@ _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent.parent))
 from scripts.submit_all import (  # noqa: E402
     plan_tier1_main, plan_tier1_baselines, plan_robustness, plan_ablations,
+    Run, _common_args,
     OPTIMAL_DEFAULTS, DEFAULT_RUNS_ROOT, DEFAULT_LOGS_ROOT,
 )
 
@@ -61,6 +62,17 @@ def build_plan() -> list:
     # before baselines/ablations gets them onto l40s slots first. -> l40s.
     for r in plan_robustness([0, 1]):
         if r.group in ("robustness_ood", "robustness_sparse"):
+            r.partition = "gpu_l40s"
+            plan.append(r)
+    # DSRL control under the SAME robustness conditions (dsrl = MoP-DSRL with
+    # lambda=0, i.e. no R_mode). This is the head-to-head that shows R_mode adds
+    # robustness: MoP-DSRL vs dsrl under sparse / ood. Without it the robustness
+    # runs have nothing to compare against. -> l40s, prioritized with robustness.
+    for seed in (0, 1):
+        for cond, extra in (("sparse", {"reward_mode": "sparse"}),
+                            ("ood", {"ood_init": True})):
+            r = Run(group=f"robustness_dsrl_{cond}", name=f"{cond}_seed{seed}",
+                    args=_common_args("pi05", "libero_goal", seed, lambda_=0.0, extra=extra))
             r.partition = "gpu_l40s"
             plan.append(r)
     # baselines: 5 x seeds 0,1 -> l40s
