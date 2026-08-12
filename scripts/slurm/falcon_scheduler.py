@@ -60,21 +60,23 @@ def build_plan() -> list:
     # so MoP-DSRL only shows an edge under distribution shift / reward
     # corruption). Fresh runs are picked in plan order, so listing robustness
     # before baselines/ablations gets them onto l40s slots first. -> l40s.
-    for r in plan_robustness([0, 1]):
-        if r.group in ("robustness_ood", "robustness_sparse"):
-            r.partition = "gpu_l40s"
-            plan.append(r)
-    # DSRL control under the SAME robustness conditions (dsrl = MoP-DSRL with
-    # lambda=0, i.e. no R_mode). This is the head-to-head that shows R_mode adds
-    # robustness: MoP-DSRL vs dsrl under sparse / ood. Without it the robustness
-    # runs have nothing to compare against. -> l40s, prioritized with robustness.
+    # Robustness head-to-head, INTERLEAVED: each (seed, condition) pair —
+    # MoP-DSRL (lambda=1.6, R_mode) and its dsrl control (lambda=0, no R_mode) —
+    # is listed adjacently so the two l40s slots run a pair together and complete
+    # a full comparison point ~simultaneously, instead of all-MoP-then-all-dsrl
+    # (which would delay the first head-to-head by weeks). dsrl = MoP-DSRL with
+    # lambda=0; same sparse/ood condition isolates R_mode's robustness effect.
     for seed in (0, 1):
         for cond, extra in (("sparse", {"reward_mode": "sparse"}),
                             ("ood", {"ood_init": True})):
-            r = Run(group=f"robustness_dsrl_{cond}", name=f"{cond}_seed{seed}",
-                    args=_common_args("pi05", "libero_goal", seed, lambda_=0.0, extra=extra))
-            r.partition = "gpu_l40s"
-            plan.append(r)
+            for r in plan_robustness([seed]):
+                if r.group == f"robustness_{cond}":
+                    r.partition = "gpu_l40s"
+                    plan.append(r)
+            dctrl = Run(group=f"robustness_dsrl_{cond}", name=f"{cond}_seed{seed}",
+                        args=_common_args("pi05", "libero_goal", seed, lambda_=0.0, extra=extra))
+            dctrl.partition = "gpu_l40s"
+            plan.append(dctrl)
     # baselines: 5 x seeds 0,1 -> l40s
     for r in plan_tier1_baselines([0, 1]):
         r.partition = "gpu_l40s"
