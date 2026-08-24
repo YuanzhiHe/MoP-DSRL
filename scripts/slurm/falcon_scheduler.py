@@ -66,14 +66,25 @@ def build_plan() -> list:
     # a full comparison point ~simultaneously, instead of all-MoP-then-all-dsrl
     # (which would delay the first head-to-head by weeks). dsrl = MoP-DSRL with
     # lambda=0; same sparse/ood condition isolates R_mode's robustness effect.
+    # Conditions ordered sparse -> flip50 -> ood. flip50 (50% reward-label
+    # corruption) is placed BEFORE ood because it is the condition most likely
+    # to separate R_mode from plain dsrl: corrupted reward actively pushes the
+    # policy off the good BC mode (R_mode anchors, dsrl drifts), whereas sparse
+    # reward merely thins the signal (empirically ties on easy goal). Each tuple:
+    # (tag, MoP group in plan_robustness, MoP run name, dsrl-control extra args).
+    conds = [
+        ("sparse", "robustness_sparse",   "sparse_seed{s}", {"reward_mode": "sparse"}),
+        ("flip50", "robustness_pref_flip", "flip50_seed{s}", {"pref_reward": True, "pref_flip_rate": 0.50}),
+        ("ood",    "robustness_ood",      "ood_seed{s}",    {"ood_init": True}),
+    ]
     for seed in (0, 1):
-        for cond, extra in (("sparse", {"reward_mode": "sparse"}),
-                            ("ood", {"ood_init": True})):
+        for tag, mop_group, mop_name_tpl, extra in conds:
+            mop_name = mop_name_tpl.format(s=seed)
             for r in plan_robustness([seed]):
-                if r.group == f"robustness_{cond}":
+                if r.group == mop_group and r.name == mop_name:
                     r.partition = "gpu_l40s"
                     plan.append(r)
-            dctrl = Run(group=f"robustness_dsrl_{cond}", name=f"{cond}_seed{seed}",
+            dctrl = Run(group=f"robustness_dsrl_{tag}", name=f"{tag}_seed{seed}",
                         args=_common_args("pi05", "libero_goal", seed, lambda_=0.0, extra=extra))
             dctrl.partition = "gpu_l40s"
             plan.append(dctrl)
