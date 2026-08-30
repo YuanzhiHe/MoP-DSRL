@@ -51,6 +51,13 @@ class Config:
     # --- action-space bounding (method_spec §5) ---
     # r_z = 4 * sqrt(H * d_a); computed in property below.
     clip_radius_sigma_factor: float = 4.0
+    # Bounded-reward safeguards. The default LIBERO reward is binary task
+    # success, so the return lies in [reward_min, reward_max] / (1 - gamma) and
+    # the critic target can be clamped there. Set reward_max=None to disable
+    # (e.g. for an unbounded shaped reward).
+    reward_min: float = 0.0
+    reward_max: float | None = 1.0
+    grad_clip_norm: float | None = 10.0
 
     # --- log-std bounds for the outer policy (method_spec §3) ---
     log_std_min: float = -6.907755  # log(1e-3)

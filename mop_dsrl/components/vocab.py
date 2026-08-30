@@ -31,33 +31,45 @@ _EPS = 1e-8
 # relative to the typical informative dimension instead, so a constant channel
 # contributes O(1) rather than O(1e8).
 _MAD_REL_FLOOR = 1e-2  # fraction of the median informative MAD
+# A dimension with no demonstration variance (e.g. a gripper channel that is
+# constant across every demo) carries no information about which *behavioural*
+# mode a chunk belongs to. Rather than flooring its MAD -- which amplifies it and
+# lets it dominate both K-means and the assignment distances -- give it an
+# enormous scale so the normalized coordinate is ~0 and the dimension drops out
+# of every distance computation. This keeps the torch consumers in sac.py /
+# train.py unchanged: they only ever divide by `mad`.
+_DEGENERATE_MAD = 1e12
 
 
 def fit_robust_z_stats(actions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Per-dimension median and scaled-MAD over the demonstration set.
 
+    Dimensions with (near-)zero demonstration variance are assigned
+    ``_DEGENERATE_MAD`` so they are excluded from the normalized space; the rest
+    are floored RELATIVE to the median informative MAD so no single low-variance
+    but still informative channel can dominate.
+
     Args:
         actions: float array of shape [N, H * d_a] (already flattened).
 
     Returns:
-        (median, mad) each of shape [H * d_a]. ``mad`` is floored RELATIVE to the
-        median MAD of the informative dimensions (see ``_MAD_REL_FLOOR``), which
-        keeps every normalized coordinate on a comparable scale.
+        (median, mad) each of shape [H * d_a].
     """
     if actions.ndim != 2:
         raise ValueError(f"actions must be 2D, got shape {actions.shape}")
     median = np.median(actions, axis=0)
     mad = np.median(np.abs(actions - median), axis=0) * _MAD_SCALE
-    informative = mad[mad > _EPS]
+    degenerate = mad <= _EPS
+    informative = mad[~degenerate]
     scale = float(np.median(informative)) if informative.size else 1.0
-    mad = np.maximum(mad, max(_MAD_REL_FLOOR * scale, _EPS))
+    mad = np.maximum(mad, _MAD_REL_FLOOR * scale)
+    mad[degenerate] = _DEGENERATE_MAD
     return median.astype(np.float64), mad.astype(np.float64)
 
 
-def degenerate_dims(mad: np.ndarray, median_mad: float | None = None) -> np.ndarray:
-    """Boolean mask of dimensions that carry (almost) no demonstration variance."""
-    ref = median_mad if median_mad is not None else float(np.median(mad))
-    return mad <= _MAD_REL_FLOOR * ref * 1.001
+def degenerate_dims(mad: np.ndarray) -> np.ndarray:
+    """Boolean mask of dimensions excluded from the vocabulary space."""
+    return np.asarray(mad) >= _DEGENERATE_MAD * 0.999
 
 
 def robust_z_normalize(actions: np.ndarray, median: np.ndarray, mad: np.ndarray) -> np.ndarray:

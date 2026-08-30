@@ -46,3 +46,6 @@ vocabs/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Local kill switch for the (cron-driven) GPU scheduler; not shared state.
+SCHEDULER_PAUSED

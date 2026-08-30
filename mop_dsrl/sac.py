@@ -123,6 +123,17 @@ class SACTrainer:
             q1_t, q2_t = self.critic_target(o_next, z_next)
             q_min = torch.min(q1_t, q2_t)
             target = r + self.cfg.gamma * (1.0 - d) * (q_min - self.alpha.detach() * log_pi_next)
+            # The reward is bounded (binary task success by default), so the
+            # return is analytically bounded by r_max / (1 - gamma). The July
+            # 2026 LIBERO runs diverged far past it -- critic_loss reached 1e25,
+            # i.e. |Q| ~ 1e12 against a true bound of 100 -- because nothing
+            # constrained the bootstrap. Clamping the target to the valid range
+            # removes the overestimation feedback loop without biasing any
+            # attainable value.
+            if self.cfg.reward_max is not None:
+                q_lo = min(0.0, self.cfg.reward_min) / (1.0 - self.cfg.gamma)
+                q_hi = max(0.0, self.cfg.reward_max) / (1.0 - self.cfg.gamma)
+                target = target.clamp(q_lo, q_hi)
 
         q1, q2 = self.critic(o, z)
         loss = F.mse_loss(q1, target) + F.mse_loss(q2, target)
@@ -208,6 +219,8 @@ class SACTrainer:
         c_loss = self.critic_loss(batch)
         self.critic_opt.zero_grad(set_to_none=True)
         c_loss.backward()
+        if self.cfg.grad_clip_norm is not None:
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.cfg.grad_clip_norm)
         self.critic_opt.step()
 
         # actor (with optional R_mode)

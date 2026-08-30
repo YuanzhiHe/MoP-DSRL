@@ -120,7 +120,17 @@ def my_active_job_names() -> set[str]:
     return names, per_part
 
 
+PAUSE_FILE = Path(__file__).resolve().parent.parent.parent / "SCHEDULER_PAUSED"
+
+
 def main() -> int:
+    # Kill switch. `crontab -e` only edits the crontab of the login node you are
+    # on, and Falcon runs the cron daemon elsewhere, so deleting the entry from
+    # one node does not stop the schedule. Touch SCHEDULER_PAUSED at the repo
+    # root to stop submissions from wherever the job actually fires.
+    if PAUSE_FILE.exists():
+        print(f"[scheduler] PAUSED ({PAUSE_FILE} exists) - no submissions")
+        return 0
     plan = build_plan()
     active_names, live_per_part = my_active_job_names()
 
