@@ -28,6 +28,7 @@ hard assignment as temperature -> 0 and is differentiable everywhere.
 
 from __future__ import annotations
 
+import numpy as np
 import torch
 
 
@@ -68,7 +69,7 @@ def kl_histogram_to_reference(
 def soft_assign_distances(
     flat_actions: torch.Tensor,
     centroids: torch.Tensor,
-    temperature: float = 1.0,
+    temperature: float | None = None,
 ) -> torch.Tensor:
     """Soft cluster-assignment via softmax(-distances / T).
 
@@ -84,10 +85,33 @@ def soft_assign_distances(
     Returns:
         weights: [N, K] with rows summing to 1.
     """
-    if temperature <= 0:
+    if temperature is not None and temperature <= 0:
         raise ValueError(f"temperature must be positive, got {temperature}")
     sq = ((flat_actions[:, None, :] - centroids[None, :, :]) ** 2).sum(-1)
+    if temperature is None:
+        temperature = adaptive_temperature(centroids)
     return torch.softmax(-sq / temperature, dim=-1)
+
+
+def adaptive_temperature(centroids: torch.Tensor) -> torch.Tensor:
+    """Softmax temperature matched to the centroid geometry.
+
+    A fixed T=1.0 only produces useful gradients when inter-centroid squared
+    distances are O(1). They are not in general: with K=16 chunks in R^350 the
+    typical separation is orders of magnitude larger, and softmax(-d^2/1.0)
+    saturates to an exact one-hot whose Jacobian is exactly zero -- the
+    regularizer then contributes no gradient at all, for any lambda. Scaling T
+    by the median pairwise separation keeps the assignment soft enough to carry
+    gradient while still concentrating on the nearest centroid.
+    """
+    K = centroids.shape[0]
+    if K < 2:
+        return torch.ones((), dtype=centroids.dtype, device=centroids.device)
+    pair_sq = torch.cdist(centroids, centroids).pow(2)
+    iu = torch.triu_indices(K, K, offset=1, device=centroids.device)
+    med = pair_sq[iu[0], iu[1]].median()
+    # 2*log(K) keeps the softmax logit spread ~O(log K) across the vocabulary.
+    return (med / (2.0 * float(np.log(K)))).clamp_min(torch.finfo(centroids.dtype).tiny)
 
 
 def mode_kl_from_assignments(

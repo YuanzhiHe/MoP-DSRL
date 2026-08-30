@@ -23,6 +23,14 @@ from sklearn.cluster import KMeans
 
 _MAD_SCALE = 1.4826  # consistent estimator of sigma for Gaussian data
 _EPS = 1e-8
+# Degenerate dimensions (near-constant across demos, e.g. a near-binary gripper
+# channel) have MAD ~ 0. Flooring them at an absolute _EPS made 1/mad ~ 1e8, so
+# those coordinates dominated the normalized space by ~16 orders of magnitude:
+# centroid separations reached ~1e17 and softmax(-d^2/T) saturated to an exact
+# one-hot, i.e. the mode regularizer had an identically-zero gradient. Floor
+# relative to the typical informative dimension instead, so a constant channel
+# contributes O(1) rather than O(1e8).
+_MAD_REL_FLOOR = 1e-2  # fraction of the median informative MAD
 
 
 def fit_robust_z_stats(actions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -32,14 +40,24 @@ def fit_robust_z_stats(actions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         actions: float array of shape [N, H * d_a] (already flattened).
 
     Returns:
-        (median, mad) each of shape [H * d_a]; mad is floored at _EPS.
+        (median, mad) each of shape [H * d_a]. ``mad`` is floored RELATIVE to the
+        median MAD of the informative dimensions (see ``_MAD_REL_FLOOR``), which
+        keeps every normalized coordinate on a comparable scale.
     """
     if actions.ndim != 2:
         raise ValueError(f"actions must be 2D, got shape {actions.shape}")
     median = np.median(actions, axis=0)
     mad = np.median(np.abs(actions - median), axis=0) * _MAD_SCALE
-    mad = np.maximum(mad, _EPS)
+    informative = mad[mad > _EPS]
+    scale = float(np.median(informative)) if informative.size else 1.0
+    mad = np.maximum(mad, max(_MAD_REL_FLOOR * scale, _EPS))
     return median.astype(np.float64), mad.astype(np.float64)
+
+
+def degenerate_dims(mad: np.ndarray, median_mad: float | None = None) -> np.ndarray:
+    """Boolean mask of dimensions that carry (almost) no demonstration variance."""
+    ref = median_mad if median_mad is not None else float(np.median(mad))
+    return mad <= _MAD_REL_FLOOR * ref * 1.001
 
 
 def robust_z_normalize(actions: np.ndarray, median: np.ndarray, mad: np.ndarray) -> np.ndarray:
