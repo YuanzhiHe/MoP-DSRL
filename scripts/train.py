@@ -167,6 +167,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--final_eval_episodes", type=int, default=50)
     p.add_argument("--ckpt_interval", type=int, default=100_000)
     p.add_argument("--log_interval", type=int, default=1000)
+    p.add_argument("--min_c_ref_entropy", type=float, default=0.05,
+                   help="Abort a lambda>0 run whose reference mode histogram is "
+                        "this close to a point mass (nats). Guards against the "
+                        "inert-R_mode failure seen across the LIBERO campaign.")
+    p.add_argument("--allow_degenerate_c_ref", action="store_true",
+                   help="Proceed despite a degenerate C_ref (measuring it on purpose).")
     p.add_argument("--resume", action=argparse.BooleanOptionalAction, default=True,
                    help="If a checkpoint_step*.pt exists in --run_dir, load the "
                         "latest one and continue from its step (CSV rows are "
@@ -328,6 +334,10 @@ def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
     return denoiser.denoise(obs_t, z)
 
 
+def _fmt(x, nd: int = 3) -> str:
+    return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "-"
+
+
 def evaluate(
     trainer: SACTrainer,
     denoiser,
@@ -339,16 +349,34 @@ def evaluate(
     use_dict_path: bool = False,
     n_action_steps: int = 10,
     H: int = 50,
+    vocab: KMeansVocab | None = None,
+    C_ref_marginal: np.ndarray | None = None,
 ) -> dict:
     """Run ``n_episodes`` rollouts and return mean success / return / length.
 
     Executes ``n_action_steps`` actions from each predicted chunk before
     re-inferring — matches pi_0.5's training-time action-chunking regime.
+
+    When ``vocab`` is given, also reports the behavioural-mode metrics used by
+    the mode-preservation literature, which success rate alone cannot show (a
+    policy that collapses onto one mode can still score 1.0):
+
+      H_modes   entropy of the empirical mode histogram, nats (max ln K)
+      mc_at_0.8 number of modes retained with mass >= 0.8/K   (BMD's mc@tau)
+      SR_M      mode-aggregated success: mean success over the modes actually
+                visited, so a collapsed policy cannot hide behind one good mode
+      tv_to_ref total-variation distance to the frozen backbone's own mode
+                profile -- the quantity KL-to-reference is meant to keep small,
+                and what distinguishes it from an entropy/MI objective (which
+                drives the histogram toward uniform instead)
     """
     successes = 0
     returns = []
     lengths = []
     info = {}
+    episode_modes: list[int] = []   # dominant vocab cluster per episode
+    episode_success: list[int] = []
+    chunk_mode_counts = np.zeros(vocab.K, dtype=np.int64) if vocab is not None else None
     # Try to reach pi_0.5's internal policy.reset() for clearing the action queue.
     inner_policy = None
     try:
@@ -362,6 +390,8 @@ def evaluate(
         ep_return = 0.0
         ep_len = 0
         done = False
+        ep_mode_counts = (np.zeros(vocab.K, dtype=np.int64)
+                          if chunk_mode_counts is not None else None)
         while not done:
             obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
             with torch.no_grad():
@@ -372,21 +402,45 @@ def evaluate(
                     z, _ = trainer._sample_z(obs_t)
                 a = _denoise(denoiser, obs_t, z, env=env, use_dict_path=use_dict_path, d_a=d_a)
             chunk = a.squeeze(0).cpu().numpy().reshape(H, d_a)
+            if chunk_mode_counts is not None:
+                cid = int(vocab.assign(chunk.reshape(1, -1))[0])
+                chunk_mode_counts[cid] += 1
+                ep_mode_counts[cid] += 1
             for i in range(min(n_action_steps, H)):
                 obs, reward, done, info = env.step(chunk[i])
                 ep_return += float(reward)
                 ep_len += 1
                 if done:
                     break
-        successes += int(info.get("success", False))
+        succ = int(info.get("success", False))
+        successes += succ
         returns.append(ep_return)
         lengths.append(ep_len)
-    return {
+        if ep_mode_counts is not None and ep_mode_counts.sum() > 0:
+            episode_modes.append(int(ep_mode_counts.argmax()))
+            episode_success.append(succ)
+    out = {
         "success_rate": successes / max(n_episodes, 1),
         "mean_return": float(np.mean(returns)) if returns else 0.0,
         "mean_length": float(np.mean(lengths)) if lengths else 0.0,
         "n_episodes": n_episodes,
     }
+    if chunk_mode_counts is not None and chunk_mode_counts.sum() > 0:
+        K = vocab.K
+        hist = chunk_mode_counts / chunk_mode_counts.sum()
+        out["H_modes"] = float(-(hist * np.log(hist + 1e-12)).sum())
+        out["H_modes_max"] = float(np.log(K))
+        out["mc_at_0.8"] = int((hist >= 0.8 / K).sum())
+        modes = np.asarray(episode_modes)
+        succ = np.asarray(episode_success, dtype=float)
+        per_mode = [succ[modes == k].mean() for k in range(K) if (modes == k).any()]
+        out["SR_M"] = float(np.mean(per_mode)) if per_mode else 0.0
+        out["n_modes_visited"] = int(len(per_mode))
+        if C_ref_marginal is not None:
+            ref = np.asarray(C_ref_marginal, dtype=float)
+            ref = ref / max(ref.sum(), 1e-12)
+            out["tv_to_ref"] = float(0.5 * np.abs(hist - ref).sum())
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -618,8 +672,31 @@ def main() -> int:
             args.rmode_subsample, args.rmode_every,
             args.rmode_subsample * trainer.cfg.n_on // max(1, args.rmode_every),
         )
-    logger.info("C_ref shape=%s entropy=%.3f", C_ref_full.shape,
-                float(-(C_ref_full * np.log(C_ref_full + 1e-12)).sum(axis=-1).mean()))
+    c_ref_entropy = float(
+        -(C_ref_full * np.log(C_ref_full + 1e-12)).sum(axis=-1).mean()
+    )
+    logger.info("C_ref shape=%s entropy=%.3f (max %.3f)", C_ref_full.shape,
+                c_ref_entropy, float(np.log(args.K)))
+    # Gate. R_mode = KL(C_phi || C_ref) can only do work if the backbone is
+    # actually multimodal at these observations. Across the July/August LIBERO
+    # campaign C_ref entropy was 0.000 in 45 of 47 runs -- every reference
+    # histogram was a point mass, so the regularizer had nothing to preserve and
+    # r_mode stayed exactly 0 for ~18k updates per run while costing ~3x the
+    # wall time. Refuse to burn GPU on that again: a lambda>0 run must start from
+    # a non-degenerate reference. Override with --allow_degenerate_c_ref when
+    # deliberately measuring the degenerate case.
+    if args.lambda_ > 0 and c_ref_entropy < args.min_c_ref_entropy:
+        msg = (
+            f"C_ref entropy {c_ref_entropy:.4f} < {args.min_c_ref_entropy} nats: the "
+            f"frozen backbone is effectively unimodal at these observations, so "
+            f"R_mode is inert and lambda={args.lambda_} buys nothing but wall time. "
+            f"Use a task/suite with genuinely multiple solutions, or pass "
+            f"--allow_degenerate_c_ref to proceed anyway."
+        )
+        if args.allow_degenerate_c_ref:
+            logger.warning("%s [proceeding: --allow_degenerate_c_ref]", msg)
+        else:
+            raise SystemExit(f"ABORT: {msg}")
 
     # ---- Replay buffer & loop ----
     buffer = ReplayBuffer(
@@ -687,7 +764,11 @@ def main() -> int:
         "critic_loss", "actor_loss_q", "actor_loss_total",
         "r_mode", "alpha", "lambda",
     ]
-    eval_header = ["step", "n_episodes", "success_rate", "mean_return", "mean_length"]
+    eval_header = ["step", "n_episodes", "success_rate", "mean_return", "mean_length",
+                   "H_modes", "mc_at_0.8", "SR_M", "n_modes_visited", "tv_to_ref"]
+    # Marginal of the reference histogram: the frozen backbone's overall mode
+    # profile, which tv_to_ref measures fidelity to.
+    C_ref_marginal = C_ref_full.mean(axis=0) if C_ref_full is not None else None
     if start_step > 0:
         _truncate_csv(metrics_path, metrics_header, start_step)
         _truncate_csv(eval_path, eval_header, start_step)
@@ -814,14 +895,20 @@ def main() -> int:
                 trainer, denoiser, env, args.eval_episodes, args.d_a, args.device,
                 use_dict_path=needs_obs_dicts,
                 n_action_steps=args.n_action_steps, H=args.H,
+                vocab=vocab, C_ref_marginal=C_ref_marginal,
             )
             eval_w.writerow([
                 step, ev["n_episodes"], ev["success_rate"],
                 ev["mean_return"], ev["mean_length"],
+                ev.get("H_modes", ""), ev.get("mc_at_0.8", ""), ev.get("SR_M", ""),
+                ev.get("n_modes_visited", ""), ev.get("tv_to_ref", ""),
             ])
             eval_f.flush()
-            logger.info("[eval] step=%d sr=%.3f mean_return=%.3f n=%d",
-                        step, ev["success_rate"], ev["mean_return"], ev["n_episodes"])
+            logger.info("[eval] step=%d sr=%.3f mean_return=%.3f n=%d "
+                        "H_modes=%s mc@0.8=%s SR_M=%s tv_to_ref=%s",
+                        step, ev["success_rate"], ev["mean_return"], ev["n_episodes"],
+                        _fmt(ev.get("H_modes")), ev.get("mc_at_0.8", "-"),
+                        _fmt(ev.get("SR_M")), _fmt(ev.get("tv_to_ref")))
 
         # ---- checkpoint ----
         if args.ckpt_interval > 0 and step > 0 and step % args.ckpt_interval == 0:
@@ -883,10 +970,14 @@ def main() -> int:
         trainer, denoiser, env, args.final_eval_episodes, args.d_a, args.device,
         use_dict_path=needs_obs_dicts,
         n_action_steps=args.n_action_steps, H=args.H,
+        vocab=vocab, C_ref_marginal=C_ref_marginal,
     )
     eval_w.writerow([
         "final", final_eval["n_episodes"], final_eval["success_rate"],
         final_eval["mean_return"], final_eval["mean_length"],
+        final_eval.get("H_modes", ""), final_eval.get("mc_at_0.8", ""),
+        final_eval.get("SR_M", ""), final_eval.get("n_modes_visited", ""),
+        final_eval.get("tv_to_ref", ""),
     ])
     eval_f.flush()
     logger.info("[final-eval] sr=%.3f mean_return=%.3f n=%d",
