@@ -334,6 +334,31 @@ def _denoise(denoiser, obs_t: torch.Tensor, z: torch.Tensor,
     return denoiser.denoise(obs_t, z)
 
 
+def _nmi(a: np.ndarray, b: np.ndarray) -> float:
+    """Normalized mutual information between two label assignments, in [0, 1].
+
+    1.0 means the K-means action-chunk vocabulary and the environment's
+    ground-truth behavioural mode carry the same information; 0.0 means the
+    surrogate is uninformative about real behaviour.
+    """
+    a = np.asarray(a); b = np.asarray(b)
+    ua, ub = np.unique(a), np.unique(b)
+    if ua.size < 2 or ub.size < 2:
+        return float("nan")
+    joint = np.zeros((ua.size, ub.size))
+    for i, x in enumerate(ua):
+        for j, y in enumerate(ub):
+            joint[i, j] = np.sum((a == x) & (b == y))
+    joint /= joint.sum()
+    pa, pb = joint.sum(1, keepdims=True), joint.sum(0, keepdims=True)
+    nz = joint > 0
+    mi = float((joint[nz] * np.log(joint[nz] / (pa @ pb)[nz])).sum())
+    ha = float(-(pa * np.log(pa + 1e-12)).sum())
+    hb = float(-(pb * np.log(pb + 1e-12)).sum())
+    denom = 0.5 * (ha + hb)
+    return mi / denom if denom > 0 else float("nan")
+
+
 def _fmt(x, nd: int = 3) -> str:
     return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "-"
 
@@ -376,6 +401,13 @@ def evaluate(
     info = {}
     episode_modes: list[int] = []   # dominant vocab cluster per episode
     episode_success: list[int] = []
+    # Ground-truth behavioural mode, when the env derives one from geometry
+    # (D3IL). The vocabulary stays on the GRADIENT path -- a K-means soft
+    # assignment over action chunks is differentiable in z, whereas a
+    # trajectory-level label is not -- but measurement should use the true
+    # label where it exists, and the agreement between the two is itself
+    # evidence about whether the surrogate vocabulary tracks real behaviour.
+    episode_gt_modes: list[int] = []
     chunk_mode_counts = np.zeros(vocab.K, dtype=np.int64) if vocab is not None else None
     # Try to reach pi_0.5's internal policy.reset() for clearing the action queue.
     inner_policy = None
@@ -419,6 +451,8 @@ def evaluate(
         if ep_mode_counts is not None and ep_mode_counts.sum() > 0:
             episode_modes.append(int(ep_mode_counts.argmax()))
             episode_success.append(succ)
+            gt = info.get("mode_id", getattr(env, "mode_id", -1))
+            episode_gt_modes.append(int(gt) if gt is not None else -1)
     out = {
         "success_rate": successes / max(n_episodes, 1),
         "mean_return": float(np.mean(returns)) if returns else 0.0,
@@ -440,6 +474,23 @@ def evaluate(
             ref = np.asarray(C_ref_marginal, dtype=float)
             ref = ref / max(ref.sum(), 1e-12)
             out["tv_to_ref"] = float(0.5 * np.abs(hist - ref).sum())
+
+        gt = np.asarray(episode_gt_modes)
+        valid = gt >= 0
+        if valid.sum() >= 2:
+            n_gt = int(getattr(env, "n_modes", gt[valid].max() + 1))
+            gh = np.bincount(gt[valid], minlength=n_gt).astype(float)
+            gh /= gh.sum()
+            out["H_modes_gt"] = float(-(gh * np.log(gh + 1e-12)).sum())
+            out["mc_at_0.8_gt"] = int((gh >= 0.8 / n_gt).sum())
+            out["n_modes_visited_gt"] = int((gh > 0).sum())
+            sg = succ[valid]
+            out["SR_M_gt"] = float(np.mean(
+                [sg[gt[valid] == k].mean() for k in range(n_gt) if (gt[valid] == k).any()]
+            ))
+            # Agreement between the differentiable K-means surrogate and the
+            # ground-truth label, as normalized mutual information in [0, 1].
+            out["nmi_vocab_gt"] = _nmi(modes[valid], gt[valid])
     return out
 
 
@@ -765,7 +816,9 @@ def main() -> int:
         "r_mode", "alpha", "lambda",
     ]
     eval_header = ["step", "n_episodes", "success_rate", "mean_return", "mean_length",
-                   "H_modes", "mc_at_0.8", "SR_M", "n_modes_visited", "tv_to_ref"]
+                   "H_modes", "mc_at_0.8", "SR_M", "n_modes_visited", "tv_to_ref",
+                   "H_modes_gt", "mc_at_0.8_gt", "SR_M_gt", "n_modes_visited_gt",
+                   "nmi_vocab_gt"]
     # Marginal of the reference histogram: the frozen backbone's overall mode
     # profile, which tv_to_ref measures fidelity to.
     C_ref_marginal = C_ref_full.mean(axis=0) if C_ref_full is not None else None
@@ -902,6 +955,9 @@ def main() -> int:
                 ev["mean_return"], ev["mean_length"],
                 ev.get("H_modes", ""), ev.get("mc_at_0.8", ""), ev.get("SR_M", ""),
                 ev.get("n_modes_visited", ""), ev.get("tv_to_ref", ""),
+                ev.get("H_modes_gt", ""), ev.get("mc_at_0.8_gt", ""),
+                ev.get("SR_M_gt", ""), ev.get("n_modes_visited_gt", ""),
+                ev.get("nmi_vocab_gt", ""),
             ])
             eval_f.flush()
             logger.info("[eval] step=%d sr=%.3f mean_return=%.3f n=%d "
@@ -978,6 +1034,9 @@ def main() -> int:
         final_eval.get("H_modes", ""), final_eval.get("mc_at_0.8", ""),
         final_eval.get("SR_M", ""), final_eval.get("n_modes_visited", ""),
         final_eval.get("tv_to_ref", ""),
+        final_eval.get("H_modes_gt", ""), final_eval.get("mc_at_0.8_gt", ""),
+        final_eval.get("SR_M_gt", ""), final_eval.get("n_modes_visited_gt", ""),
+        final_eval.get("nmi_vocab_gt", ""),
     ])
     eval_f.flush()
     logger.info("[final-eval] sr=%.3f mean_return=%.3f n=%d",

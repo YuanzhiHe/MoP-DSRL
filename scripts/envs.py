@@ -406,6 +406,11 @@ def make_env(name: str, **kwargs):
       ``libero_object``    — LIBERO-Object.
       ``libero_long``      — LIBERO-10 (called "Long" in MoP-DSRL spec).
     """
+    if name.startswith("d3il"):
+        # D3IL tasks admit many genuine solutions and label the behavioural mode
+        # from geometry, so they can test mode preservation where LIBERO cannot.
+        from scripts.envs_d3il import make_d3il_env
+        return make_d3il_env(name, **kwargs)
     if name == "synthetic":
         return SyntheticEnv(**kwargs)
     if name.startswith("libero_"):
