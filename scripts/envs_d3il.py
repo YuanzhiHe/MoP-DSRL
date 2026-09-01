@@ -77,13 +77,17 @@ class D3ILAvoidingEnv:
     a K-means vocabulary.
     """
 
-    obs_dim = 4
     action_dim = 2
 
     def __init__(self, max_steps: int = 150, seed: int = 0, render: bool = False,
-                 rewarded_modes: "set[int] | None" = None):
+                 rewarded_modes: "set[int] | None" = None, history: int = 1):
         """
         Args:
+            history: number of past (desired xy, achieved xy) frames stacked
+                into the observation. Avoiding requires committing to one of 24
+                routes, which a single-frame observation cannot express, so the
+                backbone is trained with a window and the env must present the
+                same one.
             rewarded_modes: if given, only these ground-truth mode ids earn
                 reward on success. This is the reward shift that creates the
                 collapse pressure the experiment measures: a pure return
@@ -107,6 +111,9 @@ class D3ILAvoidingEnv:
         self._t = 0
         self._last_mode_encoding = np.zeros(9)
         self.rewarded_modes = rewarded_modes
+        self.history = max(1, int(history))
+        self.obs_dim = 4 * self.history
+        self._frames: list[np.ndarray] = []
 
     # --- contract ---------------------------------------------------------
     def reset(self) -> np.ndarray:
@@ -116,6 +123,7 @@ class D3ILAvoidingEnv:
         self._fixed_z = np.asarray(state[2:], dtype=np.float64)
         self._t = 0
         self._last_mode_encoding = np.zeros(9)
+        self._frames = []
         return self._obs(raw)
 
     def step(self, action: np.ndarray):
@@ -170,10 +178,16 @@ class D3ILAvoidingEnv:
         return np.zeros(9), False
 
     def _obs(self, raw) -> np.ndarray:
-        """Policy observation = desired xy target ++ env observation (4-D)."""
-        return np.concatenate(
+        """Observation = the last ``history`` (desired xy ++ achieved xy) frames."""
+        frame = np.concatenate(
             [self._desired_xy, np.asarray(raw, dtype=np.float64).reshape(-1)]
-        ).astype(np.float32)
+        )
+        if not self._frames:                       # first frame of an episode
+            self._frames = [frame] * self.history
+        else:
+            self._frames.append(frame)
+            self._frames = self._frames[-self.history:]
+        return np.concatenate(self._frames).astype(np.float32)
 
 
 def make_d3il_env(name: str, **kwargs):

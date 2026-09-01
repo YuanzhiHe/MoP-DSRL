@@ -62,7 +62,7 @@ def main() -> int:
 
     rng = np.random.default_rng(args.seed)
     model, blob = load_backbone(args.ckpt, args.device)
-    env = D3ILAvoidingEnv(seed=args.seed)
+    env = D3ILAvoidingEnv(seed=args.seed, history=blob.get('history', 1))
     print(f"backbone: {args.ckpt.name}  trained on weights={blob.get('weights_file')}")
 
     modes, succ = [], []

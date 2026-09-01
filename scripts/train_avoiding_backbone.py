@@ -53,8 +53,16 @@ class VelocityMLP(nn.Module):
         return self.net(torch.cat([x_t, t, obs], dim=-1))
 
 
-def load_pairs(files: list[Path]) -> tuple[np.ndarray, np.ndarray, list[int]]:
-    """(obs[4], action[2]) pairs plus the demo index each pair came from."""
+def load_pairs(files: list[Path], history: int = 1
+               ) -> tuple[np.ndarray, np.ndarray, list[int]]:
+    """(obs, action[2]) pairs plus the demo index each pair came from.
+
+    With ``history`` > 1 the observation stacks the last ``history`` frames of
+    (desired xy, achieved xy). Avoiding requires the policy to COMMIT to one of
+    24 routes, and a single-frame observation cannot express that commitment --
+    a Markovian policy averages over the routes still reachable and drives into
+    an obstacle, which is why D3IL's own agents condition on a window.
+    """
     obs_l, act_l, owner = [], [], []
     for i, f in enumerate(files):
         with open(f, "rb") as fh:
@@ -63,7 +71,14 @@ def load_pairs(files: list[Path]) -> tuple[np.ndarray, np.ndarray, list[int]]:
         pos = np.asarray(d["c_pos"])[:, :2]
         # action_t is the increment applied to the desired target at t
         act = des[1:] - des[:-1]
-        obs = np.concatenate([des[:-1], pos[:-1]], axis=1)
+        frame = np.concatenate([des[:-1], pos[:-1]], axis=1)
+        if history > 1:
+            pad = np.repeat(frame[:1], history - 1, axis=0)
+            padded = np.concatenate([pad, frame], axis=0)
+            obs = np.concatenate(
+                [padded[k:k + len(frame)] for k in range(history)], axis=1)
+        else:
+            obs = frame
         obs_l.append(obs)
         act_l.append(act)
         owner += [i] * len(act)
@@ -80,6 +95,8 @@ def main() -> int:
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--batch", type=int, default=512)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--history", type=int, default=1,
+                    help="stack this many past frames into the observation")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = ap.parse_args()
@@ -88,7 +105,7 @@ def main() -> int:
     rng = np.random.default_rng(args.seed)
 
     files = sorted(DATA.glob("*.pkl"))
-    obs, act, owner = load_pairs(files)
+    obs, act, owner = load_pairs(files, history=args.history)
     owner = np.asarray(owner)
     print(f"demos={len(files)}  transitions={len(act)}  obs{obs.shape} act{act.shape}")
 
@@ -113,7 +130,7 @@ def main() -> int:
     obs_n = torch.tensor((obs - o_mu) / o_sd, device=args.device)
     act_n = torch.tensor((act - a_mu) / a_sd, device=args.device)
 
-    model = VelocityMLP().to(args.device)
+    model = VelocityMLP(obs_dim=obs.shape[1]).to(args.device)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     for step in range(args.steps):
@@ -136,7 +153,7 @@ def main() -> int:
         "state_dict": model.state_dict(),
         "obs_mean": o_mu, "obs_std": o_sd,
         "act_mean": a_mu, "act_std": a_sd,
-        "obs_dim": 4, "act_dim": 2,
+        "obs_dim": int(obs.shape[1]), "act_dim": 2, "history": args.history,
         "weights_file": str(args.weights) if args.weights else None,
     }, args.out)
     print(f"saved backbone -> {args.out}")
