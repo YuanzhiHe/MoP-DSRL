@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build demonstration subsets with a controlled behavioural-mode skew.
+"""Weight D3IL demonstrations to realise a controlled behavioural-mode skew.
 
 Why. The toy experiment established a necessary condition for this project's
 contribution to be measurable at all: KL(C_phi || C_ref) and an entropy/MI
@@ -15,15 +15,20 @@ Avoiding is exactly uniform by construction: 96 demos = 24 modes x 4. Used
 as-is it would reproduce the LIBERO outcome for a different reason -- a null
 that was structurally guaranteed.
 
-So the skew becomes the independent variable. This script filters the
-demonstration manifest to realise a target KL(demo || uniform), which lets the
-head-to-head be run across a skew sweep rather than at a single arbitrary point.
-The curve is the argument: the arms should coincide at KL=0 and separate as the
-backbone's profile departs from uniform. D3IL itself already subsets manifests
-this way for its data-size ablation (train_files_{0.1,0.25,0.5,0.75}_.pkl).
+So the skew becomes the independent variable. This script emits per-demo
+SAMPLING WEIGHTS realising a target KL(demo || uniform), so the head-to-head runs
+across a skew sweep rather than at a single arbitrary point. The curve is the
+argument: the arms should coincide at KL=0 and separate as the backbone's profile
+departs from uniform.
 
-    python scripts/make_skewed_demos.py --data-root <d3il>/environments/dataset/data/avoiding \\
-        --target-kl 0 0.05 0.15 0.3 0.6 --out-dir <dir>
+Weights, not subsets. Avoiding has 4 demos per mode, so choosing a subset cannot
+express a skewed profile -- a 90x ratio needs 90 demos in one mode against 1 in
+another when only 5 are available. Measured, subsetting undershot badly (target
+0.30 -> 0.131, target 0.60 -> 0.089) while shrinking the set to 30 demos.
+Weighting hits every target exactly and keeps all 96 demonstrations.
+
+    python scripts/make_skewed_demos.py --data-root <...>/avoiding \\
+        --target-kl 0 0.05 0.15 0.3 0.6 --out-dir <...>/avoiding/skew
 """
 from __future__ import annotations
 
@@ -97,21 +102,35 @@ def main() -> int:
 
     for kl in args.target_kl:
         p = geometric_profile(K, kl)
-        # Largest subset whose per-mode counts match p and stay within supply.
-        scale = min(counts[i] / p[i] for i in range(K) if p[i] > 0)
-        take = np.maximum(1, np.floor(p * scale).astype(int))
-        take = np.minimum(take, counts)
-        files: list[str] = []
+        # Emit per-file SAMPLING WEIGHTS rather than a subset. Avoiding has only
+        # 96 demos over 24 modes -- 4 per mode -- so selecting a subset cannot
+        # realise a skewed profile: the integer granularity is far too coarse
+        # (a 90x ratio needs 90 demos in one mode and 1 in another, when the
+        # maximum available is 5). Subsetting was measured to undershoot badly
+        # (target 0.30 -> 0.131, target 0.60 -> 0.089, and shrinking the set to
+        # 30 demos in the process). Weighting hits the target exactly and keeps
+        # every demonstration, which is also how one would normally train on an
+        # imbalanced distribution.
+        weights: dict[str, float] = {}
         for i, (_, flist) in enumerate(sorted(mode_map.items())):
-            pick = rng.choice(len(flist), size=take[i], replace=False)
-            files.extend(flist[j] for j in pick)
-        got = take / take.sum()
-        got_kl = float(np.sum(got * np.log(got * K + 1e-12)))
-        out = out_dir / f"train_files_skew{kl:.2f}.pkl"
+            if not flist:
+                continue
+            w = p[i] / len(flist)          # split the mode's mass over its demos
+            for fn in flist:
+                weights[fn] = w
+        tot = sum(weights.values())
+        weights = {k: v / tot for k, v in weights.items()}
+        # verify: the induced mode distribution
+        got = np.array([sum(weights[f] for f in mode_map[m]) if mode_map.get(m) else 0.0
+                        for m in range(K)])
+        nz = got > 0
+        got_kl = float(np.sum(got[nz] * np.log(got[nz] * K)))
+        out = out_dir / f"demo_weights_skew{kl:.2f}.pkl"
         with open(out, "wb") as fh:
-            pickle.dump(files, fh)
-        print(f"  target_kl={kl:.2f}  achieved={got_kl:.4f}  demos={len(files)}  "
-              f"max/min mode count={take.max()}/{take.min()}  -> {out.name}")
+            pickle.dump({"weights": weights, "mode_profile": got.tolist(),
+                         "target_kl": kl, "achieved_kl": got_kl}, fh)
+        print(f"  target_kl={kl:.2f}  achieved={got_kl:.4f}  files={len(weights)}  "
+              f"mode p max/min={got[nz].max() / got[nz].min():.1f}x  -> {out.name}")
     return 0
 
 
