@@ -22,7 +22,47 @@ Conventions this adapter normalises (see d3il/simulation/avoiding_sim.py:52-77):
 """
 from __future__ import annotations
 
+import os
+import sys
+from pathlib import Path
+
 import numpy as np
+
+D3IL_ROOT = Path(os.environ.get("D3IL_ROOT", "/shared/home1/c.c23089110/d3il"))
+
+
+def _load_avoiding_class():
+    """Import ObstacleAvoidanceEnv from the D3IL checkout.
+
+    Two obstacles. (1) D3IL's env module uses relative imports, so it must be
+    loaded as part of its package rather than by file path. (2) Running a script
+    out of this repo's scripts/ puts that directory on sys.path, where our own
+    scripts/envs.py shadows D3IL's top-level `envs` package. So drop the
+    shadowing entries for the duration of the import, and evict any `envs`
+    already bound to the wrong module.
+    """
+    env_pkg_root = str(D3IL_ROOT / "environments" / "d3il")
+    if not (Path(env_pkg_root) / "envs").is_dir():
+        raise FileNotFoundError(f"D3IL envs package not found under {env_pkg_root}; set D3IL_ROOT")
+
+    here = str(Path(__file__).resolve().parent)
+    saved_path, saved_mods = list(sys.path), {}
+    sys.path = [p for p in sys.path if p not in ("", ".", here)]
+    sys.path.insert(0, env_pkg_root)
+    sys.path.insert(1, str(D3IL_ROOT))
+    for name in list(sys.modules):
+        if name == "envs" or name.startswith("envs."):
+            saved_mods[name] = sys.modules.pop(name)
+    try:
+        from envs.gym_avoiding_env.gym_avoiding.envs.avoiding import ObstacleAvoidanceEnv
+        return ObstacleAvoidanceEnv
+    finally:
+        sys.path = saved_path
+        for name in list(sys.modules):
+            if name == "envs" or name.startswith("envs."):
+                del sys.modules[name]
+        sys.modules.update(saved_mods)
+
 
 # 24 routes = 2 (first obstacle) x 3 (middle row) x 4 (final row)
 N_MODES_AVOIDING = 24
@@ -51,7 +91,11 @@ class D3ILAvoidingEnv:
                 question is what each regularizer retains. ``None`` rewards any
                 successful episode.
         """
-        from envs.gym_avoiding_env.gym_avoiding.envs.avoiding import ObstacleAvoidanceEnv
+        # Import the D3IL env by explicit path. A bare `import envs...` is
+        # ambiguous: running a script out of scripts/ puts that directory on
+        # sys.path[0], where this repo's own scripts/envs.py shadows D3IL's
+        # `envs` package ("'envs' is not a package").
+        ObstacleAvoidanceEnv = _load_avoiding_class()
 
         self._env = ObstacleAvoidanceEnv(render=render)
         self._env.start()
