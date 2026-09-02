@@ -115,27 +115,33 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         r = torch.tensor(batch_r, dtype=torch.float32, device=device)
         adv = r - r.mean()
 
-        # Mode histogram from ground-truth labels. Not differentiable in phi, so
-        # its objective is attached with the same score-function estimator the
-        # reward uses -- the labels are trajectory-level geometry, and no
-        # differentiable surrogate over them exists.
+        # Mode objective, credited PER EPISODE. The histogram C_phi is a batch
+        # statistic, so its score-function gradient is
+        #     grad = E_tau[ (dObjective/dC_phi)|_{mode(tau)} * grad log p(tau) ],
+        # i.e. each trajectory is credited by the partial derivative AT ITS OWN
+        # mode. Adding the scalar objective uniformly to every advantage instead
+        # contributes exactly zero gradient -- a constant is absorbed as a
+        # REINFORCE baseline since E[grad log p] = 0. That mistake made all three
+        # arms run the same algorithm and produced pure seed noise; it is the
+        # same failure class as the dead R_mode gradient on LIBERO, so the
+        # per-episode coefficients below are the load-bearing part of this file.
         counts = torch.zeros(K, device=device)
         for m in batch_modes:
             if m >= 0:
                 counts[m] += 1
-        if counts.sum() > 0:
+        mode_coef = torch.zeros(len(batch_modes), device=device)
+        if counts.sum() > 0 and arm != "dsrl":
             C_phi = counts / counts.sum()
-            if arm == "mop":
-                pen = torch.sum(C_phi * ((C_phi + 1e-8).log() - (ref + 1e-8).log()))
-            elif arm == "mi":
-                pen = -torch.sum(C_phi * (C_phi + 1e-8).log())   # maximize entropy
-            else:
-                pen = torch.zeros((), device=device)
-        else:
-            pen = torch.zeros((), device=device)
+            for j, m in enumerate(batch_modes):
+                if m < 0:
+                    continue
+                if arm == "mop":
+                    # minimize KL(C_phi || C_ref): d/dp_m = log(p_m/q_m) + 1
+                    mode_coef[j] = -(torch.log((C_phi[m] + 1e-8) / (ref[m] + 1e-8)) + 1.0)
+                else:  # mi: maximize H(C_phi); dH/dp_m = -log(p_m) - 1
+                    mode_coef[j] = -(torch.log(C_phi[m] + 1e-8) + 1.0)
 
-        # per-episode credit for the shared mode objective
-        shaped = adv - lam * pen.detach() * torch.ones_like(adv) / max(len(adv), 1)
+        shaped = adv + lam * mode_coef.detach()
         loss = -(shaped.detach() * lp).mean()
         opt.zero_grad(set_to_none=True)
         loss.backward()
