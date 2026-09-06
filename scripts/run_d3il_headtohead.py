@@ -33,7 +33,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -171,14 +173,14 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     )
 
 
-def reference_profile(skew, args) -> np.ndarray:
-    """C_ref: the frozen backbone's own mode distribution, measured by rollout."""
-    device = args.device
+def _ref_chunk(payload):
+    """Worker: roll the frozen backbone out and count modes."""
+    skew, n, seed, M, device = payload
     model, blob = load_backbone(BACKBONES / f"avoiding_skew{skew}.pt", device)
-    env = D3ILAvoidingEnv(seed=12345, history=blob.get("history", 1))
-    rng = np.random.default_rng(12345)
+    env = D3ILAvoidingEnv(seed=seed, history=blob.get("history", 1))
+    rng = np.random.default_rng(seed)
     counts = np.zeros(N_MODES_AVOIDING)
-    for _ in range(args.ref_episodes):
+    for _ in range(n):
         obs = env.reset()
         done = False
         while not done:
@@ -186,11 +188,32 @@ def reference_profile(skew, args) -> np.ndarray:
                              dtype=torch.float32, device=device)[None]
             z = torch.tensor(rng.standard_normal((1, blob["act_dim"])),
                              dtype=torch.float32, device=device)
-            obs, _, done, info = env.step(decode(model, blob, o, z, args.M)[0])
+            obs, _, done, info = env.step(decode(model, blob, o, z, M)[0])
         if info["mode_id"] >= 0:
             counts[info["mode_id"]] += 1
-    p = counts / max(counts.sum(), 1)
-    return p
+    return counts
+
+
+def _cell(payload):
+    """Worker: one (arm, seed) cell of the sweep."""
+    arm, lam, skew, seed, args, C_ref = payload
+    return run_arm(arm, lam, skew, seed, args, C_ref)
+
+
+def reference_profile(skew, args) -> np.ndarray:
+    """C_ref: the frozen backbone's own mode distribution, measured by rollout.
+
+    Estimated from many episodes because C_ref's own sampling error enters
+    tv_to_ref for every arm: with 24 modes, a 200-episode histogram sits ~0.10 in
+    total variation from the distribution it estimates, which is the size of the
+    effect being measured.
+    """
+    n_w = max(1, args.workers)
+    per = max(1, args.ref_episodes // n_w)
+    payloads = [(skew, per, 12345 + i, args.M, args.device) for i in range(n_w)]
+    with ProcessPoolExecutor(max_workers=n_w) as ex:
+        counts = sum(ex.map(_ref_chunk, payloads))
+    return counts / max(counts.sum(), 1)
 
 
 def main() -> int:
@@ -206,6 +229,8 @@ def main() -> int:
     ap.add_argument("--n-rewarded", type=int, default=4)
     ap.add_argument("--M", type=int, default=10)
     ap.add_argument("--lr", type=float, default=3e-3)
+    ap.add_argument("--workers", type=int,
+                    default=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", type=Path, default=Path("runs/_d3il/headtohead.json"))
     args = ap.parse_args()
@@ -216,12 +241,14 @@ def main() -> int:
         nz = C_ref > 0
         print(f"=== skew {skew}: C_ref over {int(nz.sum())} modes, "
               f"H={-(C_ref[nz] * np.log(C_ref[nz])).sum():.3f} nats ===", flush=True)
-        for arm in args.arms:
-            lam = 0.0 if arm == "dsrl" else args.lam
-            for seed in range(args.seeds):
-                res = run_arm(arm, lam, skew, seed, args, C_ref)
+        cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed, args, C_ref)
+                 for arm in args.arms for seed in range(args.seeds)]
+        # One process per cell: the bottleneck is serial MuJoCo stepping (~38
+        # env-steps/s per core), so cells scale almost linearly across cores.
+        with ProcessPoolExecutor(max_workers=args.workers) as ex:
+            for res in ex.map(_cell, cells):
                 rows.append(res)
-                print(f"  {arm:5s} seed{seed}  SR={res['SR']:.3f} "
+                print(f"  {res['arm']:5s} seed{res['seed']}  SR={res['SR']:.3f} "
                       f"H={res['H_modes']:.3f} mc={res['mc_at_08']:2d} "
                       f"tv_ref={res['tv_to_ref']:.3f} tv_unif={res['tv_to_uniform']:.3f}",
                       flush=True)
