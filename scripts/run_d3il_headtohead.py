@@ -49,6 +49,30 @@ from scripts.eval_backbone_modes import load_backbone  # noqa: E402
 BACKBONES = Path("/shared/scratch/SCWF00111/d3il_backbones")
 
 
+def coarsen(mode_id: int, groups: int) -> int:
+    """Map a 24-route id onto a coarser ground-truth partition.
+
+    The route id factorises as g1*12 + g2*4 + g3 over the three obstacle rows
+    (2 x 3 x 4). Keeping only the first row gives 2 groups, the first two gives
+    6. Coarser partitions are still exact geometry, not a proxy, and they matter
+    because the batch histogram is the estimator's weak point: with 24 modes and
+    16 episodes per update most modes draw zero samples in a batch, so the
+    score-function estimator can only push DOWN on modes it observes and never
+    up on the ones it misses.
+    """
+    if mode_id < 0:
+        return -1
+    if groups >= 24:
+        return mode_id
+    g1, rest = divmod(mode_id, 12)
+    g2 = rest // 4
+    if groups == 2:
+        return g1
+    if groups == 6:
+        return g1 * 3 + g2
+    raise ValueError(f"unsupported mode grouping: {groups}")
+
+
 class NoisePolicy(nn.Module):
     """mu_phi(z | o): the only trainable module. The backbone stays frozen."""
 
@@ -103,8 +127,14 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     env = D3ILAvoidingEnv(seed=seed, history=blob.get("history", 1))
     policy = NoisePolicy(blob["obs_dim"], blob["act_dim"]).to(device)
     opt = torch.optim.Adam(policy.parameters(), lr=args.lr)
-    K = N_MODES_AVOIDING
+    K = args.mode_groups
     ref = torch.tensor(C_ref, dtype=torch.float32, device=device)
+    # Running estimate of the policy's mode distribution. A single batch of 16
+    # episodes cannot estimate a K-bin histogram, and an unobserved mode gets no
+    # gradient at all, which biased the objective to only ever suppress visited
+    # modes -- measured as MoP collapsing to a single route (H=0.000) at every
+    # lambda. An EMA across iterations gives every mode a stable probability.
+    C_ema = torch.full((K,), 1.0 / K, device=device)
 
     for it in range(args.iters):
         batch_lp, batch_r, batch_modes = [], [], []
@@ -129,12 +159,16 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         # per-episode coefficients below are the load-bearing part of this file.
         counts = torch.zeros(K, device=device)
         for m in batch_modes:
-            if m >= 0:
-                counts[m] += 1
+            mg = coarsen(m, K)
+            if mg >= 0:
+                counts[mg] += 1
+        if counts.sum() > 0:
+            C_ema = (1 - args.ema) * C_ema + args.ema * (counts / counts.sum())
         mode_coef = torch.zeros(len(batch_modes), device=device)
         if counts.sum() > 0 and arm != "dsrl":
-            C_phi = counts / counts.sum()
-            for j, m in enumerate(batch_modes):
+            C_phi = C_ema
+            for j, m0 in enumerate(batch_modes):
+                m = coarsen(m0, K)
                 if m < 0:
                     continue
                 if arm == "mop":
@@ -143,7 +177,22 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
                 else:  # mi: maximize H(C_phi); dH/dp_m = -log(p_m) - 1
                     mode_coef[j] = -(torch.log(C_phi[m] + 1e-8) + 1.0)
 
-        shaped = adv + lam * mode_coef.detach()
+        # Put the mode coefficient on the reward's scale before weighting. The
+        # raw partials are log-ratios: log(p_m/q_m) reaches +-10 for a mode that
+        # is rare under C_ref, while the binary reward's advantage lives in
+        # [-1, 1]. At lambda=1 the mode term then dominated the objective by an
+        # order of magnitude and RL simply stopped solving the task -- measured
+        # mop success collapsing to 0.15-0.40 against the backbone's own 0.55.
+        # Centring and scaling both signals makes lambda mean what it should:
+        # the relative weight of the two objectives, not an accident of units.
+        if mode_coef.abs().sum() > 0:
+            mc = mode_coef - mode_coef.mean()
+            sd = mc.std()
+            if torch.isfinite(sd) and sd > 1e-6:
+                mode_coef = mc / sd
+        adv_sd = adv.std()
+        adv_n = adv / adv_sd if torch.isfinite(adv_sd) and adv_sd > 1e-6 else adv
+        shaped = adv_n + lam * mode_coef.detach()
         loss = -(shaped.detach() * lp).mean()
         opt.zero_grad(set_to_none=True)
         loss.backward()
@@ -155,7 +204,7 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         _, _, m, s = rollout(env, policy, model, blob, rewarded, device, args.M)
         modes.append(m)
         succ.append(int(s))
-    modes = np.asarray(modes)
+    modes = np.asarray([coarsen(m, K) for m in modes])
     valid = modes >= 0
     hist = np.bincount(modes[valid], minlength=K).astype(float) if valid.any() else np.zeros(K)
     p = hist / max(hist.sum(), 1)
@@ -212,7 +261,11 @@ def reference_profile(skew, args) -> np.ndarray:
     per = max(1, args.ref_episodes // n_w)
     payloads = [(skew, per, 12345 + i, args.M, args.device) for i in range(n_w)]
     with ProcessPoolExecutor(max_workers=n_w) as ex:
-        counts = sum(ex.map(_ref_chunk, payloads))
+        counts24 = sum(ex.map(_ref_chunk, payloads))
+    K = args.mode_groups
+    counts = np.zeros(K)
+    for m in range(N_MODES_AVOIDING):
+        counts[coarsen(m, K)] += counts24[m]
     return counts / max(counts.sum(), 1)
 
 
@@ -229,6 +282,10 @@ def main() -> int:
     ap.add_argument("--n-rewarded", type=int, default=4)
     ap.add_argument("--M", type=int, default=10)
     ap.add_argument("--lr", type=float, default=3e-3)
+    ap.add_argument("--mode-groups", type=int, default=24, choices=[2, 6, 24],
+                    help="ground-truth partition resolution (2, 6 or all 24 routes)")
+    ap.add_argument("--ema", type=float, default=0.15,
+                    help="EMA rate for the running mode histogram")
     ap.add_argument("--workers", type=int,
                     default=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     ap.add_argument("--device", default="cpu")
