@@ -128,13 +128,22 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     policy = NoisePolicy(blob["obs_dim"], blob["act_dim"]).to(device)
     opt = torch.optim.Adam(policy.parameters(), lr=args.lr)
     K = args.mode_groups
-    ref = torch.tensor(C_ref, dtype=torch.float32, device=device)
+    # Smooth the reference. The anchoring coefficient is -log(p_m/q_m), which is
+    # UNBOUNDED as q_m -> 0: at skew 0.60 the backbone covers only 18 of 24
+    # routes, so any visit to a mode outside its support drew a penalty near -18
+    # against a reward advantage in [-1, 1]. Mixing in a uniform floor bounds the
+    # coefficient by log(K/eps). The entropy objective needs no such guard --
+    # -log(p_m) is bounded by the visited support -- which is the asymmetry that
+    # makes MoP the harder estimator of the two.
+    ref_np = (1 - args.ref_smooth) * np.asarray(C_ref) + args.ref_smooth / K
+    ref = torch.tensor(ref_np, dtype=torch.float32, device=device)
     # Running estimate of the policy's mode distribution. A single batch of 16
     # episodes cannot estimate a K-bin histogram, and an unobserved mode gets no
     # gradient at all, which biased the objective to only ever suppress visited
     # modes -- measured as MoP collapsing to a single route (H=0.000) at every
     # lambda. An EMA across iterations gives every mode a stable probability.
     C_ema = torch.full((K,), 1.0 / K, device=device)
+    coef_absmax = 0.0   # diagnostic: largest mode coefficient seen
 
     for it in range(args.iters):
         batch_lp, batch_r, batch_modes = [], [], []
@@ -185,6 +194,13 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         # mop success collapsing to 0.15-0.40 against the backbone's own 0.55.
         # Centring and scaling both signals makes lambda mean what it should:
         # the relative weight of the two objectives, not an accident of units.
+        if args.coef_clip > 0:
+            # A single extreme coefficient otherwise dominates the batch standard
+            # deviation and squashes every other signal to nothing, so clipping
+            # has to happen BEFORE standardisation, not after.
+            mode_coef = mode_coef.clamp(-args.coef_clip, args.coef_clip)
+        raw_coef_absmax = float(mode_coef.abs().max()) if len(mode_coef) else 0.0
+        coef_absmax = max(coef_absmax, raw_coef_absmax)
         if mode_coef.abs().sum() > 0:
             mc = mode_coef - mode_coef.mean()
             sd = mc.std()
@@ -219,6 +235,8 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         n_modes=int(nz.sum()),
         tv_to_ref=float(0.5 * np.abs(p - ref_np).sum()),
         tv_to_uniform=float(0.5 * np.abs(p - 1.0 / K).sum()),
+        coef_absmax=float(coef_absmax),
+        collapsed=bool(int(nz.sum()) <= 1),
     )
 
 
@@ -284,6 +302,10 @@ def main() -> int:
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--mode-groups", type=int, default=24, choices=[2, 6, 24],
                     help="ground-truth partition resolution (2, 6 or all 24 routes)")
+    ap.add_argument("--coef-clip", type=float, default=0.0,
+                    help="clip |mode coefficient| before standardising (0 = off)")
+    ap.add_argument("--ref-smooth", type=float, default=0.0,
+                    help="mix this much uniform into C_ref, bounding log(p/q)")
     ap.add_argument("--ema", type=float, default=0.15,
                     help="EMA rate for the running mode histogram")
     ap.add_argument("--workers", type=int,
@@ -307,7 +329,9 @@ def main() -> int:
                 rows.append(res)
                 print(f"  {res['arm']:5s} seed{res['seed']}  SR={res['SR']:.3f} "
                       f"H={res['H_modes']:.3f} mc={res['mc_at_08']:2d} "
-                      f"tv_ref={res['tv_to_ref']:.3f} tv_unif={res['tv_to_uniform']:.3f}",
+                      f"tv_ref={res['tv_to_ref']:.3f} tv_unif={res['tv_to_uniform']:.3f} "
+                      f"|coef|max={res['coef_absmax']:.1f}"
+                      f"{'  COLLAPSED' if res['collapsed'] else ''}",
                       flush=True)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(rows, indent=2))
