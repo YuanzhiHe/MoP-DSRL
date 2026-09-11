@@ -28,9 +28,9 @@ ARMS = ["dsrl", "mop", "mi"]
 METRICS = ["SR", "H_modes", "mc_at_08", "tv_to_ref", "tv_to_uniform"]
 
 
-def load(run_dir: Path) -> list[dict]:
+def load(run_dir: Path, prefix: str) -> list[dict]:
     rows: list[dict] = []
-    for f in sorted(run_dir.glob("full_skew*.json")):
+    for f in sorted(run_dir.glob(f"{prefix}*.json")):
         rows += json.loads(f.read_text())
     return rows
 
@@ -38,9 +38,20 @@ def load(run_dir: Path) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", type=Path, default=Path("runs/_d3il"))
+    ap.add_argument("--prefix", default="full_skew",
+                    help="result-file prefix to aggregate")
+    ap.add_argument("--min-sr", type=float, default=0.0,
+                    help="drop runs below this success rate as failed optimizations")
     args = ap.parse_args()
 
-    rows = load(args.run_dir)
+    rows = load(args.run_dir, args.prefix)
+    if args.min_sr > 0:
+        # Roughly a quarter of seeds fail to optimize at all -- DSRL, which has no
+        # mode objective, still produced a 0.052 run -- so a floor separates
+        # "the mode objective changed behaviour" from "this seed never learned".
+        before = len(rows)
+        rows = [r for r in rows if r["SR"] >= args.min_sr]
+        print(f"dropped {before - len(rows)}/{before} runs below SR {args.min_sr}")
     if not rows:
         print(f"no results under {args.run_dir}")
         return 1
@@ -64,13 +75,19 @@ def main() -> int:
 
     print("\n=== mop vs mi on tv_to_ref (Welch t-test) ===")
     print("  the claim: indistinguishable at skew 0, mop lower as skew grows")
-    print(f"  {'skew':>6}  {'mop':>12}  {'mi':>12}  {'diff':>8}  {'t':>7}  {'p':>7}")
+    print(f"  {'skew':>6}  {'mop':>12}  {'mi':>12}  {'diff':>8}  {'t':>7}  {'p':>7}"
+          f"   effect size and the smallest resolvable difference")
     for s in skews:
         a, b = cell(s, "mop", "tv_to_ref"), cell(s, "mi", "tv_to_ref")
         t, p = stats.ttest_ind(a, b, equal_var=False)
+        pooled = np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
+        d = (a.mean() - b.mean()) / pooled if pooled > 0 else float("nan")
+        # smallest difference this many seeds could resolve at 80% power
+        mde = 2.8 * pooled / np.sqrt(len(a))
         print(f"  {s:>6}  {a.mean():6.3f}+-{a.std(ddof=1) / np.sqrt(len(a)):.3f}  "
               f"{b.mean():6.3f}+-{b.std(ddof=1) / np.sqrt(len(b)):.3f}  "
-              f"{a.mean() - b.mean():+8.3f}  {t:7.2f}  {p:7.3f}")
+              f"{a.mean() - b.mean():+8.3f}  {t:7.2f}  {p:7.3f}"
+              f"   d={d:+.2f}  MDE={mde:.3f}  n={len(a)}/{len(b)}")
 
     print("\n=== fidelity gap: tv_to_uniform - tv_to_ref ===")
     print("  positive = the policy sits nearer the backbone's profile than uniform")
