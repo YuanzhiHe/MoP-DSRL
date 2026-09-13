@@ -293,6 +293,9 @@ def main() -> int:
     ap.add_argument("--arms", nargs="+", default=["dsrl", "mop", "mi"])
     ap.add_argument("--lam", type=float, default=1.0)
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--seed-offset", type=int, default=0,
+                    help="first seed index; use a fresh block for an "
+                         "independent replication rather than a re-run")
     ap.add_argument("--iters", type=int, default=60)
     ap.add_argument("--episodes-per-iter", type=int, default=16)
     ap.add_argument("--eval-episodes", type=int, default=100)
@@ -321,7 +324,9 @@ def main() -> int:
         print(f"=== skew {skew}: C_ref over {int(nz.sum())} modes, "
               f"H={-(C_ref[nz] * np.log(C_ref[nz])).sum():.3f} nats ===", flush=True)
         cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed, args, C_ref)
-                 for arm in args.arms for seed in range(args.seeds)]
+                 for arm in args.arms
+                 for seed in range(args.seed_offset,
+                                   args.seed_offset + args.seeds)]
         # One process per cell: the bottleneck is serial MuJoCo stepping (~38
         # env-steps/s per core), so cells scale almost linearly across cores.
         with ProcessPoolExecutor(max_workers=args.workers) as ex:
