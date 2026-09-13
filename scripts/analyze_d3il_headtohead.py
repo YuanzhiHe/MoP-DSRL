@@ -89,6 +89,34 @@ def main() -> int:
               f"{a.mean() - b.mean():+8.3f}  {t:7.2f}  {p:7.3f}"
               f"   d={d:+.2f}  MDE={mde:.3f}  n={len(a)}/{len(b)}")
 
+    print("\n=== mop vs mi on the fidelity gap (Welch t-test) ===")
+    print("  gap = tv_to_uniform - tv_to_ref, differenced WITHIN a run, so the")
+    print("  per-seed noise that dominates either distance alone cancels")
+    print(f"  {'skew':>6}  {'mop':>12}  {'mi':>12}  {'diff':>8}  {'t':>7}  {'p':>7}   effect")
+    for s_ in skews:
+        a = cell(s_, "mop", "tv_to_uniform") - cell(s_, "mop", "tv_to_ref")
+        b = cell(s_, "mi", "tv_to_uniform") - cell(s_, "mi", "tv_to_ref")
+        t, p_ = stats.ttest_ind(a, b, equal_var=False)
+        pooled = np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
+        d = (a.mean() - b.mean()) / pooled if pooled > 0 else float("nan")
+        print(f"  {s_:>6}  {a.mean():+6.3f}+-{a.std(ddof=1)/np.sqrt(len(a)):.3f}  "
+              f"{b.mean():+6.3f}+-{b.std(ddof=1)/np.sqrt(len(b)):.3f}  "
+              f"{a.mean()-b.mean():+8.3f}  {t:7.2f}  {p_:7.4f}   d={d:+.2f}  n={len(a)}/{len(b)}")
+
+    print("\n=== mode preservation vs no regularizer (dsrl) ===")
+    print("  the prior question: does noise-space RL destroy the backbone's modes,")
+    print("  and does ANY mode objective prevent it?")
+    print(f"  {'skew':>6}  {'metric':>10}  {'dsrl':>12}  {'mop':>12}  {'mi':>12}  {'p(mop)':>7}  {'p(mi)':>7}")
+    for s_ in skews:
+        for metric in ("H_modes", "mc_at_08"):
+            d0, m1, m2 = cell(s_, "dsrl", metric), cell(s_, "mop", metric), cell(s_, "mi", metric)
+            _, p1 = stats.ttest_ind(m1, d0, equal_var=False)
+            _, p2 = stats.ttest_ind(m2, d0, equal_var=False)
+            print(f"  {s_:>6}  {metric:>10}  {d0.mean():6.3f}+-{d0.std(ddof=1)/np.sqrt(len(d0)):.3f}  "
+                  f"{m1.mean():6.3f}+-{m1.std(ddof=1)/np.sqrt(len(m1)):.3f}  "
+                  f"{m2.mean():6.3f}+-{m2.std(ddof=1)/np.sqrt(len(m2)):.3f}  "
+                  f"{p1:7.4f}  {p2:7.4f}")
+
     print("\n=== fidelity gap: tv_to_uniform - tv_to_ref ===")
     print("  positive = the policy sits nearer the backbone's profile than uniform")
     print(f"  {'skew':>6}  " + "  ".join(f"{a:>14}" for a in ARMS))
