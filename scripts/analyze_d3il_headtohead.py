@@ -40,6 +40,9 @@ def main() -> int:
     ap.add_argument("--run-dir", type=Path, default=Path("runs/_d3il"))
     ap.add_argument("--prefix", default="full_skew",
                     help="result-file prefix to aggregate")
+    ap.add_argument("--prereg", action="store_true",
+                    help="run the pre-registered confirmatory tests "
+                         "(docs/PREREG_d3il_replication.md)")
     ap.add_argument("--min-sr", type=float, default=0.0,
                     help="drop runs below this success rate as failed optimizations")
     args = ap.parse_args()
@@ -116,6 +119,54 @@ def main() -> int:
                   f"{m1.mean():6.3f}+-{m1.std(ddof=1)/np.sqrt(len(m1)):.3f}  "
                   f"{m2.mean():6.3f}+-{m2.std(ddof=1)/np.sqrt(len(m2)):.3f}  "
                   f"{p1:7.4f}  {p2:7.4f}")
+
+    if args.prereg:
+        # docs/PREREG_d3il_replication.md, fixed before the replication ran.
+        # One-sided because the direction is predicted, not fitted: mi optimizes
+        # mode entropy, whose optimum is the uniform histogram, so it should sit
+        # nearer uniform than the backbone.
+        print("\n=== CONFIRMATORY (pre-registered) ===")
+        print("  H1: fidelity gap greater for mop than mi at skews 0.15 and 0.30")
+        print("  one-sided Welch, Holm-corrected over the two tests; both must reject")
+        conf = []
+        for s_ in ("0.15", "0.30"):
+            if s_ not in skews:
+                print(f"  skew {s_}: MISSING")
+                continue
+            a = cell(s_, "mop", "tv_to_uniform") - cell(s_, "mop", "tv_to_ref")
+            b = cell(s_, "mi", "tv_to_uniform") - cell(s_, "mi", "tv_to_ref")
+            t, p_two = stats.ttest_ind(a, b, equal_var=False)
+            p_one = p_two / 2 if t > 0 else 1 - p_two / 2
+            pooled = np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
+            d = (a.mean() - b.mean()) / pooled if pooled > 0 else float("nan")
+            conf.append((s_, p_one, a.mean() - b.mean(), d, len(a), len(b)))
+        # Holm: sort ascending, compare against alpha/(m - i)
+        order = sorted(range(len(conf)), key=lambda i: conf[i][1])
+        verdicts = {}
+        m = len(conf)
+        for rank, i in enumerate(order):
+            thresh = 0.05 / (m - rank)
+            verdicts[i] = conf[i][1] < thresh
+            if not verdicts[i]:
+                for j in order[rank + 1:]:
+                    verdicts[j] = False
+                break
+        for i, (s_, p_one, diff, d, na, nb) in enumerate(conf):
+            print(f"  skew {s_}  diff={diff:+.3f}  d={d:+.2f}  p(one-sided)={p_one:.4f}  "
+                  f"n={na}/{nb}  -> {'REJECT H0' if verdicts.get(i) else 'not rejected'}")
+        ok = all(verdicts.get(i) for i in range(len(conf))) and len(conf) == 2
+        print(f"\n  H1 {'CONFIRMED' if ok else 'NOT CONFIRMED'} "
+              f"({'both tests reject' if ok else 'replication failed; the exploratory result is the likelier artifact'})")
+
+        if "0.00" in skews:
+            a = cell("0.00", "mop", "tv_to_uniform") - cell("0.00", "mop", "tv_to_ref")
+            b = cell("0.00", "mi", "tv_to_uniform") - cell("0.00", "mi", "tv_to_ref")
+            t, p_two = stats.ttest_ind(a, b, equal_var=False)
+            pooled = np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
+            d = (a.mean() - b.mean()) / pooled if pooled > 0 else float("nan")
+            print(f"\n  S1 implementation check, skew 0.00 (two-sided): "
+                  f"diff={a.mean() - b.mean():+.3f} d={d:+.2f} p={p_two:.3f} -> "
+                  f"{'OK, arms coincide as the identity requires' if p_two > 0.05 else 'WARNING: arms differ where they must not'}")
 
     print("\n=== fidelity gap: tv_to_uniform - tv_to_ref ===")
     print("  positive = the policy sits nearer the backbone's profile than uniform")
