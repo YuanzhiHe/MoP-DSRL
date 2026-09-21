@@ -181,19 +181,27 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
                 if m < 0:
                     continue
                 if arm == "mop":
-                    # minimize KL(C_phi || C_ref): d/dp_m = log(p_m/q_m) + 1
-                    mode_coef[j] = -(torch.log((C_phi[m] + 1e-8) / (ref[m] + 1e-8)) + 1.0)
+                    p_m, q_m = C_phi[m] + 1e-8, ref[m] + 1e-8
+                    if args.divergence == "kl":
+                        # d/dp_m KL(p || q) = log(p_m/q_m) + 1. UNBOUNDED as
+                        # q_m -> 0: where the backbone never goes, a single visit
+                        # is worth ~18 against a reward advantage in [-1, 1].
+                        mode_coef[j] = -(torch.log(p_m / q_m) + 1.0)
+                    elif args.divergence == "tv":
+                        # d/dp_m (1/2)|p - q| = (1/2) sign(p_m - q_m), bounded by
+                        # 1/2 everywhere including q_m = 0. No smoothing needed.
+                        mode_coef[j] = -0.5 * torch.sign(p_m - q_m)
+                    else:  # js
+                        # d/dp_m JS(p, q) = (1/2) log(p_m/m_m) - 1/2 with
+                        # m = (p+q)/2. Since m_m >= p_m/2 the log is at most
+                        # log 2, so the q_m -> 0 direction -- the one that breaks
+                        # KL -- is bounded; the p_m -> 0 direction is held off by
+                        # the EMA floor.
+                        mid = 0.5 * (p_m + q_m)
+                        mode_coef[j] = -(0.5 * torch.log(p_m / mid) - 0.5)
                 else:  # mi: maximize H(C_phi); dH/dp_m = -log(p_m) - 1
                     mode_coef[j] = -(torch.log(C_phi[m] + 1e-8) + 1.0)
 
-        # Put the mode coefficient on the reward's scale before weighting. The
-        # raw partials are log-ratios: log(p_m/q_m) reaches +-10 for a mode that
-        # is rare under C_ref, while the binary reward's advantage lives in
-        # [-1, 1]. At lambda=1 the mode term then dominated the objective by an
-        # order of magnitude and RL simply stopped solving the task -- measured
-        # mop success collapsing to 0.15-0.40 against the backbone's own 0.55.
-        # Centring and scaling both signals makes lambda mean what it should:
-        # the relative weight of the two objectives, not an accident of units.
         if args.coef_clip > 0:
             # A single extreme coefficient otherwise dominates the batch standard
             # deviation and squashes every other signal to nothing, so clipping
@@ -305,6 +313,9 @@ def main() -> int:
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--mode-groups", type=int, default=24, choices=[2, 6, 24],
                     help="ground-truth partition resolution (2, 6 or all 24 routes)")
+    ap.add_argument("--divergence", default="kl", choices=["kl", "tv", "js"],
+                    help="anchoring divergence for the mop arm; tv and js have\n"
+                         "bounded coefficients where kl does not")
     ap.add_argument("--coef-clip", type=float, default=0.0,
                     help="clip |mode coefficient| before standardising (0 = off)")
     ap.add_argument("--ref-smooth", type=float, default=0.0,
