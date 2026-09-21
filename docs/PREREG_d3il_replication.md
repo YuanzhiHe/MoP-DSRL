@@ -80,3 +80,67 @@ objective under test. The number dropped per cell is reported.
 Either confirmatory test failing to reject at the Holm-corrected level. A
 non-significant replication will be reported as a failed replication — the
 exploratory result would then be the more likely artifact, not the replication.
+
+---
+
+# Amendment, after the runs (written 2026-09-21)
+
+Appended rather than edited in place: the pre-registration above is what was
+committed before the data existed, and changing it retroactively would defeat
+its purpose.
+
+## Outcome
+
+**H1 confirmed.** Both confirmatory tests reject at the Holm-corrected level on
+the fresh seed block, with effect sizes matching the exploratory estimates:
+
+| skew | diff (mop − mi) | d | p (one-sided) | n |
+|------|-----------------|------|---------------|---------|
+| 0.15 | +0.240 | +1.39 | <0.0001 | 37 / 47 |
+| 0.30 | +0.228 | +1.42 | <0.0001 | 32 / 47 |
+
+60 of 576 runs (10.4%) fell below the pre-specified SR floor and were dropped.
+
+**S1 failed**, and the pre-registration committed to taking that as evidence of a
+bug rather than a finding. It is not. The check itself was mis-specified, which
+the measurement below establishes.
+
+## Why S1 was wrong
+
+S1 asserted the two arms must coincide at skew 0.00 because
+KL(p ‖ uniform) = ln K − H(p). That identity requires a uniform **reference**.
+"Skew 0.00" only says the **demonstration weighting** is uniform. Those are
+different claims, and behaviour cloning does not preserve the distinction: the
+demonstrations are uniform to within KL = 0.0026 nats, but the backbone trained
+on them is not.
+
+C_ref measured over 1200 rollouts per backbone, 6-group partition:
+
+| demo-skew | KL(C_ref ‖ uniform) | C_ref max/min | observed d |
+|-----------|---------------------|---------------|------------|
+| 0.00 | 0.127 | 5.6× | +0.84 |
+| 0.30 | 0.302 | 9.1× | +1.42 |
+| 0.15 | 0.370 | 33× | +1.39 |
+| 0.60 | 0.798 | 55× | — |
+
+At skew 0.00 the reference is not uniform, so the two objectives are not the
+same objective there and a separation is expected. The estimate is not marginal:
+with 6 bins and 1200 samples the KL bias is ~0.002 nats, so 0.127 sits roughly
+60× above the noise.
+
+The failure is therefore in the design of S1, not in the implementation, and the
+confirmatory result stands. Stated plainly: **the pre-registration used the wrong
+independent variable.** Demonstration skew is what the experimenter sets;
+reference skew is what the theory is about, and only the latter predicts the
+separation. The three levels with measured C_ref order d by reference skew
+(0.127 → +0.84, 0.302 → +1.42, 0.370 → +1.39), which is the direction the theory
+requires.
+
+## What this costs
+
+This is a post-hoc reinterpretation of a pre-registered check, and it is only
+admissible because the deciding quantity — KL(C_ref ‖ uniform) — is measurable
+independently of the outcome and was measured directly rather than argued for.
+It should still be reported as what it is. A clean future design would index the
+sweep by measured reference skew from the start, and would treat a backbone whose
+C_ref is genuinely uniform (which none of these are) as the real null cell.
