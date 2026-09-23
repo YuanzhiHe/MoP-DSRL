@@ -244,6 +244,10 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         tv_to_ref=float(0.5 * np.abs(p - ref_np).sum()),
         tv_to_uniform=float(0.5 * np.abs(p - 1.0 / K).sum()),
         coef_absmax=float(coef_absmax),
+        # the evaluated histogram and its reference, so figures can show the
+        # distributions themselves rather than only distances between them
+        C_phi=p.tolist(),
+        C_ref=ref_np.tolist(),
         collapsed=bool(int(nz.sum()) <= 1),
     )
 
