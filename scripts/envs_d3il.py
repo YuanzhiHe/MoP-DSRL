@@ -190,7 +190,123 @@ class D3ILAvoidingEnv:
         return np.concatenate(self._frames).astype(np.float32)
 
 
+
+N_MODES_PUSHING = 4
+PUSHING_MODE_NAMES = {0: "rr->gg", 1: "gg->rr", 2: "rg->gr", 3: "gr->rg"}
+
+
+def _load_pushing_class():
+    """Import Block_Push_Env, with the same sys.path shadowing fix as Avoiding."""
+    env_pkg_root = str(D3IL_ROOT / "environments" / "d3il")
+    here = str(Path(__file__).resolve().parent)
+    saved_path, saved_mods = list(sys.path), {}
+    sys.path = [q for q in sys.path if q not in ("", ".", here)]
+    sys.path.insert(0, env_pkg_root)
+    sys.path.insert(1, str(D3IL_ROOT))
+    for name in list(sys.modules):
+        if name == "envs" or name.startswith("envs."):
+            saved_mods[name] = sys.modules.pop(name)
+    try:
+        from envs.gym_pushing_env.gym_pushing.envs.pushing import Block_Push_Env
+        return Block_Push_Env
+    finally:
+        sys.path = saved_path
+        for name in list(sys.modules):
+            if name == "envs" or name.startswith("envs."):
+                del sys.modules[name]
+        sys.modules.update(saved_mods)
+
+
+class D3ILPushingEnv:
+    """D3IL Pushing as a flat env for noise-space RL.
+
+    A second task for the mode-preservation experiments, which until now rested
+    entirely on Avoiding. The behavioural mode is which box is delivered to which
+    target and in what order -- rr->gg, gg->rr, rg->gr, gr->rg -- so unlike
+    Avoiding, whose mode is pure robot geometry, this one is a property of where
+    the OBJECTS end up. That makes it a genuinely different test of the same
+    claim rather than a re-parameterisation of it.
+
+    Observation (10-D) and action (2-D delta on the desired xy target) follow
+    d3il/simulation/pushing_sim.py: the policy sees its current desired xy
+    concatenated with the environment's 8-D state (robot xy, then each box's xy
+    and its yaw tangent).
+    """
+
+    action_dim = 2
+
+    def __init__(self, max_steps: int = 320, seed: int = 0, render: bool = False,
+                 rewarded_modes: "set[int] | None" = None, history: int = 1):
+        cls = _load_pushing_class()
+        self._env = cls(render=render)
+        self._env.start()
+        self.max_steps = max_steps
+        self.seed = seed
+        self.rewarded_modes = rewarded_modes
+        self.history = max(1, int(history))
+        self.n_modes = N_MODES_PUSHING
+        self._rng = np.random.default_rng(seed)
+        self._t = 0
+        self._mode = -1
+        self._desired_xy = np.zeros(2)
+        self._fixed_z = np.zeros(1)
+        self._frames: list[np.ndarray] = []
+        probe = self._env.reset()
+        self.obs_dim = (2 + np.asarray(probe).reshape(-1).size) * self.history
+
+    def reset(self) -> np.ndarray:
+        raw = self._env.reset()
+        state = self._env.robot_state()
+        self._desired_xy = np.asarray(state[:2], dtype=np.float64).copy()
+        self._fixed_z = np.asarray(state[2:3], dtype=np.float64).copy()
+        self._t = 0
+        self._mode = -1
+        self._frames = []
+        return self._obs(raw)
+
+    def step(self, action: np.ndarray):
+        delta = np.asarray(action, dtype=np.float64).reshape(-1)[: self.action_dim]
+        self._desired_xy = self._desired_xy + delta
+        pose = np.concatenate([self._desired_xy, self._fixed_z, [0, 1, 0, 0]])
+        raw, reward, done, info = self._env.step(pose)
+        self._t += 1
+        if self._t >= self.max_steps:
+            done = True
+        m = info.get("mode", -1) if isinstance(info, dict) else -1
+        try:
+            m = int(m)
+        except (TypeError, ValueError):
+            m = -1
+        # check_mode reports the route only on the step that completes it, so the
+        # first committed value is latched for the rest of the episode.
+        if m >= 0 and self._mode < 0:
+            self._mode = m
+        success = bool(info.get("success", False)) if isinstance(info, dict) else False
+        if reward is None:
+            earned = success
+            if earned and self.rewarded_modes is not None:
+                earned = self._mode in self.rewarded_modes
+            reward = 1.0 if earned else 0.0
+        return self._obs(raw), float(reward), bool(done), {
+            "success": success,
+            "mode_id": self._mode,
+        }
+
+    def _obs(self, raw) -> np.ndarray:
+        frame = np.concatenate(
+            [self._desired_xy, np.asarray(raw, dtype=np.float64).reshape(-1)]
+        )
+        if not self._frames:
+            self._frames = [frame] * self.history
+        else:
+            self._frames.append(frame)
+            self._frames = self._frames[-self.history:]
+        return np.concatenate(self._frames).astype(np.float32)
+
+
 def make_d3il_env(name: str, **kwargs):
     if name in ("d3il_avoiding", "avoiding"):
         return D3ILAvoidingEnv(**kwargs)
+    if name in ("d3il_pushing", "pushing"):
+        return D3ILPushingEnv(**kwargs)
     raise ValueError(f"unknown D3IL env: {name}")
