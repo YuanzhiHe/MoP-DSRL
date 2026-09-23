@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Train a multimodal rectified-flow backbone on D3IL Avoiding demonstrations.
+"""Train a multimodal rectified-flow backbone on D3IL demonstrations.
 
 This is the frozen pi_theta for the noise-space RL experiments. It replaces the
 plan to freeze D3IL's own BESO agent: BESO would drag in that repo's hydra
@@ -20,7 +20,7 @@ distribution, and --weights lets the demonstration distribution be skewed, which
 the toy showed is required for KL-to-reference and an entropy/MI objective to
 differ at all.
 
-    python scripts/train_avoiding_backbone.py --weights <...>/demo_weights_skew0.30.pkl
+    python scripts/train_d3il_backbone.py --weights <...>/demo_weights_skew0.30.pkl
 """
 from __future__ import annotations
 
@@ -32,7 +32,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-DATA = Path("/shared/scratch/SCWF00111/d3il_data/data/avoiding/data")
+TASK_DATA = {
+    "avoiding": Path("/shared/scratch/SCWF00111/d3il_data/data/avoiding/data"),
+    "pushing": Path("/shared/scratch/SCWF00111/d3il_data/data/pushing/all_data"),
+}
+DATA = TASK_DATA["avoiding"]
 
 
 class VelocityMLP(nn.Module):
@@ -53,7 +57,38 @@ class VelocityMLP(nn.Module):
         return self.net(torch.cat([x_t, t, obs], dim=-1))
 
 
-def load_pairs(files: list[Path], history: int = 1
+def _frame_avoiding(d: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Avoiding: the policy sees its desired xy and the achieved xy."""
+    des = np.asarray(d["robot"]["des_c_pos"])[:, :2]
+    pos = np.asarray(d["robot"]["c_pos"])[:, :2]
+    return np.concatenate([des[:-1], pos[:-1]], axis=1), des[1:] - des[:-1]
+
+
+def _frame_pushing(d: dict) -> tuple[np.ndarray, np.ndarray]:
+    """Pushing: desired xy, robot xy, and each box's xy plus its yaw tangent.
+
+    Mirrors PushingEnv.get_observation, which is what the env adapter presents,
+    so the backbone is trained on exactly the observation it will be rolled out
+    with. The boxes enter because this task's mode is a property of where the
+    OBJECTS end up, not of the arm's own path.
+    """
+    des = np.asarray(d["robot"]["des_c_pos"])[:, :2]
+    pos = np.asarray(d["robot"]["c_pos"])[:, :2]
+    parts = [des[:-1], pos[:-1]]
+    for box in ("red-box", "green-box"):
+        bp = np.asarray(d[box]["pos"])[:, :2]
+        bq = np.asarray(d[box]["quat"])
+        # yaw from the quaternion, then the tangent the env reports
+        yaw = np.arctan2(2 * (bq[:, 0] * bq[:, 3] + bq[:, 1] * bq[:, 2]),
+                         1 - 2 * (bq[:, 2] ** 2 + bq[:, 3] ** 2))
+        parts += [bp[:-1], np.tan(yaw[:-1])[:, None]]
+    return np.concatenate(parts, axis=1), des[1:] - des[:-1]
+
+
+FRAME_FN = {"avoiding": _frame_avoiding, "pushing": _frame_pushing}
+
+
+def load_pairs(files: list[Path], history: int = 1, task: str = "avoiding"
                ) -> tuple[np.ndarray, np.ndarray, list[int]]:
     """(obs, action[2]) pairs plus the demo index each pair came from.
 
@@ -66,12 +101,9 @@ def load_pairs(files: list[Path], history: int = 1
     obs_l, act_l, owner = [], [], []
     for i, f in enumerate(files):
         with open(f, "rb") as fh:
-            d = pickle.load(fh)["robot"]
-        des = np.asarray(d["des_c_pos"])[:, :2]
-        pos = np.asarray(d["c_pos"])[:, :2]
+            d = pickle.load(fh)
         # action_t is the increment applied to the desired target at t
-        act = des[1:] - des[:-1]
-        frame = np.concatenate([des[:-1], pos[:-1]], axis=1)
+        frame, act = FRAME_FN[task](d)
         if history > 1:
             pad = np.repeat(frame[:1], history - 1, axis=0)
             padded = np.concatenate([pad, frame], axis=0)
@@ -95,6 +127,7 @@ def main() -> int:
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--batch", type=int, default=512)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--task", default="avoiding", choices=["avoiding", "pushing"])
     ap.add_argument("--history", type=int, default=1,
                     help="stack this many past frames into the observation")
     ap.add_argument("--seed", type=int, default=0)
@@ -104,8 +137,8 @@ def main() -> int:
     torch.manual_seed(args.seed)
     rng = np.random.default_rng(args.seed)
 
-    files = sorted(DATA.glob("*.pkl"))
-    obs, act, owner = load_pairs(files, history=args.history)
+    files = sorted(TASK_DATA[args.task].glob("*.pkl"))
+    obs, act, owner = load_pairs(files, history=args.history, task=args.task)
     owner = np.asarray(owner)
     print(f"demos={len(files)}  transitions={len(act)}  obs{obs.shape} act{act.shape}")
 
@@ -154,6 +187,7 @@ def main() -> int:
         "obs_mean": o_mu, "obs_std": o_sd,
         "act_mean": a_mu, "act_std": a_sd,
         "obs_dim": int(obs.shape[1]), "act_dim": 2, "history": args.history,
+        "task": args.task,
         "weights_file": str(args.weights) if args.weights else None,
     }, args.out)
     print(f"saved backbone -> {args.out}")

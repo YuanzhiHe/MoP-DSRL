@@ -26,7 +26,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from scripts.envs_d3il import D3ILAvoidingEnv, N_MODES_AVOIDING  # noqa: E402
-from scripts.train_avoiding_backbone import VelocityMLP  # noqa: E402
+from scripts.train_d3il_backbone import VelocityMLP  # noqa: E402
 
 
 def load_backbone(ckpt: Path, device: str):
