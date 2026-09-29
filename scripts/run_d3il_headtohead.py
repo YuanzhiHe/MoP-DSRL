@@ -43,10 +43,22 @@ import torch
 import torch.nn as nn
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.envs_d3il import D3ILAvoidingEnv, N_MODES_AVOIDING  # noqa: E402
+from scripts.envs_d3il import (D3ILAvoidingEnv, D3ILPushingEnv,  # noqa: E402
+                               N_MODES_AVOIDING, N_MODES_PUSHING)
 from scripts.eval_backbone_modes import load_backbone  # noqa: E402
 
-BACKBONES = Path("/shared/scratch/SCWF00111/d3il_backbones")
+BACKBONE_ROOT = Path("/shared/scratch/SCWF00111/d3il_backbones")
+TASKS = {
+    "avoiding": dict(dir=BACKBONE_ROOT, prefix="avoiding_skew",
+                     env=lambda **kw: D3ILAvoidingEnv(**kw), n_modes=N_MODES_AVOIDING),
+    "pushing": dict(dir=BACKBONE_ROOT / "pushing", prefix="pushing_skew",
+                    env=lambda **kw: D3ILPushingEnv(**kw), n_modes=N_MODES_PUSHING),
+}
+
+
+def backbone_path(task: str, skew: str) -> Path:
+    t = TASKS[task]
+    return t["dir"] / f"{t['prefix']}{skew}.pt"
 
 
 def coarsen(mode_id: int, groups: int) -> int:
@@ -62,7 +74,10 @@ def coarsen(mode_id: int, groups: int) -> int:
     """
     if mode_id < 0:
         return -1
-    if groups >= 24:
+    if groups >= 24 or groups == 4:
+        # Pushing's four routes are already the partition; only Avoiding's 24
+        # need coarsening, and only because a 16-episode batch cannot estimate a
+        # 24-bin histogram.
         return mode_id
     g1, rest = divmod(mode_id, 12)
     g2 = rest // 4
@@ -119,12 +134,14 @@ def rollout(env, policy, model, blob, rewarded, device, M, greedy=False):
 
 def run_arm(arm, lam, skew, seed, args, C_ref):
     device = args.device
-    model, blob = load_backbone(BACKBONES / f"avoiding_skew{skew}.pt", device)
+    model, blob = load_backbone(backbone_path(args.task, skew), device)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
-    rewarded = set(rng.choice(N_MODES_AVOIDING, size=args.n_rewarded, replace=False).tolist())
+    n_all = TASKS[args.task]["n_modes"]
+    rewarded = set(rng.choice(n_all, size=min(args.n_rewarded, n_all),
+                              replace=False).tolist())
 
-    env = D3ILAvoidingEnv(seed=seed, history=blob.get("history", 1))
+    env = TASKS[args.task]["env"](seed=seed, history=blob.get("history", 1))
     policy = NoisePolicy(blob["obs_dim"], blob["act_dim"]).to(device)
     opt = torch.optim.Adam(policy.parameters(), lr=args.lr)
     K = args.mode_groups
@@ -235,7 +252,7 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     nz = p > 0
     ref_np = np.asarray(C_ref)
     return dict(
-        arm=arm, lam=lam, skew=skew, seed=seed,
+        task=args.task, arm=arm, lam=lam, skew=skew, seed=seed,
         SR=float(np.mean(succ)),
         rewarded_SR=float(np.mean([m in rewarded for m in modes[valid]])) if valid.any() else 0.0,
         H_modes=float(-(p[nz] * np.log(p[nz])).sum()) if nz.any() else 0.0,
@@ -254,11 +271,11 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
 
 def _ref_chunk(payload):
     """Worker: roll the frozen backbone out and count modes."""
-    skew, n, seed, M, device = payload
-    model, blob = load_backbone(BACKBONES / f"avoiding_skew{skew}.pt", device)
-    env = D3ILAvoidingEnv(seed=seed, history=blob.get("history", 1))
+    skew, n, seed, M, device, task = payload
+    model, blob = load_backbone(backbone_path(task, skew), device)
+    env = TASKS[task]["env"](seed=seed, history=blob.get("history", 1))
     rng = np.random.default_rng(seed)
-    counts = np.zeros(N_MODES_AVOIDING)
+    counts = np.zeros(TASKS[task]["n_modes"])
     for _ in range(n):
         obs = env.reset()
         done = False
@@ -289,18 +306,20 @@ def reference_profile(skew, args) -> np.ndarray:
     """
     n_w = max(1, args.workers)
     per = max(1, args.ref_episodes // n_w)
-    payloads = [(skew, per, 12345 + i, args.M, args.device) for i in range(n_w)]
+    payloads = [(skew, per, 12345 + i, args.M, args.device, args.task)
+                for i in range(n_w)]
     with ProcessPoolExecutor(max_workers=n_w) as ex:
         counts24 = sum(ex.map(_ref_chunk, payloads))
     K = args.mode_groups
     counts = np.zeros(K)
-    for m in range(N_MODES_AVOIDING):
+    for m in range(TASKS[args.task]['n_modes']):
         counts[coarsen(m, K)] += counts24[m]
     return counts / max(counts.sum(), 1)
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--task", default="avoiding", choices=sorted(TASKS))
     ap.add_argument("--skews", nargs="+", default=["0.00", "0.05", "0.15", "0.30", "0.60"])
     ap.add_argument("--arms", nargs="+", default=["dsrl", "mop", "mi"])
     ap.add_argument("--lam", type=float, default=1.0)
@@ -315,7 +334,7 @@ def main() -> int:
     ap.add_argument("--n-rewarded", type=int, default=4)
     ap.add_argument("--M", type=int, default=10)
     ap.add_argument("--lr", type=float, default=3e-3)
-    ap.add_argument("--mode-groups", type=int, default=24, choices=[2, 6, 24],
+    ap.add_argument("--mode-groups", type=int, default=24, choices=[2, 4, 6, 24],
                     help="ground-truth partition resolution (2, 6 or all 24 routes)")
     ap.add_argument("--divergence", default="kl", choices=["kl", "tv", "js"],
                     help="anchoring divergence for the mop arm; tv and js have\n"
