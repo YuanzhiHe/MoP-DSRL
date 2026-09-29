@@ -111,6 +111,13 @@ def main() -> int:
                        s=26, marker="o", facecolor="none", edgecolor=DCOL["kl"],
                        lw=1.1, label="KL + smoothing 0.20")
         ax.set_xscale("log")
+        ax.set_xticks([0.5, 1, 2, 5, 10])
+        ax.set_xticklabels(["0.5", "1", "2", "5", "10"])
+        ax.minorticks_off()
+        ax.axhspan(-0.02, 0.02, color="#b3282d", alpha=.07, zorder=0)
+        ax.text(0.52, 0.055, "collapsed to a single route", fontsize=7,
+                color="#b3282d", va="bottom")
+        ax.axvline(0.5, color="#1b6ca8", lw=.8, ls=":", zorder=0)
         ax.set_xlabel(r"largest $|\partial D/\partial p_m|$ met during training")
         ax.set_ylabel(r"$H(C_\phi)$ retained  [nats]")
         ax.set_title("(c) empirical consequence, one point per run", loc="left")

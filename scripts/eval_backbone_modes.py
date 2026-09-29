@@ -25,13 +25,16 @@ import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from scripts.envs_d3il import D3ILAvoidingEnv, N_MODES_AVOIDING  # noqa: E402
+from scripts.envs_d3il import (D3ILAvoidingEnv, D3ILPushingEnv,  # noqa: E402
+                               N_MODES_AVOIDING, N_MODES_PUSHING)
 from scripts.train_d3il_backbone import VelocityMLP  # noqa: E402
 
 
 def load_backbone(ckpt: Path, device: str):
     blob = torch.load(ckpt, map_location=device, weights_only=False)
-    model = VelocityMLP(obs_dim=blob["obs_dim"], act_dim=blob["act_dim"]).to(device)
+    model = VelocityMLP(obs_dim=blob["obs_dim"], act_dim=blob["act_dim"],
+                        hidden=blob.get("hidden", 256),
+                        layers=blob.get("layers", 4)).to(device)
     model.load_state_dict(blob["state_dict"])
     model.eval()
     return model, blob
@@ -62,7 +65,13 @@ def main() -> int:
 
     rng = np.random.default_rng(args.seed)
     model, blob = load_backbone(args.ckpt, args.device)
-    env = D3ILAvoidingEnv(seed=args.seed, history=blob.get('history', 1))
+    task = blob.get("task", "avoiding")
+    if task == "pushing":
+        env = D3ILPushingEnv(seed=args.seed, history=blob.get("history", 1))
+        K = N_MODES_PUSHING
+    else:
+        env = D3ILAvoidingEnv(seed=args.seed, history=blob.get("history", 1))
+        K = N_MODES_AVOIDING
     print(f"backbone: {args.ckpt.name}  trained on weights={blob.get('weights_file')}")
 
     modes, succ = [], []
@@ -84,13 +93,13 @@ def main() -> int:
         print("NO completed routes -- backbone cannot solve the task; C_ref undefined")
         return 1
 
-    hist = np.bincount(modes[valid], minlength=N_MODES_AVOIDING).astype(float)
+    hist = np.bincount(modes[valid], minlength=K).astype(float)
     p = hist / hist.sum()
     nz = p > 0
     ent = float(-(p[nz] * np.log(p[nz])).sum())
-    kl_u = float(np.sum(p[nz] * np.log(p[nz] * N_MODES_AVOIDING)))
-    print(f"modes visited: {int(nz.sum())}/{N_MODES_AVOIDING}")
-    print(f"H(modes) = {ent:.4f} nats (max {np.log(N_MODES_AVOIDING):.4f})")
+    kl_u = float(np.sum(p[nz] * np.log(p[nz] * K)))
+    print(f"task={task}  modes visited: {int(nz.sum())}/{K}")
+    print(f"H(modes) = {ent:.4f} nats (max {np.log(K):.4f})")
     print(f"KL(policy modes || uniform) = {kl_u:.4f} nats")
     print(f"top modes: {Counter(modes[valid].tolist()).most_common(6)}")
     print()

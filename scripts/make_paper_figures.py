@@ -54,15 +54,26 @@ def main() -> int:
     skews = sorted({r["skew"] for r in rows}, key=lambda s: REF_KL[s])
     x = [REF_KL[s] for s in skews]
 
-    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.1))
+    fig, axes = plt.subplots(1, 3, figsize=(10.5, 3.3))
+    jit = np.random.default_rng(0)
+
+    def strip(ax, xi, vals, color):
+        """Every run as a point, so the reader sees the spread and not only its
+        summary. Error bars alone hide bimodality, and this data has it: a
+        quarter of seeds fail to optimize at all."""
+        w = 0.012 * (max(x) - min(x) + 1e-9)
+        ax.scatter(xi + jit.uniform(-w, w, len(vals)), vals, s=7, alpha=.28,
+                   color=color, edgecolor="none", zorder=1)
 
     # (a) distance to the backbone's own mode profile
     ax = axes[0]
     for arm in ("dsrl", "mop", "mi"):
-        m = [cell(rows, s, arm, lambda r: r["tv_to_ref"]).mean() for s in skews]
-        e = [se(cell(rows, s, arm, lambda r: r["tv_to_ref"])) for s in skews]
-        ax.errorbar(x, m, yerr=e, marker="o", ms=4, capsize=2.5, lw=1.4,
-                    color=COL[arm], label=LAB[arm])
+        cells = [cell(rows, s, arm, lambda r: r["tv_to_ref"]) for s in skews]
+        for xi, v in zip(x, cells):
+            strip(ax, xi, v, COL[arm])
+        ax.errorbar(x, [v.mean() for v in cells], yerr=[se(v) for v in cells],
+                    marker="o", ms=4.5, capsize=2.5, lw=1.6, color=COL[arm],
+                    label=LAB[arm], zorder=3)
     ax.set_xlabel(r"reference skew  KL($C_{ref}\,\|\,$uniform)  [nats]")
     ax.set_ylabel(r"TV$(C_\phi,\ C_{ref})$")
     ax.set_title("(a) departure from the frozen backbone", loc="left")
@@ -72,8 +83,11 @@ def main() -> int:
     ax = axes[1]
     for arm in ("dsrl", "mop", "mi"):
         g = [cell(rows, s, arm, lambda r: r["tv_to_uniform"] - r["tv_to_ref"]) for s in skews]
+        for xi, v in zip(x, g):
+            strip(ax, xi, v, COL[arm])
         ax.errorbar(x, [v.mean() for v in g], yerr=[se(v) for v in g],
-                    marker="o", ms=4, capsize=2.5, lw=1.4, color=COL[arm], label=LAB[arm])
+                    marker="o", ms=4.5, capsize=2.5, lw=1.6, color=COL[arm],
+                    label=LAB[arm], zorder=3)
     ax.axhline(0, color="k", lw=0.7, ls=":")
     ax.set_xlabel(r"reference skew  KL($C_{ref}\,\|\,$uniform)  [nats]")
     ax.set_ylabel(r"TV to uniform $-$ TV to $C_{ref}$")
@@ -85,8 +99,11 @@ def main() -> int:
     ax = axes[2]
     for arm in ("dsrl", "mop", "mi"):
         h = [cell(rows, s, arm, lambda r: r["H_modes"]) for s in skews]
+        for xi, v in zip(x, h):
+            strip(ax, xi, v, COL[arm])
         ax.errorbar(x, [v.mean() for v in h], yerr=[se(v) for v in h],
-                    marker="o", ms=4, capsize=2.5, lw=1.4, color=COL[arm], label=LAB[arm])
+                    marker="o", ms=4.5, capsize=2.5, lw=1.6, color=COL[arm],
+                    label=LAB[arm], zorder=3)
     ax.axhline(np.log(6), color="k", lw=0.7, ls=":")
     ax.text(x[0], np.log(6) + 0.03, "uniform over 6 route groups", fontsize=7, color="#444")
     ax.set_xlabel(r"reference skew  KL($C_{ref}\,\|\,$uniform)  [nats]")

@@ -126,6 +126,8 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--batch", type=int, default=512)
+    ap.add_argument("--hidden", type=int, default=256)
+    ap.add_argument("--layers", type=int, default=4)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--task", default="avoiding", choices=["avoiding", "pushing"])
     ap.add_argument("--history", type=int, default=1,
@@ -163,7 +165,8 @@ def main() -> int:
     obs_n = torch.tensor((obs - o_mu) / o_sd, device=args.device)
     act_n = torch.tensor((act - a_mu) / a_sd, device=args.device)
 
-    model = VelocityMLP(obs_dim=obs.shape[1]).to(args.device)
+    model = VelocityMLP(obs_dim=obs.shape[1], hidden=args.hidden,
+                        layers=args.layers).to(args.device)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
 
     for step in range(args.steps):
@@ -187,7 +190,7 @@ def main() -> int:
         "obs_mean": o_mu, "obs_std": o_sd,
         "act_mean": a_mu, "act_std": a_sd,
         "obs_dim": int(obs.shape[1]), "act_dim": 2, "history": args.history,
-        "task": args.task,
+        "task": args.task, "hidden": args.hidden, "layers": args.layers,
         "weights_file": str(args.weights) if args.weights else None,
     }, args.out)
     print(f"saved backbone -> {args.out}")
