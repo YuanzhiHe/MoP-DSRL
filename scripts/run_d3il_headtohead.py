@@ -366,6 +366,11 @@ def main() -> int:
         with ProcessPoolExecutor(max_workers=args.workers) as ex:
             for res in ex.map(_cell, cells):
                 rows.append(res)
+                # Persist after every cell. A sweep that only saved at the end
+                # lost 20 hours of finished work to a wall-clock limit; the cost
+                # of rewriting a small JSON each time is nothing beside that.
+                args.out.parent.mkdir(parents=True, exist_ok=True)
+                args.out.write_text(json.dumps(rows, indent=2))
                 print(f"  {res['arm']:5s} seed{res['seed']}  SR={res['SR']:.3f} "
                       f"H={res['H_modes']:.3f} mc={res['mc_at_08']:2d} "
                       f"tv_ref={res['tv_to_ref']:.3f} tv_unif={res['tv_to_uniform']:.3f} "
