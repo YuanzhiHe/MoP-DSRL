@@ -357,10 +357,14 @@ def main() -> int:
         nz = C_ref > 0
         print(f"=== skew {skew}: C_ref over {int(nz.sum())} modes, "
               f"H={-(C_ref[nz] * np.log(C_ref[nz])).sum():.3f} nats ===", flush=True)
+        # Interleave by seed, not by arm. Ordering arm-major means a sweep that
+        # runs out of wall clock finishes every dsrl seed, some mop, and no mi at
+        # all -- which is not a partial result, it is no comparison. Seed-major
+        # ordering makes any prefix a balanced subset of all three arms.
         cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed, args, C_ref)
-                 for arm in args.arms
                  for seed in range(args.seed_offset,
-                                   args.seed_offset + args.seeds)]
+                                   args.seed_offset + args.seeds)
+                 for arm in args.arms]
         # One process per cell: the bottleneck is serial MuJoCo stepping (~38
         # env-steps/s per core), so cells scale almost linearly across cores.
         with ProcessPoolExecutor(max_workers=args.workers) as ex:
