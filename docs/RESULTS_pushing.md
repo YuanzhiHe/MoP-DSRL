@@ -57,3 +57,67 @@ Re-running with `--n-rewarded 1`, matching Avoiding's 4-of-24 proportion. The
 sweep above stays as the no-asymmetry condition, which is worth reporting in its
 own right: the two objectives diverge even when nothing is pushing the policy
 off its modes.
+
+---
+
+# With the reward shift present (`--n-rewarded 1`)
+
+117 of 144 runs cleared the SR floor. Same configuration otherwise.
+
+## MoP versus MI: holds
+
+| KL(C_ref ‖ uniform) | MoP (TV) | MI | diff | d | p | n |
+|---|---|---|---|---|---|---|
+| 0.120 | +0.087 | +0.028 | +0.060 | +0.63 | 0.0914 | 9/11 |
+| 0.327 | +0.235 | +0.005 | +0.229 | +1.67 | 0.0005 | 10/12 |
+| 0.537 | +0.308 | +0.175 | +0.133 | +1.09 | 0.0273 | 9/8 |
+| 0.770 | +0.457 | +0.268 | +0.189 | +1.24 | 0.0318 | 10/6 |
+
+Three of four reject. The one that does not is the least-skewed reference, which
+is where theory predicts the least separation.
+
+## TV anchoring: holds
+
+`max |∂D/∂p_m|` is exactly 0.500 at every level and 0 of 38 runs collapsed —
+0 of 85 across both Pushing conditions.
+
+## Collapse prevention: does NOT replicate
+
+| KL(C_ref ‖ uniform) | DSRL | MoP | p (MoP vs DSRL) |
+|---|---|---|---|
+| 0.120 | 1.086 | 1.093 | 0.947 |
+| 0.327 | 0.994 | 1.024 | 0.772 |
+| 0.537 | 0.936 | 0.963 | 0.664 |
+| 0.770 | 0.576 | 0.613 | 0.616 |
+
+On Avoiding, unregularized DSRL fell to 0.30–0.58 nats against 1.12–1.58 for
+either regularizer, every comparison below 10⁻⁴. Here the three arms are
+indistinguishable.
+
+The regularizers did not fail — nothing moved:
+
+| | modes | backbone H | max H | DSRL final H | entropy it could lose | DSRL success |
+|---|---|---|---|---|---|---|
+| Avoiding | 6 | 2.65 | 1.79* | 0.41 | **2.24** | 0.82 |
+| Pushing | 4 | 1.06 | 1.39 | 0.89 | **0.17** | 0.31 |
+
+\* Avoiding's backbone entropy is measured over 24 routes before grouping, hence
+above ln 6.
+
+Pushing's backbone starts near the floor of its own entropy range, solves the
+task 31% of the time, and pays out on 1 route in 4 — so the reward signal is thin
+and no arm departs far from the backbone. There is neither diversity to destroy
+nor performance to chase.
+
+## What to claim
+
+- **MoP and MI converge on different distributions, and the gap grows with
+  reference skew.** Two tasks, with and without the reward shift, 7 of 8 levels
+  significant. This is the robust result.
+- **Bounded anchoring is stable.** TV's coefficient sits exactly at its ½ bound
+  and never collapsed in 85 runs, against raw KL's 17.6 and 8-of-24 on Avoiding.
+- **Mode regularization prevents reward-driven collapse *where there is collapse
+  to prevent*.** Demonstrated on Avoiding; absent on Pushing for a reason that is
+  measurable in advance. The precondition — the backbone needs entropy headroom
+  and the task needs performance headroom — is a more useful statement than the
+  unqualified claim would have been.

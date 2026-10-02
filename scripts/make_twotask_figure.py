@@ -32,7 +32,7 @@ TASKS = [
          glob="rep_skew*.json", min_sr=0.15, kmax=6,
          ref={"0.00": 0.127, "0.15": 0.370, "0.30": 0.302, "0.60": 0.798}),
     dict(key="pushing", title="(b) Pushing — mode is where the objects end up",
-         glob="push_skew*.json", min_sr=0.10, kmax=4,
+         glob="pushrw_skew*.json", min_sr=0.10, kmax=4,
          ref={"0.00": 0.327, "0.10": 0.120, "0.25": 0.537, "0.50": 0.770}),
 ]
 
