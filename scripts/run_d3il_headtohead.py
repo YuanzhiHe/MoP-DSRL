@@ -56,8 +56,20 @@ TASKS = {
 }
 
 
-def backbone_path(task: str, skew: str) -> Path:
+def backbone_path(task: str, skew: str, bb_seed: int | None = None) -> Path:
+    """Resolve a frozen backbone, optionally one of several trained per skew.
+
+    One backbone per skew level confounds the level with that single draw from a
+    noisy behaviour-cloning run: demonstration skew 0.15 produced a HIGHER
+    measured reference skew (0.370) than skew 0.30 (0.302). With one checkpoint
+    per level, every run seed shares its idiosyncrasies and a trend across levels
+    has as many independent units as it has levels, not as it has runs.
+    """
     t = TASKS[task]
+    if bb_seed is not None:
+        cand = t["dir"] / f"{t['prefix']}{skew}_bb{bb_seed}.pt"
+        if cand.exists():
+            return cand
     return t["dir"] / f"{t['prefix']}{skew}.pt"
 
 
@@ -178,7 +190,7 @@ def rollout(env, policy, model, blob, rewarded, device, M, greedy=False):
     return logps, float(earned), info["mode_id"], bool(info["success"])
 
 
-def run_bmd(lam, skew, seed, args, C_ref):
+def run_bmd(lam, skew, seed, args, C_ref, bb_seed=None):
     """BMD-style arm: learned skills plus a variational mutual-information bound.
 
     A skill k ~ Uniform{0..K-1} is drawn per episode and the policy conditions on
@@ -190,7 +202,7 @@ def run_bmd(lam, skew, seed, args, C_ref):
     used only to score the result, exactly as for the other arms.
     """
     device = args.device
-    model, blob = load_backbone(backbone_path(args.task, skew), device)
+    model, blob = load_backbone(backbone_path(args.task, skew, bb_seed), device)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     n_all = TASKS[args.task]["n_modes"]
@@ -259,9 +271,9 @@ def run_bmd(lam, skew, seed, args, C_ref):
     hist = np.bincount(modes[valid], minlength=K).astype(float) if valid.any() else np.zeros(K)
     p = hist / max(hist.sum(), 1)
     nz = p > 0
-    ref_np = np.asarray(C_ref)
     return dict(
         task=args.task, arm="bmd", lam=lam, skew=skew, seed=seed,
+        bb_seed=bb_seed,
         SR=float(np.mean(succ)),
         rewarded_SR=float(np.mean([m in rewarded for m in modes[valid]])) if valid.any() else 0.0,
         H_modes=float(-(p[nz] * np.log(p[nz])).sum()) if nz.any() else 0.0,
@@ -275,11 +287,11 @@ def run_bmd(lam, skew, seed, args, C_ref):
     )
 
 
-def run_arm(arm, lam, skew, seed, args, C_ref):
+def run_arm(arm, lam, skew, seed, args, C_ref, bb_seed=None):
     if arm == "bmd":
-        return run_bmd(lam, skew, seed, args, C_ref)
+        return run_bmd(lam, skew, seed, args, C_ref, bb_seed)
     device = args.device
-    model, blob = load_backbone(backbone_path(args.task, skew), device)
+    model, blob = load_backbone(backbone_path(args.task, skew, bb_seed), device)
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
     n_all = TASKS[args.task]["n_modes"]
@@ -297,8 +309,14 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     # coefficient by log(K/eps). The entropy objective needs no such guard --
     # -log(p_m) is bounded by the visited support -- which is the asymmetry that
     # makes MoP the harder estimator of the two.
-    ref_np = (1 - args.ref_smooth) * np.asarray(C_ref) + args.ref_smooth / K
-    ref = torch.tensor(ref_np, dtype=torch.float32, device=device)
+    # The anchoring TARGET may be smoothed, but scoring always uses the raw
+    # C_ref. Scoring a smoothed arm against its own smoothed target would
+    # flatter it; scoring it against C_ref when it was given 0.8*C_ref + 0.2*u
+    # charges it for hitting the target it was handed. Keeping both explicit
+    # makes the smoothing hyperparameter's cost visible instead of hidden.
+    ref_target = (1 - args.ref_smooth) * np.asarray(C_ref) + args.ref_smooth / K
+    ref = torch.tensor(ref_target, dtype=torch.float32, device=device)
+    ref_np = np.asarray(C_ref)
     # Running estimate of the policy's mode distribution. A single batch of 16
     # episodes cannot estimate a K-bin histogram, and an unobserved mode gets no
     # gradient at all, which biased the objective to only ever suppress visited
@@ -306,6 +324,7 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     # lambda. An EMA across iterations gives every mode a stable probability.
     C_ema = torch.full((K,), 1.0 / K, device=device)
     coef_absmax = 0.0   # diagnostic: largest mode coefficient seen
+    n_inert = 0         # batches where the mode term contributed no gradient
 
     for it in range(args.iters):
         batch_lp, batch_r, batch_modes = [], [], []
@@ -371,11 +390,24 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
             mode_coef = mode_coef.clamp(-args.coef_clip, args.coef_clip)
         raw_coef_absmax = float(mode_coef.abs().max()) if len(mode_coef) else 0.0
         coef_absmax = max(coef_absmax, raw_coef_absmax)
+        # Standardise, and ZERO the coefficient when it cannot be standardised.
+        # Leaving it as the raw constant vector was a silent defect: a constant
+        # added to every advantage contributes exactly zero policy gradient (it
+        # is absorbed as a REINFORCE baseline), so the regularizer was inert
+        # while appearing active. TV is most exposed, since its coefficient takes
+        # only {-1/2, 0, +1/2} and a batch landing on one side of the reference
+        # makes it constant; measured, that fires in 0.2-0.4% of batches against
+        # KL's 0.0-0.1%. Zeroing makes the inert case explicit rather than hidden.
+        mode_inert = True
         if mode_coef.abs().sum() > 0:
             mc = mode_coef - mode_coef.mean()
             sd = mc.std()
             if torch.isfinite(sd) and sd > 1e-6:
                 mode_coef = mc / sd
+                mode_inert = False
+        if mode_inert:
+            mode_coef = torch.zeros_like(mode_coef)
+            n_inert += 1
         adv_sd = adv.std()
         adv_n = adv / adv_sd if torch.isfinite(adv_sd) and adv_sd > 1e-6 else adv
         shaped = adv_n + lam * mode_coef.detach()
@@ -398,6 +430,7 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
     ref_np = np.asarray(C_ref)
     return dict(
         task=args.task, arm=arm, lam=lam, skew=skew, seed=seed,
+        bb_seed=bb_seed,
         SR=float(np.mean(succ)),
         rewarded_SR=float(np.mean([m in rewarded for m in modes[valid]])) if valid.any() else 0.0,
         H_modes=float(-(p[nz] * np.log(p[nz])).sum()) if nz.any() else 0.0,
@@ -406,6 +439,7 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
         tv_to_ref=float(0.5 * np.abs(p - ref_np).sum()),
         tv_to_uniform=float(0.5 * np.abs(p - 1.0 / K).sum()),
         coef_absmax=float(coef_absmax),
+        frac_inert=float(n_inert / max(args.iters, 1)),
         # the evaluated histogram and its reference, so figures can show the
         # distributions themselves rather than only distances between them
         C_phi=p.tolist(),
@@ -416,8 +450,8 @@ def run_arm(arm, lam, skew, seed, args, C_ref):
 
 def _ref_chunk(payload):
     """Worker: roll the frozen backbone out and count modes."""
-    skew, n, seed, M, device, task = payload
-    model, blob = load_backbone(backbone_path(task, skew), device)
+    skew, n, seed, M, device, task, bb_seed = payload
+    model, blob = load_backbone(backbone_path(task, skew, bb_seed), device)
     env = TASKS[task]["env"](seed=seed, history=blob.get("history", 1))
     rng = np.random.default_rng(seed)
     counts = np.zeros(TASKS[task]["n_modes"])
@@ -437,11 +471,11 @@ def _ref_chunk(payload):
 
 def _cell(payload):
     """Worker: one (arm, seed) cell of the sweep."""
-    arm, lam, skew, seed, args, C_ref = payload
-    return run_arm(arm, lam, skew, seed, args, C_ref)
+    arm, lam, skew, seed, args, C_ref, bb_seed = payload
+    return run_arm(arm, lam, skew, seed, args, C_ref, bb_seed)
 
 
-def reference_profile(skew, args) -> np.ndarray:
+def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     """C_ref: the frozen backbone's own mode distribution, measured by rollout.
 
     Estimated from many episodes because C_ref's own sampling error enters
@@ -451,7 +485,7 @@ def reference_profile(skew, args) -> np.ndarray:
     """
     n_w = max(1, args.workers)
     per = max(1, args.ref_episodes // n_w)
-    payloads = [(skew, per, 12345 + i, args.M, args.device, args.task)
+    payloads = [(skew, per, 12345 + i, args.M, args.device, args.task, bb_seed)
                 for i in range(n_w)]
     with ProcessPoolExecutor(max_workers=n_w) as ex:
         counts24 = sum(ex.map(_ref_chunk, payloads))
@@ -470,6 +504,9 @@ def main() -> int:
                     help="dsrl | mop | mi | bmd (learned skills + variational MI)")
     ap.add_argument("--lam", type=float, default=1.0)
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--backbone-seeds", nargs="*", type=int, default=None,
+                    help="train/evaluate across several backbones per skew, so the\n"
+                         "skew level is not confounded with one BC draw")
     ap.add_argument("--seed-offset", type=int, default=0,
                     help="first seed index; use a fresh block for an "
                          "independent replication rather than a re-run")
@@ -498,35 +535,35 @@ def main() -> int:
     args = ap.parse_args()
 
     rows = []
+    bb_seeds = args.backbone_seeds if args.backbone_seeds else [None]
     for skew in args.skews:
-        C_ref = reference_profile(skew, args)
-        nz = C_ref > 0
-        print(f"=== skew {skew}: C_ref over {int(nz.sum())} modes, "
-              f"H={-(C_ref[nz] * np.log(C_ref[nz])).sum():.3f} nats ===", flush=True)
-        # Interleave by seed, not by arm. Ordering arm-major means a sweep that
-        # runs out of wall clock finishes every dsrl seed, some mop, and no mi at
-        # all -- which is not a partial result, it is no comparison. Seed-major
-        # ordering makes any prefix a balanced subset of all three arms.
-        cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed, args, C_ref)
-                 for seed in range(args.seed_offset,
-                                   args.seed_offset + args.seeds)
-                 for arm in args.arms]
-        # One process per cell: the bottleneck is serial MuJoCo stepping (~38
-        # env-steps/s per core), so cells scale almost linearly across cores.
-        with ProcessPoolExecutor(max_workers=args.workers) as ex:
-            for res in ex.map(_cell, cells):
-                rows.append(res)
-                # Persist after every cell. A sweep that only saved at the end
-                # lost 20 hours of finished work to a wall-clock limit; the cost
-                # of rewriting a small JSON each time is nothing beside that.
-                args.out.parent.mkdir(parents=True, exist_ok=True)
-                args.out.write_text(json.dumps(rows, indent=2))
-                print(f"  {res['arm']:5s} seed{res['seed']}  SR={res['SR']:.3f} "
-                      f"H={res['H_modes']:.3f} mc={res['mc_at_08']:2d} "
-                      f"tv_ref={res['tv_to_ref']:.3f} tv_unif={res['tv_to_uniform']:.3f} "
-                      f"|coef|max={res['coef_absmax']:.1f}"
-                      f"{'  COLLAPSED' if res['collapsed'] else ''}",
-                      flush=True)
+        for bb in bb_seeds:
+            # Each backbone gets its OWN measured reference: C_ref is a property
+            # of that checkpoint, not of the skew label it was trained under.
+            C_ref = reference_profile(skew, args, bb)
+            nz = C_ref > 0
+            K = args.mode_groups
+            print(f"=== skew {skew} backbone {bb}: C_ref over {int(nz.sum())} modes, "
+                  f"H={-(C_ref[nz] * np.log(C_ref[nz])).sum():.3f} nats, "
+                  f"KL||u={float(np.sum(C_ref[nz] * np.log(C_ref[nz] * K))):.3f} ===",
+                  flush=True)
+            cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed, args, C_ref, bb)
+                     for seed in range(args.seed_offset,
+                                       args.seed_offset + args.seeds)
+                     for arm in args.arms]
+            with ProcessPoolExecutor(max_workers=args.workers) as ex:
+                for res in ex.map(_cell, cells):
+                    res["C_ref_kl_to_uniform"] = float(
+                        np.sum(C_ref[nz] * np.log(C_ref[nz] * K)))
+                    rows.append(res)
+                    args.out.parent.mkdir(parents=True, exist_ok=True)
+                    args.out.write_text(json.dumps(rows, indent=2))
+                    print(f"  bb{bb} {res['arm']:5s} seed{res['seed']}  SR={res['SR']:.3f} "
+                          f"H={res['H_modes']:.3f} mc={res['mc_at_08']:2d} "
+                          f"tv_ref={res['tv_to_ref']:.3f} tv_unif={res['tv_to_uniform']:.3f} "
+                          f"|coef|max={res['coef_absmax']:.1f} inert={res.get('frac_inert',0):.2f}"
+                          f"{'  COLLAPSED' if res['collapsed'] else ''}",
+                          flush=True)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(rows, indent=2))
     print(f"\nwrote {args.out}")
