@@ -2,7 +2,8 @@
 """Roll out a trained Avoiding backbone and measure its behavioural-mode spread.
 
 This is the gate the whole D3IL move exists to pass. On LIBERO the frozen
-backbone put every sample in one cluster -- C_ref entropy 0.000 across 45 runs --
+backbone's mode term was identically zero in all 10 instrumented libero_goal
+runs (~131k logged updates) --
 so KL(C_phi || C_ref) had nothing to preserve and stayed exactly 0 for ~18k
 updates per run. Before spending any GPU time on the head-to-head, confirm this
 backbone actually spreads mass over several of the 24 routes, and that a skewed

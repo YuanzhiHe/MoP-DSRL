@@ -2,7 +2,8 @@
 
 Why this exists. LIBERO cannot test the mode-preservation claim: every task has a
 single solution, so the frozen backbone's reference histogram is a point mass
-(C_ref entropy measured at 0.000 across 45 runs) and there is nothing to
+(the mode term was identically zero in all 10 instrumented libero_goal runs)
+and there is nothing to
 preserve. D3IL is built for the opposite purpose -- each task admits many
 distinct solutions, and crucially the environment computes the behavioural mode
 from geometry, so mode labels are GROUND TRUTH rather than a K-means proxy over

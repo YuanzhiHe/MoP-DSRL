@@ -15,7 +15,8 @@ applied to that target.
 The point of the backbone is to be MULTIMODAL: several routes must retain
 probability mass, otherwise the reference histogram C_ref collapses to a point
 mass and the mode regularizer is inert (exactly what happened on LIBERO, where
-C_ref entropy was 0.000 in 45 runs). Training therefore reports the induced mode
+the mode term was identically zero in all 10 instrumented libero_goal runs).
+Training therefore reports the induced mode
 distribution, and --weights lets the demonstration distribution be skewed, which
 the toy showed is required for KL-to-reference and an entropy/MI objective to
 differ at all.

@@ -106,6 +106,52 @@ class NoisePolicy(nn.Module):
         return torch.distributions.Normal(self.mu(self.body(o)), self.log_std.exp())
 
 
+class SkillPolicy(nn.Module):
+    """mu_phi(z | o, k): the noise policy conditioned on a latent skill index.
+
+    BMD's intrinsic reward is a variational lower bound on I(skill; behaviour),
+    which needs a skill variable to condition on and a discriminator to recover
+    it. Our ``mi`` arm maximizes the entropy of the GROUND-TRUTH mode histogram
+    instead, which is the faithful one-state reduction of that bound but not the
+    published mechanism -- it is handed labels the real method has to discover.
+    This class plus ``SkillDiscriminator`` implement the mechanism itself, so the
+    comparison is against BMD rather than against an idealisation of it.
+    """
+
+    def __init__(self, obs_dim: int, z_dim: int, n_skills: int, hidden: int = 128):
+        super().__init__()
+        self.n_skills = n_skills
+        self.body = nn.Sequential(
+            nn.Linear(obs_dim + n_skills, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+        )
+        self.mu = nn.Linear(hidden, z_dim)
+        self.log_std = nn.Parameter(torch.zeros(z_dim))
+        nn.init.zeros_(self.mu.weight)
+        nn.init.zeros_(self.mu.bias)          # start at N(0, I) == the backbone
+
+    def dist(self, o: torch.Tensor, k: int) -> torch.distributions.Normal:
+        oh = torch.zeros(o.shape[0], self.n_skills, device=o.device)
+        oh[:, k] = 1.0
+        h = self.body(torch.cat([o, oh], dim=-1))
+        return torch.distributions.Normal(self.mu(h), self.log_std.exp())
+
+
+class SkillDiscriminator(nn.Module):
+    """q_psi(k | s): recovers which skill produced a trajectory, from its end state."""
+
+    def __init__(self, obs_dim: int, n_skills: int, hidden: int = 128):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(hidden, n_skills),
+        )
+
+    def forward(self, s: torch.Tensor) -> torch.Tensor:
+        return self.net(s)
+
+
 @torch.no_grad()
 def decode(model, blob, obs_n: torch.Tensor, z: torch.Tensor, M: int) -> np.ndarray:
     """Frozen backbone: integrate the rectified flow from z to an action."""
@@ -132,7 +178,106 @@ def rollout(env, policy, model, blob, rewarded, device, M, greedy=False):
     return logps, float(earned), info["mode_id"], bool(info["success"])
 
 
+def run_bmd(lam, skew, seed, args, C_ref):
+    """BMD-style arm: learned skills plus a variational mutual-information bound.
+
+    A skill k ~ Uniform{0..K-1} is drawn per episode and the policy conditions on
+    it. A discriminator q_psi(k | s_T) is trained to recover k from the final
+    observation, and the intrinsic reward is the standard variational bound
+        log q_psi(k | s_T) - log p(k) = log q_psi(k | s_T) + log K,
+    which is maximized when distinct skills end in distinguishable states. The
+    modes are therefore DISCOVERED, never supplied -- the ground-truth labels are
+    used only to score the result, exactly as for the other arms.
+    """
+    device = args.device
+    model, blob = load_backbone(backbone_path(args.task, skew), device)
+    torch.manual_seed(seed)
+    rng = np.random.default_rng(seed)
+    n_all = TASKS[args.task]["n_modes"]
+    rewarded = set(rng.choice(n_all, size=min(args.n_rewarded, n_all),
+                              replace=False).tolist())
+    env = TASKS[args.task]["env"](seed=seed, history=blob.get("history", 1))
+    K = args.mode_groups
+
+    policy = SkillPolicy(blob["obs_dim"], blob["act_dim"], K).to(device)
+    disc = SkillDiscriminator(blob["obs_dim"], K).to(device)
+    opt = torch.optim.Adam(policy.parameters(), lr=args.lr)
+    opt_d = torch.optim.Adam(disc.parameters(), lr=1e-3)
+
+    def episode(k: int, greedy: bool = False):
+        obs = env.reset()
+        logps, done = [], False
+        while not done:
+            o = torch.tensor((obs - blob["obs_mean"]) / blob["obs_std"],
+                             dtype=torch.float32, device=device)[None]
+            d = policy.dist(o, k)
+            z = d.mean if greedy else d.rsample()
+            logps.append(d.log_prob(z.detach()).sum())
+            a = decode(model, blob, o, z.detach(), args.M)[0]
+            obs, _, done, info = env.step(a)
+        last = torch.tensor((obs - blob["obs_mean"]) / blob["obs_std"],
+                            dtype=torch.float32, device=device)
+        earned = bool(info["success"]) and (info["mode_id"] in rewarded)
+        return logps, float(earned), last, info["mode_id"], bool(info["success"])
+
+    for _ in range(args.iters):
+        lps, rs, lasts, ks = [], [], [], []
+        for _ in range(args.episodes_per_iter):
+            k = int(rng.integers(K))
+            lp, r, last, _, _ = episode(k)
+            lps.append(torch.stack(lp).sum()); rs.append(r)
+            lasts.append(last); ks.append(k)
+        S = torch.stack(lasts)
+        kt = torch.tensor(ks, device=device)
+
+        # discriminator step: recover the skill from where the episode ended
+        logits = disc(S)
+        loss_d = nn.functional.cross_entropy(logits, kt)
+        opt_d.zero_grad(set_to_none=True); loss_d.backward(); opt_d.step()
+
+        # intrinsic reward = the variational bound, held fixed for the policy step
+        with torch.no_grad():
+            logq = nn.functional.log_softmax(disc(S), dim=-1)
+            r_int = logq[torch.arange(len(ks), device=device), kt] + np.log(K)
+        r = torch.tensor(rs, dtype=torch.float32, device=device)
+        adv = r - r.mean()
+        adv_sd = adv.std()
+        adv_n = adv / adv_sd if torch.isfinite(adv_sd) and adv_sd > 1e-6 else adv
+        ri = r_int - r_int.mean()
+        ri_sd = ri.std()
+        ri_n = ri / ri_sd if torch.isfinite(ri_sd) and ri_sd > 1e-6 else ri
+        shaped = adv_n + lam * ri_n
+        loss = -(shaped.detach() * torch.stack(lps)).mean()
+        opt.zero_grad(set_to_none=True); loss.backward(); opt.step()
+
+    modes, succ = [], []
+    for i in range(args.eval_episodes):
+        _, _, _, m, sc = episode(int(i % K))
+        modes.append(m); succ.append(int(sc))
+    modes = np.asarray([coarsen(m, K) for m in modes])
+    valid = modes >= 0
+    hist = np.bincount(modes[valid], minlength=K).astype(float) if valid.any() else np.zeros(K)
+    p = hist / max(hist.sum(), 1)
+    nz = p > 0
+    ref_np = np.asarray(C_ref)
+    return dict(
+        task=args.task, arm="bmd", lam=lam, skew=skew, seed=seed,
+        SR=float(np.mean(succ)),
+        rewarded_SR=float(np.mean([m in rewarded for m in modes[valid]])) if valid.any() else 0.0,
+        H_modes=float(-(p[nz] * np.log(p[nz])).sum()) if nz.any() else 0.0,
+        mc_at_08=int((p >= 0.8 / K).sum()),
+        n_modes=int(nz.sum()),
+        tv_to_ref=float(0.5 * np.abs(p - ref_np).sum()),
+        tv_to_uniform=float(0.5 * np.abs(p - 1.0 / K).sum()),
+        coef_absmax=0.0,
+        collapsed=bool(int(nz.sum()) <= 1),
+        C_phi=p.tolist(), C_ref=ref_np.tolist(),
+    )
+
+
 def run_arm(arm, lam, skew, seed, args, C_ref):
+    if arm == "bmd":
+        return run_bmd(lam, skew, seed, args, C_ref)
     device = args.device
     model, blob = load_backbone(backbone_path(args.task, skew), device)
     torch.manual_seed(seed)
@@ -321,7 +466,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", default="avoiding", choices=sorted(TASKS))
     ap.add_argument("--skews", nargs="+", default=["0.00", "0.05", "0.15", "0.30", "0.60"])
-    ap.add_argument("--arms", nargs="+", default=["dsrl", "mop", "mi"])
+    ap.add_argument("--arms", nargs="+", default=["dsrl", "mop", "mi"],
+                    help="dsrl | mop | mi | bmd (learned skills + variational MI)")
     ap.add_argument("--lam", type=float, default=1.0)
     ap.add_argument("--seeds", type=int, default=3)
     ap.add_argument("--seed-offset", type=int, default=0,

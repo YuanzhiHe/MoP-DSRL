@@ -3,7 +3,8 @@
 
 Rationale. On LIBERO the mode-preservation claim is untestable: every task has a
 single solution, so the frozen backbone's reference mode histogram is a point
-mass (measured C_ref entropy = 0.000 across 45 runs) and there is nothing to
+mass (the mode term was identically zero in all 10 instrumented libero_goal
+runs, ~131k logged updates) and there is nothing to
 collapse. BMD (ICML 2026) shows the effect appears only where the task admits
 several genuine solutions -- DSRL keeps 2/2 modes on a 2-mode reach but 1/24 on
 Kitchen. This script reproduces that regime in the smallest possible setting so
