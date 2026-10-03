@@ -24,7 +24,11 @@ from pathlib import Path
 import numpy as np
 from scipy import stats
 
-ARMS = ["dsrl", "mop", "mi"]
+# bmd is the published mechanism (learned skills + a variational MI bound); mi is
+# its idealised one-state reduction, handed the ground-truth labels bmd has to
+# discover. Reporting both bounds what the objective can do against what the
+# method does.
+ARMS = ["dsrl", "mop", "mi", "bmd"]
 METRICS = ["SR", "H_modes", "mc_at_08", "tv_to_ref", "tv_to_uniform"]
 
 
@@ -73,7 +77,8 @@ def main() -> int:
             cells = []
             for a in ARMS:
                 v = cell(s, a, metric)
-                cells.append(f"{v.mean():6.3f}+-{v.std(ddof=1) / np.sqrt(len(v)):.3f}")
+                cells.append(f"{v.mean():6.3f}+-{v.std(ddof=1) / np.sqrt(len(v)):.3f}"
+                             if len(v) > 1 else "        --    ")
             print(f"  {s:>6}  " + "  ".join(f"{c:>14}" for c in cells))
 
     print("\n=== mop vs mi on tv_to_ref (Welch t-test) ===")
@@ -168,6 +173,24 @@ def main() -> int:
                   f"diff={a.mean() - b.mean():+.3f} d={d:+.2f} p={p_two:.3f} -> "
                   f"{'OK, arms coincide as the identity requires' if p_two > 0.05 else 'WARNING: arms differ where they must not'}")
 
+    for other in ("bmd",):
+        pairs = [(s_, cell(s_, "mop", "tv_to_uniform") - cell(s_, "mop", "tv_to_ref"),
+                  cell(s_, other, "tv_to_uniform") - cell(s_, other, "tv_to_ref"))
+                 for s_ in skews]
+        pairs = [(s_, a, b) for s_, a, b in pairs if len(a) > 1 and len(b) > 1]
+        if not pairs:
+            continue
+        print(f"\n=== mop vs {other} on the fidelity gap (Welch) ===")
+        print(f"  {'skew':>6}  {'mop':>12}  {other:>12}  {'diff':>8}  {'t':>7}  {'p':>7}   effect")
+        for s_, a, b in pairs:
+            t, p_ = stats.ttest_ind(a, b, equal_var=False)
+            pooled = np.sqrt((a.var(ddof=1) + b.var(ddof=1)) / 2)
+            d = (a.mean() - b.mean()) / pooled if pooled > 0 else float("nan")
+            print(f"  {s_:>6}  {a.mean():+6.3f}+-{a.std(ddof=1)/np.sqrt(len(a)):.3f}  "
+                  f"{b.mean():+6.3f}+-{b.std(ddof=1)/np.sqrt(len(b)):.3f}  "
+                  f"{a.mean()-b.mean():+8.3f}  {t:7.2f}  {p_:7.4f}   d={d:+.2f}  "
+                  f"n={len(a)}/{len(b)}")
+
     print("\n=== fidelity gap: tv_to_uniform - tv_to_ref ===")
     print("  positive = the policy sits nearer the backbone's profile than uniform")
     print(f"  {'skew':>6}  " + "  ".join(f"{a:>14}" for a in ARMS))
@@ -175,7 +198,8 @@ def main() -> int:
         cells = []
         for a in ARMS:
             g = cell(s, a, "tv_to_uniform") - cell(s, a, "tv_to_ref")
-            cells.append(f"{g.mean():6.3f}+-{g.std(ddof=1) / np.sqrt(len(g)):.3f}")
+            cells.append(f"{g.mean():6.3f}+-{g.std(ddof=1) / np.sqrt(len(g)):.3f}"
+                         if len(g) > 1 else "        --    ")
         print(f"  {s:>6}  " + "  ".join(f"{c:>14}" for c in cells))
     return 0
 
