@@ -271,6 +271,7 @@ def run_bmd(lam, skew, seed, args, C_ref, bb_seed=None):
     hist = np.bincount(modes[valid], minlength=K).astype(float) if valid.any() else np.zeros(K)
     p = hist / max(hist.sum(), 1)
     nz = p > 0
+    ref_np = np.asarray(C_ref)
     return dict(
         task=args.task, arm="bmd", lam=lam, skew=skew, seed=seed,
         bb_seed=bb_seed,
