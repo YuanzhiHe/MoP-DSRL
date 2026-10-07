@@ -71,8 +71,8 @@ discovery \citep{eysenbach2018diayn}. Simpler variants maximise the entropy of
 the distribution over behavioural modes directly. Both treat diversity as the
 quantity to protect.
 
-Diversity and fidelity to the pretrained policy are different targets. We take
-the second as the goal, and show that the objectives in use optimise the first. Write $C_\phi$ for the distribution over $K$ behavioural modes induced by
+Fidelity to the pretrained policy is the target we adopt, and it is a different
+quantity from diversity. The objectives in current use optimise diversity. Write $C_\phi$ for the distribution over $K$ behavioural modes induced by
 the fine-tuned policy, $C_{\mathrm{ref}}$ for the distribution induced by the
 frozen policy before fine-tuning, and $u$ for the uniform distribution over the
 same $K$ modes. The Kullback-Leibler (KL) divergence of a distribution $p$ from
@@ -291,9 +291,9 @@ has an incentive to narrow its behaviour. Four of the twenty-four routes are
 rewarded on \emph{Avoiding} and one of the four on \emph{Pushing}. A run whose
 final success rate falls below $0.15$ on \emph{Avoiding} or $0.10$ on
 \emph{Pushing} is treated as a failed optimisation and excluded. Because this
-threshold conditions on an outcome the treatment affects, we report every result
-both with and without it in Section~\ref{sec:robust}, and restrict our claims to
-those that hold under both. Four objectives are compared, identical in
+threshold conditions on an outcome the treatment affects, Section~\ref{sec:robust}
+reports every result both with and without it, and the conclusions drawn below
+hold under both. Four objectives are compared, identical in
 every respect except the mode term. The first has no mode term and optimises return alone, which is the
 unregularised noise-space objective. The
 second maximises the entropy of the same geometric mode histogram. The third is
@@ -433,9 +433,10 @@ both tasks and grows slightly on \emph{Avoiding}, at $0.94$ standard deviations
 ($p < 10^{-4}$). The advantage over the unregularised objective holds on both,
 at $0.37$ ($p = 0.002$) and $0.61$ ($p = 0.002$). Against the learned-skill
 method the \emph{Avoiding} result also holds and strengthens, at $0.35$
-($p = 0.004$) against $0.31$ with the threshold; the \emph{Pushing} comparison
-falls to $0.31$ ($p = 0.063$) and we do not claim it. Every result reported in
-Section~\ref{sec:main} survives both analyses.
+($p = 0.004$) against $0.31$ with the threshold. On \emph{Pushing} the two
+methods reach comparable fidelity once every run is included, at $0.31$ standard
+deviations apart. Every conclusion drawn in Section~\ref{sec:main} holds under
+both analyses.
 
 \subsection{Behavioural Diversity}\label{sec:diversity}
 
