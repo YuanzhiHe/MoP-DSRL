@@ -7,7 +7,7 @@
 
 \begin{document}
 
-\title{Reference Anchoring for Noise-Space Policy Fine-Tuning}
+\title{Reference Matching for Noise-Space Policy Fine-Tuning}
 
 \author[1]{\fnm{} \sur{}}
 \affil[1]{\orgdiv{}, \orgname{}, \city{}, \country{}}
@@ -20,21 +20,20 @@ this behavioural repertoire regularise the distribution over behavioural modes,
 and almost all of them maximise its entropy or a mutual information bound. We
 show that this choice makes an unstated assumption. For a reference distribution
 that is uniform over $K$ modes, the Kullback-Leibler divergence to that reference
-equals $\ln K$ minus the entropy, so anchoring a policy to its pretrained
+equals $\ln K$ minus the entropy, so matching a policy to its pretrained
 behaviour and maximising behavioural entropy are the same objective, and no
 benchmark whose pretrained policy is uniform can tell them apart. Behaviour
 cloning does not produce uniform policies, which is why the distinction matters
-in practice and why it has gone unmeasured. We introduce a reference anchor that
-penalises total variation between the fine-tuned policy's mode histogram and the
+in practice and why it has gone unmeasured. We introduce a reference-matching penalty on the total variation between the fine-tuned policy's mode histogram and the
 frozen policy's own, has no learned components, and adds one scalar weight to
 the objective. Across two manipulation tasks from a diverse-behaviour benchmark,
 twenty independently trained backbones and more than one thousand runs, the
-anchor holds the fine-tuned policy closer to its pretrained behaviour than
+matching holds the fine-tuned policy closer to its pretrained behaviour than
 entropy maximisation at every level of reference skew we measured, with a pooled
 effect size of 0.91 and 1.14 standard deviations on the two tasks, It reaches this
 fidelity without any learned component, where a mutual information method of
 comparable fidelity requires both a discriminator and a latent skill space, and
-it costs no task success.
+task success is unchanged.
 }
 
 \keywords{reinforcement learning, generative policies, behavioural diversity,
@@ -103,16 +102,15 @@ First, we identify the reference distribution, not diversity, as the quantity a
 mode-preserving regulariser should target, and give the condition
 (Equation~\ref{eq:identity}) under which the two are indistinguishable.
 
-Second, we introduce a reference anchor that penalises the total variation
-distance between $C_\phi$ and $C_{\mathrm{ref}}$. The anchor has no learned
-components, introduces a single scalar weight, and its per-episode coefficient is
+Second, we introduce a penalty on the total variation distance between $C_\phi$
+and $C_{\mathrm{ref}}$. The penalty has no learned components, introduces a single scalar weight, and its per-episode coefficient is
 bounded by one half regardless of how narrow the pretrained policy's support is.
 
 Third, we evaluate on two manipulation tasks from the Diverse Behaviours
 Benchmark for Imitation Learning (D3IL) \citep{jia2024d3il} using behavioural
 modes defined by task geometry rather than by clustering. Over twenty
 independently trained backbones and more than one thousand fine-tuning runs, the
-anchor holds the policy closer to its pretrained behaviour than entropy
+matching holds the policy closer to its pretrained behaviour than entropy
 maximisation at every measured level of reference skew, and matches a
 learned-skill mutual information method at a fraction of its mechanism.
 
@@ -150,7 +148,7 @@ bound is used to learn skills without any task reward. Both discover their own
 notion of a mode. A lighter alternative, and the one closest to our setting,
 maximises the entropy of a histogram over externally defined modes directly. Our
 analysis applies to this family as a whole, since Equation~\ref{eq:identity}
-relates any entropy-maximising objective to anchoring against a uniform
+relates any entropy-maximising objective to matching against a uniform
 reference.
 
 \paragraph{Benchmarks that admit several solutions.}
@@ -213,13 +211,13 @@ on a near-uniform pretrained policy will find them equivalent whatever their
 behaviour elsewhere.
 
 Away from that point the objectives have different optima. Entropy
-maximisation moves $C_\phi$ toward $u$ from wherever it starts; anchoring moves it
+maximisation moves $C_\phi$ toward $u$ from wherever it starts; matching moves it
 toward $C_{\mathrm{ref}}$. When the pretrained policy favours some behaviours over
 others, which Section~\ref{sec:results} shows is the normal case, these are
 different destinations, and only the second recovers the behaviour the
 demonstrations produced.
 
-\subsection{The Reference Anchor}\label{sec:anchor}
+\subsection{The Matching Penalty}\label{sec:matching}
 
 We add to the return a penalty on the distance between the policy's mode
 distribution and the reference,
@@ -303,7 +301,7 @@ discriminator trained to recover the skill index from the final observation,
 using the variational bound as an intrinsic reward. Its skill cardinality is set
 to the number of mode groups, and at evaluation its skills are sampled uniformly,
 which is the deployment the method is designed for. The fourth is the reference
-anchor of Equation~\ref{eq:objective}.
+matching of Equation~\ref{eq:objective}.
 
 \subsection{Fidelity Measure}
 
@@ -323,10 +321,10 @@ $C_{\mathrm{ref}}$ exactly scores $F = 1$.
 \subsection{Main Result}\label{sec:main}
 
 Figure~\ref{fig:main} reports $F$ against measured reference skew for both tasks.
-The reference anchor attains the highest fidelity at every one of the eight
+Reference matching attains the highest fidelity at every one of the eight
 levels tested, on two tasks whose behavioural modes are defined by different
 physical quantities. Its margin over entropy maximisation widens as the
-pretrained policy departs further from uniform. Pooled over levels, the anchor
+pretrained policy departs further from uniform. Pooled over levels, reference matching
 exceeds entropy maximisation by $0.91$ standard deviations on \emph{Avoiding}
 ($p < 10^{-4}$) and by $1.14$ on \emph{Pushing} ($p < 10^{-4}$). It exceeds DSRL
 by $0.38$ ($p = 0.002$) and $0.71$ ($p = 0.001$), and BMD by $0.31$
@@ -335,35 +333,35 @@ by $0.38$ ($p = 0.002$) and $0.71$ ($p = 0.001$), and BMD by $0.31$
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{../figures/fig1_main.png}
-\caption{Reference anchoring and the condition that makes it necessary.
+\caption{Reference matching and the condition that makes it necessary.
 (a) The generative policy is frozen and only the noise policy is trained; a
 rollout is labelled with its behavioural mode from geometry, and the histogram of
 those labels is compared against the frozen policy's own. The four objectives
 differ only in the mode term. (b) For a uniform reference, the Kullback-Leibler
 divergence from uniform equals $\ln K$ minus the entropy, so the entropy
-objective and the anchoring objective trace the same curve and no experiment at
+objective and matching objective trace the same curve and no experiment at
 that point can separate them. (c, d) Normalised fidelity $F$ of
 Equation~\ref{eq:fidelity} against each backbone's own measured reference skew,
 where higher values indicate a fine-tuned policy closer to the behaviour it was
 cloned from. Points are means over 6 to 30 runs after the exclusion of
 Section~\ref{sec:setup}, and bars are standard errors;
 \emph{Avoiding} uses 20 independently trained backbones across four weightings
-and \emph{Pushing} uses four. The reference anchor is highest at every level on
+and \emph{Pushing} uses four. Reference matching is highest at every level on
 both tasks. (e) Effect sizes pooled over levels, with one-sided Welch tests; all
-six comparisons favour the anchor, and the comparison against entropy
+six comparisons favour reference matching, and the comparison against entropy
 maximisation is the largest on both tasks.}
 \label{fig:main}
 \end{figure}
 
 \begin{table}[t]
 \caption{Normalised fidelity $F$ by measured reference skew, mean $\pm$ standard
-error. Higher is closer to the pretrained policy. The reference anchor is highest
+error. Higher is closer to the pretrained policy. Reference matching is highest
 at every level on both tasks.}
 \label{tab:main}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
 Task & $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
-Learned skills & Reference anchor \\
+Learned skills & Reference matching \\
 \midrule
 Avoiding & 0.24 & $0.188 \pm 0.094$ & $0.210 \pm 0.102$ & $0.155 \pm 0.096$ & $\mathbf{0.367 \pm 0.073}$ \\
 Avoiding & 0.33 & $0.425 \pm 0.109$ & $0.270 \pm 0.096$ & $0.517 \pm 0.109$ & $\mathbf{0.621 \pm 0.091}$ \\
@@ -393,7 +391,7 @@ reflect a trade against task performance.}
 \begin{tabular}{@{}llcccc@{}}
 \toprule
 Task & $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
-Learned skills & Reference anchor \\
+Learned skills & Reference matching \\
 \midrule
 Avoiding & 0.24 & 0.632 & 0.670 & 0.665 & 0.626 \\
 Avoiding & 0.33 & 0.717 & 0.751 & 0.731 & 0.694 \\
@@ -410,7 +408,7 @@ Pushing & 0.53 & 0.304 & 0.274 & 0.288 & 0.353 \\
 
 \subsection{Dependence on Reference Skew}
 
-Equation~\ref{eq:identity} predicts that anchoring and entropy maximisation
+Equation~\ref{eq:identity} predicts that matching and entropy maximisation
 should be indistinguishable at a uniform reference and should diverge as the
 reference becomes skewed. Treating each backbone as the unit of analysis, since
 runs that share a frozen policy are not independent, we regress the gap between
@@ -425,10 +423,10 @@ blue and orange curves.
 The success-rate threshold described in Section~\ref{sec:setup} conditions on an
 outcome that the treatment affects, so we report its effect directly. On
 \emph{Avoiding} it removes $0.0\%$ of the unregularised runs, $0.8\%$ of the
-anchor's, $2.5\%$ of the learned-skill runs and $5.0\%$ of the entropy-maximising
+matching's, $2.5\%$ of the learned-skill runs and $5.0\%$ of the entropy-maximising
 runs; on \emph{Pushing}, $12.5\%$, $20.8\%$, $4.2\%$ and $22.9\%$ respectively.
 
-Without the threshold, the anchor's advantage over entropy maximisation holds on
+Without the threshold, reference matching's advantage over entropy maximisation holds on
 both tasks and grows slightly on \emph{Avoiding}, at $0.94$ standard deviations
 ($p < 10^{-4}$) against $0.91$ with it, and at $1.02$ on \emph{Pushing}
 ($p < 10^{-4}$). The advantage over the unregularised objective holds on both,
@@ -442,10 +440,10 @@ both analyses.
 \subsection{Behavioural Diversity}\label{sec:diversity}
 
 Fidelity to a reference and breadth of behaviour are distinct quantities, and
-the anchor targets the first. Table~\ref{tab:diversity} reports the second for
+reference matching targets the first. Table~\ref{tab:diversity} reports the second for
 completeness, as the number of distinct modes a fine-tuned policy visits and the
 entropy of its mode histogram. Entropy maximisation retains the most behaviour at
-every level, which is what it optimises. The anchor retains more than both the
+every level, which is what it optimises. Reference matching retains more than both the
 unregularised objective and the learned-skill method at three of the four levels,
 so matching the reference distribution leaves breadth intact except where the
 reference is itself at its narrowest.
@@ -454,13 +452,13 @@ reference is itself at its narrowest.
 \caption{Behavioural diversity on \emph{Avoiding}, as the mean number of distinct
 modes visited and the mean entropy of the mode histogram in nats. Entropy
 maximisation is highest throughout, as expected from its objective. The reference
-anchor exceeds both the unregularised objective and the learned-skill method at
+matching exceeds both the unregularised objective and the learned-skill method at
 the first three levels.}
 \label{tab:diversity}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
-Learned skills & Reference anchor \\
+Learned skills & Reference matching \\
 \midrule
 0.24 & 4.80 / 0.948 & 5.81 / 1.440 & 5.40 / 1.099 & 5.80 / 1.458 \\
 0.33 & 4.23 / 0.762 & 5.93 / 1.416 & 4.47 / 0.867 & 5.48 / 1.207 \\
@@ -496,12 +494,12 @@ behaviour, the one that names the thing to be preserved does it best, and the
 margin grows exactly as the quantity being preserved becomes more distinctive.
 Entropy maximisation performs well when the pretrained policy happens to be
 near-uniform, which is the regime Equation~\ref{eq:identity} makes it equivalent
-to anchoring, and falls away from it elsewhere.
+to matching, and falls away from it elsewhere.
 
-That the anchor reaches the fidelity of a learned-skill mutual information
+That reference matching reaches the fidelity of a learned-skill mutual information
 method is worth stating plainly, because the two differ enormously in machinery. BMD maintains a
 latent skill space, conditions the policy on a skill index, and trains a
-discriminator alongside the policy; the anchor maintains a histogram of length
+discriminator alongside the policy; reference matching maintains a histogram of length
 $K$ and a single scalar weight. Reaching the same fidelity without a learned
 component means the fidelity does not require one, and it removes the failure
 modes that a jointly trained discriminator introduces.
@@ -515,7 +513,7 @@ backbones cloned under identical conditions reaches seventy-one percent of the
 variation between conditions. An experiment with one backbone per condition
 therefore measures mostly the backbone.
 
-The bounded coefficient of the total variation anchor is what makes a single
+The bounded coefficient of the total variation matching is what makes a single
 scalar weight sufficient. With the KL form, a mode outside the reference's
 support produces an unbounded penalty, and keeping it usable requires smoothing
 the reference, which introduces a second hyperparameter and shifts the target
@@ -528,18 +526,18 @@ Preserving the behaviour of a pretrained generative policy under noise-space
 reinforcement learning is a question about a reference distribution, not about
 diversity. The two coincide only when the pretrained policy is uniform over its
 behavioural modes, and we show by direct measurement that cloned policies are
-not. We introduce a reference anchor built on total variation distance, carrying one
-scalar weight and no learned components. Across two manipulation tasks, twenty
+not. We introduce a reference-matching penalty built on total variation distance,
+with one scalar weight and no learned components. Across two manipulation tasks, twenty
 independently trained backbones and more than one thousand runs, it holds the
 fine-tuned policy closer to its pretrained behaviour than entropy maximisation at
 every level of reference skew tested. The pooled effect sizes are $0.91$ and
 $1.14$ standard deviations. It reaches the fidelity of a learned-skill mutual information method that
 requires a discriminator and a latent skill space, without any learned component
-of its own, and it costs no task success.
+of its own, and task success is unchanged.
 
 Three directions follow. The first is scale: our frozen policies are compact
 rectified-flow fields trained for two simulated manipulation tasks, and applying
-the anchor to a large vision-language-action model on hardware would test whether
+reference matching to a large vision-language-action model on hardware would test whether
 the same reference estimate remains informative when behaviour is higher
 dimensional. The second is the mode definition: geometric labels make the
 measurement checkable but require a task designer to supply them, and learning a
