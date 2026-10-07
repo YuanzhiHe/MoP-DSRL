@@ -31,9 +31,10 @@ the objective. Across two manipulation tasks from a diverse-behaviour benchmark,
 twenty independently trained backbones and more than one thousand runs, the
 anchor holds the fine-tuned policy closer to its pretrained behaviour than
 entropy maximisation at every level of reference skew we measured, with a pooled
-effect size of 0.91 and 1.14 standard deviations on the two tasks, and it matches
-a learned-skill mutual information method that requires a discriminator and a
-latent skill space while costing no task success.
+effect size of 0.91 and 1.14 standard deviations on the two tasks, It reaches this
+fidelity without any learned component, where a mutual information method of
+comparable fidelity requires both a discriminator and a latent skill space, and
+it costs no task success.
 }
 
 \keywords{reinforcement learning, generative policies, behavioural diversity,
@@ -46,10 +47,11 @@ diffusion models, robot manipulation}
 A generative policy trained by behaviour cloning on human demonstrations often
 represents several ways of doing the same task. A manipulator that must reach
 past an obstacle can pass it on either side; one that must deliver two blocks to
-two targets can choose the order. This repertoire is part of what the
-demonstrations taught, and it is worth keeping. It supports recovery when one
-route is blocked, it makes a policy easier to steer toward a preference at
-deployment, and it is the property the demonstrations were collected to capture.
+two targets can choose the order. Which of those behaviours the policy produces, and how often, is part of what
+the demonstrations taught. That distribution is worth keeping. A policy whose
+behaviour distribution matches the one it was cloned from remains predictable to
+whoever deployed it, and remains a faithful starting point for any later
+adjustment.
 
 Reinforcement learning (RL) can raise the reward of such a policy without
 retraining it. Rather than updating the policy's weights, noise-space
@@ -58,8 +60,8 @@ methods such as Diffusion Steering Reinforcement Learning (DSRL)
 policy over its latent noise input, so the expensive pretrained model is used
 only as a decoder. This keeps fine-tuning cheap and stable. It does not, however,
 keep behaviour fixed. The noise policy is free to concentrate on whichever region
-of the latent space decodes to the highest-reward behaviour, and the repertoire
-the demonstrations encoded can narrow as a result.
+of the latent space decodes to the highest-reward behaviour, and the behaviour
+distribution the demonstrations encoded shifts as a result.
 
 Work that addresses this adds a term rewarding behavioural diversity. Behavioral
 Mode Discovery (BMD) \citep{longhini2026bmd} learns a latent skill variable and
@@ -69,9 +71,8 @@ discovery \citep{eysenbach2018diayn}. Simpler variants maximise the entropy of
 the distribution over behavioural modes directly. Both treat diversity as the
 quantity to protect.
 
-We observe that diversity and fidelity to the pretrained policy are different
-targets, and that the field has been optimising the first while describing the
-second. Write $C_\phi$ for the distribution over $K$ behavioural modes induced by
+Diversity and fidelity to the pretrained policy are different targets. We take
+the second as the goal, and show that the objectives in use optimise the first. Write $C_\phi$ for the distribution over $K$ behavioural modes induced by
 the fine-tuned policy, $C_{\mathrm{ref}}$ for the distribution induced by the
 frozen policy before fine-tuning, and $u$ for the uniform distribution over the
 same $K$ modes. The Kullback-Leibler (KL) divergence of a distribution $p$ from
@@ -86,12 +87,13 @@ pretrained policies are near-uniform cannot separate the two, and a method
 evaluated only on such a benchmark cannot demonstrate that it preserves anything
 in particular.
 
-Pretrained policies are not uniform. We measure twenty policies cloned from
-demonstration sets that are themselves balanced to within $0.003$ nats of uniform
-and find mode distributions ranging from $0.013$ to $1.278$ nats away from it.
-The distinction that Equation~\ref{eq:identity} collapses is therefore live in
-every realistic case, and the objective that respects it is not the one in common
-use.
+Pretrained policies are not uniform. Measuring twenty cloned policies over the
+six route groups used throughout this paper, their mode distributions lie between
+$0.013$ and $1.278$ nats from uniform. Five of those twenty were cloned from an
+unmodified demonstration set, and they alone span $0.013$ to $0.395$ nats, so
+even balanced demonstrations do not produce a balanced policy. The distinction
+that Equation~\ref{eq:identity} collapses is therefore live in realistic cases,
+and the objective that respects it is not the one in common use.
 
 This paper makes that objective concrete and shows what it buys. Our
 contributions are as follows.
@@ -264,7 +266,7 @@ estimate $C_{\mathrm{ref}}$. It introduces no learned components.
 
 \section{Experimental Results}\label{sec:results}
 
-\subsection{Setup}
+\subsection{Setup}\label{sec:setup}
 
 We evaluate on two manipulation tasks from D3IL \citep{jia2024d3il}. In
 \emph{Avoiding}, a manipulator must reach a goal line past three rows of
@@ -285,12 +287,21 @@ own backbone's measured reference skew $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$
 rather than by the weighting that backbone was trained under.
 
 Reward is given for task success on a subset of modes, so that a return maximiser
-has an incentive to narrow its behaviour. Four objectives are compared, identical in
-every respect except the mode term. The first has no mode term and is DSRL. The
+has an incentive to narrow its behaviour. Four of the twenty-four routes are
+rewarded on \emph{Avoiding} and one of the four on \emph{Pushing}. A run whose
+final success rate falls below $0.15$ on \emph{Avoiding} or $0.10$ on
+\emph{Pushing} is treated as a failed optimisation and excluded. Because this
+threshold conditions on an outcome the treatment affects, we report every result
+both with and without it in Section~\ref{sec:robust}, and restrict our claims to
+those that hold under both. Four objectives are compared, identical in
+every respect except the mode term. The first has no mode term and optimises return alone, which is the
+unregularised noise-space objective. The
 second maximises the entropy of the same geometric mode histogram. The third is
 BMD, implemented as a skill-conditioned noise policy together with a
 discriminator trained to recover the skill index from the final observation,
-using the variational bound as an intrinsic reward. The fourth is the reference
+using the variational bound as an intrinsic reward. Its skill cardinality is set
+to the number of mode groups, and at evaluation its skills are sampled uniformly,
+which is the deployment the method is designed for. The fourth is the reference
 anchor of Equation~\ref{eq:objective}.
 
 \subsection{Measuring Fidelity to the Pretrained Policy}
@@ -308,7 +319,7 @@ bounds it by $\pm D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$, so the denominator plac
 every reference on the same scale and $F \in [-1, 1]$. A policy that reproduces
 $C_{\mathrm{ref}}$ exactly scores $F = 1$.
 
-\subsection{Main Result}
+\subsection{Main Result}\label{sec:main}
 
 Figure~\ref{fig:main} reports $F$ against measured reference skew for both tasks.
 The reference anchor attains the highest fidelity at every one of the eight
@@ -333,7 +344,8 @@ objective and the anchoring objective trace the same curve and no experiment at
 that point can separate them. (c, d) Normalised fidelity $F$ of
 Equation~\ref{eq:fidelity} against each backbone's own measured reference skew,
 where higher values indicate a fine-tuned policy closer to the behaviour it was
-cloned from. Points are means over 12 to 30 runs and bars are standard errors;
+cloned from. Points are means over 6 to 30 runs after the exclusion of
+Section~\ref{sec:setup}, and bars are standard errors;
 \emph{Avoiding} uses 20 independently trained backbones across four weightings
 and \emph{Pushing} uses four. The reference anchor is highest at every level on
 both tasks. (e) Effect sizes pooled over levels, with one-sided Welch tests; all
@@ -407,17 +419,73 @@ $p = 0.0002$. The prediction holds quantitatively, and the behaviour it predicts
 is visible in Figure~\ref{fig:main}(c, d) as the widening separation between the
 blue and orange curves.
 
+\subsection{Robustness to the Exclusion Rule}\label{sec:robust}
+
+The success-rate threshold described in Section~\ref{sec:setup} conditions on an
+outcome that the treatment affects, so we report its effect directly. On
+\emph{Avoiding} it removes $0.0\%$ of the unregularised runs, $0.8\%$ of the
+anchor's, $2.5\%$ of the learned-skill runs and $5.0\%$ of the entropy-maximising
+runs; on \emph{Pushing}, $12.5\%$, $20.8\%$, $4.2\%$ and $22.9\%$ respectively.
+
+Without the threshold, the anchor's advantage over entropy maximisation holds on
+both tasks and grows slightly on \emph{Avoiding}, at $0.94$ standard deviations
+($p < 10^{-4}$) against $0.91$ with it, and at $1.02$ on \emph{Pushing}
+($p < 10^{-4}$). The advantage over the unregularised objective holds on both,
+at $0.37$ ($p = 0.002$) and $0.61$ ($p = 0.002$). Against the learned-skill
+method the \emph{Avoiding} result also holds and strengthens, at $0.35$
+($p = 0.004$) against $0.31$ with the threshold; the \emph{Pushing} comparison
+falls to $0.31$ ($p = 0.063$) and we do not claim it. Every result reported in
+Section~\ref{sec:main} survives both analyses.
+
+\subsection{Behavioural Diversity}\label{sec:diversity}
+
+Fidelity to a reference and breadth of behaviour are distinct quantities, and
+the anchor targets the first. Table~\ref{tab:diversity} reports the second for
+completeness, as the number of distinct modes a fine-tuned policy visits and the
+entropy of its mode histogram. Entropy maximisation retains the most behaviour at
+every level, which is what it optimises. The anchor retains more than both the
+unregularised objective and the learned-skill method at three of the four levels,
+so matching the reference distribution does not come at the cost of breadth
+except where the reference is itself at its narrowest.
+
+\begin{table}[t]
+\caption{Behavioural diversity on \emph{Avoiding}, as the mean number of distinct
+modes visited and the mean entropy of the mode histogram in nats. Entropy
+maximisation is highest throughout, as expected from its objective. The reference
+anchor exceeds both the unregularised objective and the learned-skill method at
+the first three levels.}
+\label{tab:diversity}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+$D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
+Learned skills & Reference anchor \\
+\midrule
+0.24 & 4.80 / 0.948 & 5.81 / 1.440 & 5.40 / 1.099 & 5.80 / 1.458 \\
+0.33 & 4.23 / 0.762 & 5.93 / 1.416 & 4.47 / 0.867 & 5.48 / 1.207 \\
+0.46 & 4.53 / 0.663 & 5.77 / 1.347 & 5.21 / 0.927 & 5.37 / 1.071 \\
+0.55 & 4.70 / 0.842 & 4.93 / 1.060 & 4.43 / 0.683 & 4.33 / 0.828 \\
+\botrule
+\end{tabular}
+\end{table}
+
 \subsection{Reference Distributions Are Not Uniform}
 
 The argument above matters only if pretrained policies depart from uniform in
 practice. For the twenty \emph{Avoiding} backbones we measure
-$D_{\mathrm{KL}}(C_{\mathrm{ref}} \,\|\, u)$ by rolling each frozen policy out for
-900 episodes. Values range from $0.013$ to $1.278$ nats. Backbones cloned from
-demonstration sets balanced to within $0.003$ nats of uniform still reach $0.395$
-nats, with the most probable mode group carrying thirty times the mass of the
-least. Behaviour cloning does not transmit a balanced demonstration set into a
-balanced policy, so the regime in which the two objectives coincide is not the
-regime in which policies are actually used.
+$D_{\mathrm{KL}}(C_{\mathrm{ref}} \,\|\, u)$ over the six route groups by rolling
+each frozen policy out for 900 episodes. Values range from $0.013$ to $1.278$
+nats. The five backbones cloned from the unmodified demonstration set span
+$0.013$ to $0.395$ nats on their own, a thirty-fold range produced by nothing but
+the random seed. Behaviour cloning does not transmit a balanced demonstration set
+into a balanced policy, so the regime in which the two objectives coincide is not
+the regime in which policies are used.
+
+Between-backbone variation of this size also constrains how such experiments
+should be read. The spread of $D_{\mathrm{KL}}(C_{\mathrm{ref}} \,\|\, u)$ among
+backbones trained under one weighting reaches seventy-one percent of the spread
+between weightings. A design with one frozen policy per condition therefore
+measures mostly that policy, which is why we train five per weighting and index
+every result by its own measured reference skew.
 
 \section{Discussion}\label{sec:discussion}
 
@@ -428,8 +496,8 @@ Entropy maximisation performs well when the pretrained policy happens to be
 near-uniform, which is the regime Equation~\ref{eq:identity} makes it equivalent
 to anchoring, and falls away from it elsewhere.
 
-That the anchor also matches a learned-skill mutual information method is worth
-stating plainly, because the two differ enormously in machinery. BMD maintains a
+That the anchor reaches the fidelity of a learned-skill mutual information
+method is worth stating plainly, because the two differ enormously in machinery. BMD maintains a
 latent skill space, conditions the policy on a skill index, and trains a
 discriminator alongside the policy; the anchor maintains a histogram of length
 $K$ and a single scalar weight. Reaching the same fidelity without a learned
@@ -463,8 +531,9 @@ scalar weight and no learned components. Across two manipulation tasks, twenty
 independently trained backbones and more than one thousand runs, it holds the
 fine-tuned policy closer to its pretrained behaviour than entropy maximisation at
 every level of reference skew tested. The pooled effect sizes are $0.91$ and
-$1.14$ standard deviations. It matches a learned-skill mutual information method that
-requires a discriminator and a latent skill space, and it costs no task success.
+$1.14$ standard deviations. It reaches the fidelity of a learned-skill mutual information method that
+requires a discriminator and a latent skill space, without any learned component
+of its own, and it costs no task success.
 
 Three directions follow. The first is scale: our frozen policies are compact
 rectified-flow fields trained for two simulated manipulation tasks, and applying
