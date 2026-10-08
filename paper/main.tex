@@ -231,7 +231,8 @@ use the total variation distance
   D_{\mathrm{TV}}(p, q) \;=\; \tfrac{1}{2} \sum_{k=1}^{K} \left| p[k] - q[k] \right| .
 \end{equation}
 
-Total variation is chosen for a property that matters for the estimator below.
+Any divergence may be used for $D$. The property that matters for the estimator
+below is a bounded subgradient, and total variation has one.
 The histogram $C_\phi$ is a statistic of the sampled batch, not a differentiable
 function of $\phi$. Its gradient therefore comes from the score-function
 estimator, which credits each trajectory by the partial derivative of the
@@ -245,12 +246,17 @@ penalty at that trajectory's own mode,
 \end{equation}
 For total variation that coefficient is
 $\tfrac{1}{2}\,\mathrm{sgn}\!\left(C_\phi[k] - C_{\mathrm{ref}}[k]\right)$, whose
-magnitude is one half for every mode. The corresponding coefficient for the KL
-divergence is $\log\!\left(C_\phi[k] / C_{\mathrm{ref}}[k]\right) + 1$, which
-grows without bound as $C_{\mathrm{ref}}[k] \rightarrow 0$. Since a pretrained
-policy need not visit every mode, that case arises whenever the reference has
-narrow support, and the KL form requires a smoothing parameter to remain usable
-where the total variation form does not.
+magnitude is one half for every mode. The Jensen-Shannon divergence gives
+$\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right) - \tfrac{1}{2}$ with
+$\bar{C} = (C_\phi + C_{\mathrm{ref}})/2$, bounded by $\tfrac{1}{2}\log 2$ in the
+direction that matters, since $\bar{C}[k] \geq C_\phi[k]/2$. The corresponding
+coefficient for the KL divergence is
+$\log\!\left(C_\phi[k] / C_{\mathrm{ref}}[k]\right) + 1$, which grows without
+bound as $C_{\mathrm{ref}}[k] \rightarrow 0$. A pretrained policy need not visit
+every mode, so that case arises whenever the reference has narrow support, and
+the KL form requires a smoothing parameter to remain usable where either bounded
+form does not. We report results for both bounded choices in
+Section~\ref{sec:divergence}.
 
 The mode distribution is estimated as an exponential moving average over
 iterations rather than from the current batch alone, so that every mode retains a
@@ -467,6 +473,22 @@ Learned skills & Reference matching \\
 \botrule
 \end{tabular}
 \end{table}
+
+\subsection{Choice of Divergence}\label{sec:divergence}
+
+Tables~\ref{tab:main} to~\ref{tab:diversity} use total variation. Repeating the
+whole sweep with the Jensen-Shannon form, which is bounded by the same argument,
+leaves every conclusion in place. On \emph{Avoiding} the Jensen-Shannon penalty
+reaches a fidelity of $0.748$ against total variation's $0.634$, and its margins
+over the three baselines widen to $1.21$, $0.64$ and $0.58$ standard deviations,
+each with $p < 10^{-4}$. On \emph{Pushing} the two forms are statistically
+indistinguishable, at $0.688$ and $0.566$ with $p = 0.15$, and the margins over
+entropy maximisation and the unregularised objective remain at $0.78$
+($p < 10^{-3}$) and $0.41$ ($p = 0.03$).
+
+Both bounded forms therefore support the same conclusion, and the method does not
+depend on which is used. The unbounded KL form is the one that requires a
+smoothing parameter, which is the distinction Section~\ref{sec:matching} draws.
 
 \subsection{Skew of Cloned Reference Distributions}
 
