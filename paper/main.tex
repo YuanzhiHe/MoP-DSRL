@@ -591,6 +591,49 @@ Learned skills & Reference matching \\
 \end{tabular}
 \end{table}
 
+\subsection{Endpoints the Objectives Do Not Optimise}\label{sec:indep}
+
+Reference matching descends the distance that Table~\ref{tab:main} reports, so
+that table scores it on its own objective. The stored histograms allow other
+distances to be computed afterwards, and none of the four objectives descends any
+of the three in Table~\ref{tab:indep}. The ordering is unchanged under all
+three on both tasks, and every one of the eighteen comparisons favours reference
+matching at $p < 0.03$.
+
+\begin{table}[t]
+\caption{Distances to the pretrained behaviour distribution that no objective
+optimises, as means over the runs of Table~\ref{tab:main}. Lower is closer. Largest error is
+$\max_k |C_\phi[k] - C_{\mathrm{ref}}[k]|$, and the column headings abbreviate the
+four objectives named in Table~\ref{tab:main}.}
+\label{tab:indep}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
+\toprule
+Task & Distance & No mode & Entropy & Skills & Matching \\
+\midrule
+\emph{Avoiding} & Chi-square & 4.764 & 10.251 & 2.996 & $\mathbf{0.439}$ \\
+\emph{Avoiding} & Largest error & 0.348 & 0.267 & 0.292 & $\mathbf{0.151}$ \\
+\emph{Avoiding} & Hellinger & 0.373 & 0.288 & 0.319 & $\mathbf{0.185}$ \\
+\midrule
+\emph{Pushing} & Chi-square & 0.736 & 0.818 & 0.394 & $\mathbf{0.187}$ \\
+\emph{Pushing} & Largest error & 0.238 & 0.202 & 0.169 & $\mathbf{0.113}$ \\
+\emph{Pushing} & Hellinger & 0.220 & 0.201 & 0.166 & $\mathbf{0.125}$ \\
+\botrule
+\end{tabular*}
+\end{table}
+
+\subsection{Resolution of the Mode Partition}\label{sec:kres}
+
+\emph{Avoiding}'s twenty-four routes are grouped into six throughout, because a
+batch of sixteen episodes cannot estimate a twenty-four bin histogram. Repeating
+the two middle levels at the full resolution leaves the ordering intact.
+Reference matching reaches $0.312$ and $0.434$ against entropy maximisation's
+$0.556$ and $0.497$ and the unregularised objective's $0.855$ and $0.763$,
+pooling to margins of $0.66$ ($p = 0.003$) and $1.96$ ($p < 10^{-5}$) standard
+deviations. Every distance roughly doubles at the finer resolution, which follows
+from spreading the same mass over four times as many bins, and the comparison
+between objectives is unaffected.
+
 \subsection{Choice of Divergence}\label{sec:divergence}
 
 Table~\ref{tab:divergence} compares four divergences on the most skewed

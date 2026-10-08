@@ -262,9 +262,35 @@ def run_bmd(lam, skew, seed, args, C_ref, bb_seed=None):
         loss = -(shaped.detach() * torch.stack(lps)).mean()
         opt.zero_grad(set_to_none=True); loss.backward(); opt.step()
 
+    # Skill prior at evaluation. Cycling skills uniformly forces the mode
+    # histogram toward uniform by construction, which penalises this arm on a
+    # metric that measures distance to a non-uniform reference. The prior is a
+    # free choice at deployment, so it is fitted: a held-out pass estimates which
+    # mode each skill produces, and the evaluation then samples skills in the
+    # proportions that reproduce C_ref. Setting --bmd-prior uniform restores the
+    # unfitted protocol.
+    if args.bmd_prior == "fitted":
+        n_cal = max(K * 8, 40)
+        hits = np.zeros((K, K))          # skill x mode
+        for i in range(n_cal):
+            k = int(i % K)
+            _, _, _, m, _ = episode(k)
+            mg = coarsen(m, K)
+            if mg >= 0:
+                hits[k, mg] += 1
+        row = hits.sum(1, keepdims=True)
+        cond = np.divide(hits, np.maximum(row, 1))        # p(mode | skill)
+        # least-squares weights over skills that best reproduce C_ref
+        w, *_ = np.linalg.lstsq(cond.T, np.asarray(C_ref, float), rcond=None)
+        w = np.clip(w, 0, None)
+        prior = w / w.sum() if w.sum() > 1e-8 else np.full(K, 1.0 / K)
+    else:
+        prior = np.full(K, 1.0 / K)
+
     modes, succ = [], []
     for i in range(args.eval_episodes):
-        _, _, _, m, sc = episode(int(i % K))
+        k = int(rng.choice(K, p=prior)) if args.bmd_prior == "fitted" else int(i % K)
+        _, _, _, m, sc = episode(k)
         modes.append(m); succ.append(int(sc))
     modes = np.asarray([coarsen(m, K) for m in modes])
     valid = modes >= 0
@@ -274,6 +300,7 @@ def run_bmd(lam, skew, seed, args, C_ref, bb_seed=None):
     ref_np = np.asarray(C_ref)
     return dict(
         task=args.task, arm="bmd", lam=lam, skew=skew, seed=seed,
+        bmd_prior=args.bmd_prior,
         bb_seed=bb_seed,
         SR=float(np.mean(succ)),
         rewarded_SR=float(np.mean([m in rewarded for m in modes[valid]])) if valid.any() else 0.0,
@@ -505,6 +532,8 @@ def main() -> int:
                     help="dsrl | mop | mi | bmd (learned skills + variational MI)")
     ap.add_argument("--lam", type=float, default=1.0)
     ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--bmd-prior", default="uniform", choices=["uniform", "fitted"],
+                    help="skill prior the learned-skill arm uses at evaluation")
     ap.add_argument("--backbone-seeds", nargs="*", type=int, default=None,
                     help="train/evaluate across several backbones per skew, so the\n"
                          "skew level is not confounded with one BC draw")
