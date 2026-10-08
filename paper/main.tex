@@ -102,8 +102,10 @@ mode-preserving regulariser should target, and give the condition
 (Equation~\ref{eq:identity}) under which the two are indistinguishable.
 
 Second, we introduce a penalty on the total variation distance between $C_\phi$
-and $C_{\mathrm{ref}}$. The penalty has no learned components, introduces a single scalar weight, and its per-episode coefficient is
-bounded by one half regardless of how narrow the pretrained policy's support is.
+and $C_{\mathrm{ref}}$. The penalty has no learned components. It introduces a weight $\lambda$, a rate
+for the running histogram estimate, and the resolution $K$ at which modes are
+counted, and its per-episode coefficient is bounded by one half regardless of how
+narrow the pretrained policy's support is.
 
 Third, we evaluate on two manipulation tasks from the Diverse Behaviours
 Benchmark for Imitation Learning (D3IL) \citep{jia2024d3il} using behavioural
@@ -150,6 +152,18 @@ maximises the entropy of a histogram over externally defined modes directly. Our
 analysis applies to this family as a whole, since Equation~\ref{eq:identity}
 relates any entropy-maximising objective to matching against a uniform
 reference.
+
+\paragraph{Regularising toward a reference policy.}
+Penalising divergence from a fixed reference is standard in reinforcement
+learning applied to pretrained generative models, where a Kullback-Leibler term
+between the fine-tuned and reference policies keeps the optimised policy near the
+one it started from, and in offline reinforcement learning, where a similar term
+keeps a policy near the behaviour that generated its data. Those penalties act on
+the action or trajectory distribution directly. The penalty studied here acts on a
+histogram over externally labelled behavioural modes, which is a far smaller
+object. That difference is what makes the estimator, the reference measurement and
+the choice of divergence the substance of the method rather than implementation
+detail.
 
 \paragraph{Benchmarks that admit several solutions.}
 Measuring mode preservation requires tasks with more than one valid solution.
@@ -231,8 +245,9 @@ use the total variation distance
   D_{\mathrm{TV}}(p, q) \;=\; \tfrac{1}{2} \sum_{k=1}^{K} \left| p[k] - q[k] \right| .
 \end{equation}
 
-Any divergence may be used for $D$. The property that matters for the estimator
-below is a bounded subgradient, and total variation has one.
+Any divergence may be used for $D$. The property that matters here is how the
+per-episode coefficient behaves when the reference assigns a mode little or no
+probability, and total variation keeps it bounded there.
 The histogram $C_\phi$ is a statistic of the sampled batch, not a differentiable
 function of $\phi$. Its gradient therefore comes from the score-function
 estimator. Each trajectory is credited by the partial derivative of the penalty,
@@ -269,9 +284,12 @@ penalty coefficient and the reward advantage are each standardised within the
 batch before being combined, so that $\lambda$ expresses the relative weight of
 the two terms rather than their relative units.
 
-The complete method adds one scalar hyperparameter to DSRL, one histogram of
-length $K$ held in memory, and one rollout budget spent once before training to
-estimate $C_{\mathrm{ref}}$. It introduces no learned components.
+The complete method adds three settings to unregularised noise-space
+fine-tuning: the weight $\lambda$, the rate of the running histogram estimate,
+and the resolution $K$. It also holds one histogram of length $K$ in memory and
+spends one rollout budget before training to estimate $C_{\mathrm{ref}}$. It
+introduces no learned components, and Table~\ref{tab:hyper} gives the values used
+for every reported run.
 
 \section{Experimental Results}\label{sec:results}
 
@@ -354,9 +372,20 @@ which is zero when the fine-tuned policy reproduces the pretrained behaviour
 distribution and grows as it departs from that distribution in any direction.
 Both histograms come from evaluation rollouts. For $C_\phi$ these number 500
 episodes on \emph{Avoiding} and 300 on \emph{Pushing}; for $C_{\mathrm{ref}}$,
-888 and 600. Episodes in which the arm does not complete a labelled route
-carry no mode and are excluded from the histogram; the classifiable fraction is
-reported with each result.
+888 and 600. An episode in which the arm does not complete a
+labelled route carries no mode and is excluded from the histogram, so both
+histograms are conditional on completion. Completion rates track the success
+rates of Table~\ref{tab:success} and are similar across the four objectives at
+each level, which is what makes the distances comparable between them.
+
+A pre-registration committed before the replication named the normalised
+difference $[D_{\mathrm{TV}}(C_\phi, u) - D_{\mathrm{TV}}(C_\phi,
+C_{\mathrm{ref}})] / D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ as the endpoint. That
+quantity is not monotone in the distance it was meant to summarise. For $K = 2$,
+a uniform $u$, a reference of $(0.7, 0.3)$ and a policy at $(0.9, 0.1)$ it takes
+its maximum value of one, although the policy has moved twice as far from uniform
+as the reference. We therefore report the distance itself, and note the departure
+from the pre-registered endpoint here rather than leaving it to be discovered.
 
 \subsection{Main Result}\label{sec:main}
 
@@ -620,7 +649,7 @@ reinforcement learning is a question about a reference distribution, not about
 diversity. The two coincide only when the pretrained policy is uniform over its
 behavioural modes, and we show by direct measurement that cloned policies are
 not. We introduce a reference-matching penalty built on total variation distance,
-with one scalar weight and no learned components. Across two manipulation tasks, twenty
+with no learned components. Across two manipulation tasks, twenty
 independently trained frozen policies and 840 fine-tuning runs, it ends closer to
 the pretrained behaviour than every baseline at all four \emph{Avoiding} levels
 and at three of the four on \emph{Pushing}. Treating each frozen policy as one
