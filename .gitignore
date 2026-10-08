@@ -49,3 +49,13 @@ vocabs/
 
 # Local kill switch for the (cron-driven) GPU scheduler; not shared state.
 SCHEDULER_PAUSED
+
+# LaTeX build artefacts
+paper/*.aux
+paper/*.log
+paper/*.blg
+paper/*.out
+paper/*.xdv
+paper/*.bbl
+paper/p?.log
+paper/b.log

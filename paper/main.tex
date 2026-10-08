@@ -1,3 +1,6 @@
+% Tectonic builds with XeTeX; hyperref otherwise selects a PostScript driver
+% that sn-jnl's \burl support cannot use.
+\PassOptionsToPackage{xetex}{hyperref}
 \documentclass[sn-mathphys-num]{sn-jnl}
 
 \usepackage{graphicx}
@@ -5,12 +8,25 @@
 \usepackage{amssymb}
 \usepackage{booktabs}
 
+\makeatletter
+% sn-jnl pulls in hyperref's PostScript header emission, which the XeTeX engine
+% used to build this document cannot execute. Neutralising it affects only the
+% PDF-mark side channel, not the typeset output.
+\providecommand{\headerps@out}[1]{}
+% The bibliography style formats DOIs through a pdfTeX-specific box primitive,
+% and defines \doiurl only once the class has loaded, so the replacement waits.
+\providecommand{\pdf@box}{\relax}
+\AtBeginDocument{\providecommand{\doiurl}[1]{}%
+  \renewcommand{\doiurl}[1]{\href{https://doi.org/#1}{https://doi.org/#1}}}
+\makeatother
+
 \begin{document}
 
 \title{Reference Matching for Noise-Space Policy Fine-Tuning}
 
-\author[1]{\fnm{} \sur{}}
-\affil[1]{\orgdiv{}, \orgname{}, \city{}, \country{}}
+\author*[1]{\fnm{Yuanzhi} \sur{He}}\email{heyuanzhi0728@163.com}
+\affil[1]{\orgdiv{School of Computer Science and Informatics},
+  \orgname{Cardiff University}, \city{Cardiff}, \country{United Kingdom}}
 
 \abstract{
 Reinforcement learning applied to the latent noise input of a frozen generative
