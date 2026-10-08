@@ -104,8 +104,8 @@ evaluated only on such a benchmark leaves the question open.
 
 Pretrained policies are not uniform. Measuring twenty cloned policies over the
 six route groups used throughout this paper, their mode distributions lie between
-$0.013$ and $1.278$ nats from uniform. Five of those twenty were cloned from an
-unmodified demonstration set, and they alone span $0.013$ to $0.395$ nats, so
+$0.027$ and $1.296$ nats from uniform. Five of those twenty were cloned from an
+unmodified demonstration set, and they alone span $0.027$ to $0.428$ nats, so
 even balanced demonstrations do not produce a balanced policy. The distinction
 that Equation~\ref{eq:identity} removes is therefore present in realistic cases,
 and the objective that respects it is not the one in common use.
@@ -282,8 +282,8 @@ $\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right) - \tfrac{1}{2}$, where
 $\bar{C} = (C_\phi + C_{\mathrm{ref}})/2$ is the mixture of the two histograms.
 Since $\bar{C}[k] \geq C_{\mathrm{ref}}[k]/2$, this stays finite as
 $C_{\mathrm{ref}}[k] \rightarrow 0$, which is the direction in which the
-Kullback-Leibler form diverges. It grows as $C_\phi[k] \rightarrow 0$, and the running
-estimate of Section~\ref{sec:matching} bounds it away from that limit; the largest
+Kullback-Leibler form diverges. It grows as $C_\phi[k] \rightarrow 0$, and the running estimate
+introduced below bounds it away from that limit; the largest
 magnitude observed over all runs is $1.71$. The corresponding
 coefficient for the KL divergence is
 $\log\!\left(C_\phi[k] / C_{\mathrm{ref}}[k]\right) + 1$, which grows without
@@ -390,7 +390,14 @@ Both histograms come from evaluation rollouts. For $C_\phi$ these number 500
 episodes on \emph{Avoiding} and 300 on \emph{Pushing}; for $C_{\mathrm{ref}}$,
 888 and 600. An episode in which the arm does not complete a
 labelled route carries no mode and is excluded from the histogram, so both
-histograms are conditional on completion. Completion rates track the success
+histograms are conditional on completion.
+
+Both histograms are finite samples, so the endpoint has a floor even for a policy
+that reproduces the reference exactly. Drawing two samples at the observed sizes
+from one distribution gives an expected distance of $0.055$ on \emph{Avoiding}
+and $0.079$ on \emph{Pushing}. Within a task, all four objectives are scored
+against the same reference estimate, measured once per frozen policy before any
+fine-tuning. Completion rates track the success
 rates of Table~\ref{tab:success} and are similar across the four objectives at
 each level, which is what makes the distances comparable between them.
 
@@ -421,7 +428,7 @@ $p \leq 0.0013$.
 
 Pooling runs rather than policies gives the same ordering with larger apparent
 precision, at $0.95$, $0.77$ and $0.67$ standard deviations for the three
-comparisons on \emph{Avoiding} and $0.88$, $0.53$ and $0.85$ on \emph{Pushing}.
+comparisons on \emph{Avoiding} and $0.88$, $0.56$ and $0.85$ on \emph{Pushing}.
 We report the clustered analysis above because it is the one the design supports.
 
 \begin{figure}[t]
@@ -465,10 +472,10 @@ Avoiding & 0.33 & $0.447 \pm 0.042$ (30) & $0.257 \pm 0.026$ (30) & $0.380 \pm 0
 Avoiding & 0.46 & $0.335 \pm 0.051$ (30) & $0.317 \pm 0.044$ (30) & $0.275 \pm 0.044$ (29) & $\mathbf{0.144 \pm 0.019}$ (30) \\
 Avoiding & 0.55 & $0.269 \pm 0.047$ (30) & $0.409 \pm 0.067$ (27) & $0.214 \pm 0.036$ (28) & $\mathbf{0.125 \pm 0.015}$ (30) \\
 \midrule
-Pushing & 0.19 & $0.286 \pm 0.050$ (11) & $0.193 \pm 0.019$ (11) & $\mathbf{0.172 \pm 0.032}$ (12) & $0.209 \pm 0.043$ (9) \\
-Pushing & 0.36 & $0.238 \pm 0.053$ (9) & $0.286 \pm 0.052$ (12) & $0.192 \pm 0.034$ (12) & $\mathbf{0.120 \pm 0.028}$ (10) \\
-Pushing & 0.41 & $0.249 \pm 0.061$ (11) & $0.208 \pm 0.035$ (8) & $0.183 \pm 0.050$ (11) & $\mathbf{0.089 \pm 0.014}$ (9) \\
-Pushing & 0.53 & $0.248 \pm 0.068$ (11) & $0.194 \pm 0.070$ (6) & $0.202 \pm 0.050$ (11) & $\mathbf{0.083 \pm 0.025}$ (10) \\
+Pushing & 0.19 & $0.286 \pm 0.050$ (11) & $0.193 \pm 0.019$ (11) & $\mathbf{0.180 \pm 0.029}$ (12) & $0.209 \pm 0.043$ (9) \\
+Pushing & 0.36 & $0.238 \pm 0.053$ (9) & $0.286 \pm 0.052$ (12) & $0.208 \pm 0.036$ (12) & $\mathbf{0.120 \pm 0.028}$ (10) \\
+Pushing & 0.41 & $0.249 \pm 0.061$ (11) & $0.208 \pm 0.035$ (8) & $0.170 \pm 0.046$ (11) & $\mathbf{0.089 \pm 0.014}$ (9) \\
+Pushing & 0.53 & $0.248 \pm 0.068$ (11) & $0.194 \pm 0.070$ (6) & $0.203 \pm 0.053$ (11) & $\mathbf{0.083 \pm 0.025}$ (10) \\
 \botrule
 \end{tabular}
 \end{table}
@@ -546,8 +553,8 @@ optimisations are included.
 Fidelity to a reference and breadth of behaviour are distinct quantities, and
 reference matching targets the first. Table~\ref{tab:diversity} reports the second for
 completeness, as the number of distinct modes a fine-tuned policy visits and the
-entropy of its mode histogram. Entropy maximisation retains the most behaviour at
-every level, which its objective maximises. Reference matching retains more than both the
+entropy of its mode histogram. Entropy maximisation retains the most behaviour at the
+three most skewed levels, which its objective maximises. Reference matching retains more than both the
 unregularised objective and the learned-skill method at three of the four levels,
 so matching the reference distribution preserves breadth except where the
 reference is itself at its narrowest.
@@ -613,10 +620,10 @@ Total variation & \textbf{0.179} & \textbf{2 / 24} & \textbf{0.50} & 0.622 \\
 The argument above matters only if pretrained policies depart from uniform in
 practice. For the twenty \emph{Avoiding} frozen policies we measure
 $D_{\mathrm{KL}}(C_{\mathrm{ref}} \,\|\, u)$ over the six route groups by rolling
-each frozen policy out for 900 episodes. Values range from $0.013$ to $1.278$
+each frozen policy out for 900 episodes. Values range from $0.027$ to $1.296$
 nats. The five frozen policies cloned from the unmodified demonstration set span
-$0.013$ to $0.395$ nats on their own, a thirty-fold range produced by nothing but
-the random seed. A balanced demonstration set does not produce a balanced policy, so the regime in which the two objectives coincide is not
+$0.027$ to $0.428$ nats on their own, a sixteen-fold range produced by nothing
+but the random seed. A balanced demonstration set does not produce a balanced policy, so the regime in which the two objectives coincide is not
 the regime in which policies are used.
 
 Between-frozen policy variation of this size also constrains how such experiments
@@ -634,12 +641,13 @@ sits from uniform. Entropy maximisation performs comparably when the pretrained
 policy is close to uniform, which Equation~\ref{eq:identity} explains, and worse
 elsewhere.
 
-Reference matching reaches the same distance as a learned-skill mutual
-information method while differing from it in machinery. That method maintains a
+Reference matching ends closer to the reference than a learned-skill mutual
+information method, by $0.146$ on \emph{Avoiding} with a 95\% interval of
+$[0.100, 0.192]$, and it differs from that method in machinery. That method maintains a
 latent skill space, conditions the policy on a skill index, and trains a
 discriminator alongside the policy. Reference matching maintains a histogram of
-length $K$ and one scalar weight. Equal fidelity without a learned component
-means the fidelity does not require one.
+length $K$ and one scalar weight. Reaching this distance without a learned component
+shows that none is needed for it.
 
 Two measurement choices shaped what the experiments could show. Defining modes by
 task geometry keeps the measured quantity independent of a learned vocabulary, so
