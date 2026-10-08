@@ -235,8 +235,8 @@ Any divergence may be used for $D$. The property that matters for the estimator
 below is a bounded subgradient, and total variation has one.
 The histogram $C_\phi$ is a statistic of the sampled batch, not a differentiable
 function of $\phi$. Its gradient therefore comes from the score-function
-estimator, which credits each trajectory by the partial derivative of the
-penalty at that trajectory's own mode,
+estimator. Each trajectory is credited by the partial derivative of the penalty,
+evaluated at that trajectory's own mode,
 \begin{equation}\label{eq:grad}
   \nabla_\phi \, D\!\left(C_\phi, C_{\mathrm{ref}}\right)
   \;=\; \mathbb{E}_{\tau \sim \mu_\phi}\!\left[
@@ -300,7 +300,7 @@ has an incentive to narrow its behaviour. Four of the twenty-four routes are
 rewarded on \emph{Avoiding} and one of the four on \emph{Pushing}. A run whose
 final success rate falls below $0.15$ on \emph{Avoiding} or $0.10$ on
 \emph{Pushing} is treated as a failed optimisation and excluded. Because this
-threshold conditions on an outcome the treatment affects, Section~\ref{sec:robust}
+threshold conditions on an outcome the treatment affects, Section~\ref{sec:stable}
 reports every result both with and without it, and the conclusions drawn below
 hold under both. Four objectives are compared, identical in
 every respect except the mode term. The first has no mode term and optimises return alone, which is the
@@ -315,18 +315,18 @@ matching of Equation~\ref{eq:objective}.
 
 \subsection{Fidelity Measure}
 
-We report the total variation distance between the fine-tuned policy's mode
-distribution and the frozen policy's,
+The endpoint is the total variation distance between the two mode
+distributions,
 \begin{equation}\label{eq:fidelity}
   D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})
   \;=\; \tfrac{1}{2} \sum_{k=1}^{K}
   \left| C_\phi[k] - C_{\mathrm{ref}}[k] \right| ,
 \end{equation}
 which is zero when the fine-tuned policy reproduces the pretrained behaviour
-distribution and grows monotonically as it departs from it in any direction. Both
-histograms are estimated from evaluation rollouts, $C_\phi$ from 500 episodes on
-\emph{Avoiding} and 300 on \emph{Pushing}, and $C_{\mathrm{ref}}$ from 888 and
-600 respectively. Episodes in which the arm does not complete a labelled route
+distribution and grows as it departs from that distribution in any direction.
+Both histograms come from evaluation rollouts. For $C_\phi$ these number 500
+episodes on \emph{Avoiding} and 300 on \emph{Pushing}; for $C_{\mathrm{ref}}$,
+888 and 600. Episodes in which the arm does not complete a labelled route
 carry no mode and are excluded from the histogram; the classifiable fraction is
 reported with each result.
 
@@ -442,7 +442,7 @@ $p = 0.0002$. The prediction holds quantitatively, and the behaviour it predicts
 is visible in Figure~\ref{fig:main}(c, d) as the widening separation between the
 blue and orange curves.
 
-\subsection{Sensitivity to the Exclusion Rule}\label{sec:robust}
+\subsection{Sensitivity to the Exclusion Rule}\label{sec:stable}
 
 The success-rate threshold of Section~\ref{sec:setup} conditions on an outcome
 the treatment affects, so its effect is reported directly. On \emph{Avoiding} it
@@ -456,9 +456,9 @@ $p < 10^{-4}$. On \emph{Pushing} the margins over entropy maximisation and the
 unregularised objective hold at $0.51$ ($p = 0.007$) and $0.53$ ($p = 0.005$),
 and reference matching and the learned-skill method end at the same distance from
 the pretrained behaviour, $0.06$ standard deviations apart. The \emph{Avoiding}
-conclusions therefore hold under either analysis, and the \emph{Pushing}
-comparison against the learned-skill method is reported only for the filtered
-sample in Table~\ref{tab:main}.
+conclusions therefore hold under either analysis. On \emph{Pushing}, reference
+matching and the learned-skill method converge to the same distance once failed
+optimisations are included.
 
 \subsection{Behavioural Diversity}\label{sec:diversity}
 
