@@ -16,7 +16,7 @@ from matplotlib.gridspec import GridSpec
 OUT = Path("figures")
 INK, MUT, RULE = "#1a1d21", "#5d6670", "#c9d0d8"
 C = {"dsrl": "#8a9099", "mop": "#1b6ca8", "mi": "#c4562a", "bmd": "#2e8b57"}
-NAME = {"dsrl": "No mode term", "mop": "Reference anchor (ours)",
+NAME = {"dsrl": "No mode term", "mop": "Reference matching",
         "mi": "Mode entropy", "bmd": "Learned skills"}
 FROZEN, TRAIN = "#edf1f5", "#d9e8f4"
 
@@ -86,48 +86,56 @@ def main() -> int:
     ax.text(0.4225, yt - 0.045, r"$z\sim\mu_\phi(\cdot\mid o)\;\longrightarrow\;a$",
             ha="center", va="top", fontsize=7.0, color=MUT)
 
-    yb, hb = 0.205, 0.215
+    yb, hb = 0.300, 0.200
     box(ax, 0.810, yb, 0.185, hb, r"policy histogram $C_\phi$", "running estimate", fc="#fff",
         ec=C["mop"], lw=1.2)
     arr(ax, (0.9025, yt), (0.9025, yb + hb))
     box(ax, 0.600, yb, 0.165, hb, r"reference $C_{\mathrm{ref}}$", "measured once, frozen")
     arr(ax, (0.810, yb + hb / 2), (0.765, yb + hb / 2), color=MUT, ls=(0, (3, 2)))
+    ax.text(0.6825, yb - 0.035, "compared each update", ha="center", va="top",
+            fontsize=6.3, color=MUT)
 
-    ax.text(0.005, yb + hb + 0.02, "objectives compared, identical in every other respect",
+    ax.text(0.005, 0.245, "objectives compared, identical in every other respect",
             fontsize=7.4, color=INK, ha="left", va="bottom")
-    rows = [("mop", r"$\max\;\mathbb{E}[r]-\lambda\,D(C_\phi,C_{\mathrm{ref}})$", "holds the pretrained profile"),
+    rows = [("mop", r"$\max\;\mathbb{E}[r]-\lambda\,D(C_\phi,C_{\mathrm{ref}})$", "matches the pretrained profile"),
             ("bmd", r"$\max\;\mathbb{E}[r]+\lambda\,\hat{I}(k;s)$", "discovers its own skills"),
             ("mi",  r"$\max\;\mathbb{E}[r]+\lambda\,H(C_\phi)$", "drives toward uniform"),
             ("dsrl", r"$\max\;\mathbb{E}[r]$", "no mode term")]
     for i, (k, expr, note) in enumerate(rows):
-        yy = yb + hb - 0.055 - i * 0.055
+        yy = 0.195 - i * 0.052
         ax.add_patch(FancyBboxPatch((0.005, yy - 0.016), 0.009, 0.032,
                                     boxstyle="round,pad=0,rounding_size=0.004",
                                     facecolor=C[k], edgecolor="none", zorder=4))
-        ax.text(0.024, yy, NAME[k], fontsize=7.0, color=C[k], va="center")
-        ax.text(0.215, yy, expr, fontsize=7.6, color=INK, va="center")
-        ax.text(0.405, yy, note, fontsize=6.6, color=MUT, va="center")
+        ax.text(0.024, yy, NAME[k] + ("  (ours)" if k == "mop" else ""),
+                fontsize=6.9, color=C[k], va="center",
+                fontweight="bold" if k == "mop" else "normal")
+        ax.text(0.245, yy, expr, fontsize=7.3, color=INK, va="center")
+        ax.text(0.445, yy, note, fontsize=6.4, color=MUT, va="center")
 
-    # ---------------- (b) the identity ----------------
+    # ---------------- (b) measured reference skew ----------------
     ax = fig.add_subplot(gs[0, 2])
-    K = 6
-    rs = np.linspace(0.05, 1.0, 160)
-    kl, ent = [], []
-    for r in rs:
-        p = r ** np.arange(K, dtype=float); p /= p.sum()
-        kl.append(np.sum(p * np.log(p * K))); ent.append(-np.sum(p * np.log(p)))
-    kl, ent = np.array(kl), np.array(ent)
-    ax.plot(kl, np.log(K) - ent, lw=4.0, color=C["mop"], alpha=.35,
-            solid_capstyle="round", label=r"$\ln K-H(p)$   (entropy objective)")
-    ax.plot(kl, kl, lw=1.4, ls=(0, (4, 3)), color=C["mi"],
-            label=r"$D_{\mathrm{KL}}(p\,\|\,u)$   (anchoring objective)")
-    ax.set_xlabel(r"$D_{\mathrm{KL}}(p\,\|\,u)$  (nats)")
-    ax.set_ylabel(r"$\ln K-H(p)$  (nats)")
-    ax.set_title("(b)  The two objectives coincide\n       when the reference is uniform",
-                 loc="left", pad=4)
-    ax.legend(frameon=False, loc="upper left")
-    ax.text(0.30, 0.30, "the curves lie on top of one another:\nanchoring and entropy can differ only\nonce the pretrained policy is skewed",
-            transform=ax.transAxes, fontsize=6.8, color=MUT, va="top")
+    # KL(C_ref || u) measured over 900 rollouts per frozen policy, six route groups
+    MEAS = {"unmodified": [0.154, 0.013, 0.165, 0.395, 0.276],
+            "0.15": [0.376, 0.215, 0.444, 0.199, 0.371],
+            "0.30": [0.290, 0.303, 0.870, 1.028, 0.616],
+            "0.60": [0.789, 1.278, 0.666, 0.846, 0.671]}
+    rng2 = np.random.default_rng(1)
+    for i, (lab, vals) in enumerate(MEAS.items()):
+        v = np.array(vals)
+        ax.scatter(v, np.full_like(v, i) + rng2.uniform(-.10, .10, len(v)),
+                   s=30, color=C["mop"], alpha=.75, edgecolor="none", zorder=3)
+        ax.plot([v.mean()], [i], marker="|", ms=14, color=INK, zorder=4)
+    ax.axvline(0, color=C["mi"], lw=1.6, zorder=2)
+    ax.text(0.012, 3.42, "a uniform pretrained policy,\nwhere the two objectives\nare the same function",
+            fontsize=6.6, color=C["mi"], va="top")
+    ax.set_yticks(range(len(MEAS)))
+    ax.set_yticklabels([f"demonstrations\n{k}" if k == "unmodified" else f"reweighted\nto {k} nats"
+                        for k in MEAS], fontsize=6.6)
+    ax.set_xlabel(r"measured $D_{\mathrm{KL}}(C_{\mathrm{ref}}\,\|\,u)$  (nats)")
+    ax.set_xlim(-0.06, 1.38)
+    ax.set_ylim(-0.6, 3.75)
+    ax.set_title("(b)  No cloned policy is uniform,\n       so the two objectives differ",
+                 loc="left", pad=6)
 
     # ---------------- (c, d) per-task results ----------------
     specs = [("(c)  Avoiding", ["mb_skew*.json"], 0.15, None),
@@ -147,7 +155,8 @@ def main() -> int:
                 e.append(v.std(ddof=1) / np.sqrt(len(v)) if len(v) > 1 else 0)
             ax.errorbar(xs, m, yerr=e, marker="o", ms=4.2, capsize=2.4,
                         lw=2.0 if arm == "mop" else 1.2,
-                        color=C[arm], label=NAME[arm],
+                        color=C[arm],
+                        label=NAME[arm] + (" (ours)" if arm == "mop" else ""),
                         zorder=5 if arm == "mop" else 3)
         ax.axhline(0, color=RULE, lw=0.8, ls=":")
         ax.set_xlabel(r"reference skew  $\mathrm{TV}(C_{\mathrm{ref}},u)$")
@@ -170,20 +179,20 @@ def main() -> int:
         ax.bar(x + off, d_vals[arm], w, color=C[arm],
                label=f"vs {NAME[arm].lower()}")
         for xi, (v, pv) in enumerate(zip(d_vals[arm], p_vals[arm])):
-            ax.text(xi + off, v + 0.035, f"{v:.2f}", ha="center", fontsize=6.9, color=INK)
-            ax.text(xi + off, v + 0.115,
+            ax.text(xi + off, v + 0.03, f"{v:.2f}", ha="center", fontsize=6.9, color=INK)
+            ax.text(xi + off, v + 0.125,
                     "p<0.001" if pv < 1e-3 else f"p={pv:.3f}",
-                    ha="center", fontsize=5.9, color=MUT)
+                    ha="center", fontsize=5.8, color=MUT, rotation=90, va="bottom")
     for yy, t in ((0.2, "small"), (0.5, "medium"), (0.8, "large")):
         ax.axhline(yy, color=RULE, lw=0.7, ls=":", zorder=0)
         ax.text(len(tasks) - 0.13, yy + 0.015, t, fontsize=6.2, color=MUT, ha="right")
     ax.set_xticks(x); ax.set_xticklabels(tasks)
     ax.set_xlim(-0.52, len(tasks) - 0.10)
-    ax.set_ylabel("Cohen's $d$  (advantage of the reference anchor)", fontsize=7.2)
-    ax.set_ylim(0, 1.52)
+    ax.set_ylabel("Cohen's $d$  (advantage of reference matching)", fontsize=7.2)
+    ax.set_ylim(0, 1.62)
     ax.legend(frameon=False, loc="upper left", handlelength=1.1, labelspacing=0.3,
               bbox_to_anchor=(-0.01, 1.0))
-    ax.set_title("(e)  Pooled over reference skew, every\n       comparison favours anchoring",
+    ax.set_title("(e)  Pooled over reference skew, every\n       comparison favours matching",
                  loc="left", pad=6)
 
     fig.savefig(OUT / "fig1_main.png")
