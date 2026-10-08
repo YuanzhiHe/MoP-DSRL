@@ -109,10 +109,11 @@ bounded by one half regardless of how narrow the pretrained policy's support is.
 Third, we evaluate on two manipulation tasks from the Diverse Behaviours
 Benchmark for Imitation Learning (D3IL) \citep{jia2024d3il} using behavioural
 modes defined by task geometry rather than by clustering. Over twenty
-independently trained frozen policies and 840 fine-tuning runs, the
-matching holds the policy closer to its pretrained behaviour than entropy
-maximisation at every measured level of reference skew, and matches a
-learned-skill mutual information method at a fraction of its mechanism.
+independently trained frozen policies and 840 fine-tuning runs, the penalty ends
+closer to the pretrained behaviour than entropy maximisation at every measured
+level of reference skew. It does so without any learned component, where a
+mutual information method of comparable fidelity needs both a discriminator and
+a latent skill space.
 
 \section{Related Works}\label{sec:related}
 
@@ -567,12 +568,12 @@ diversity. The two coincide only when the pretrained policy is uniform over its
 behavioural modes, and we show by direct measurement that cloned policies are
 not. We introduce a reference-matching penalty built on total variation distance,
 with one scalar weight and no learned components. Across two manipulation tasks, twenty
-independently trained frozen policies and 840 fine-tuning runs, it holds the
-fine-tuned policy closer to its pretrained behaviour than entropy maximisation at
-every level of reference skew tested. The pooled effect sizes are $0.91$ and
-$1.14$ standard deviations. It reaches the fidelity of a learned-skill mutual information method that
-requires a discriminator and a latent skill space, without any learned component
-of its own, and task success is unchanged.
+independently trained frozen policies and 840 fine-tuning runs, it ends closer to
+the pretrained behaviour than every baseline we compare against. Treating each
+frozen policy as one unit, it wins on 20 of 20 policies against unregularised
+fine-tuning and on 19 of 20 against a method that learns its own skills through
+a mutual information bound. Task success is unchanged, and the penalty carries no
+learned component of its own.
 
 Three directions follow. The first is scale: our frozen policies are compact
 rectified-flow fields trained for two simulated manipulation tasks, and applying
