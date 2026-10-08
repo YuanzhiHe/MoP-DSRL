@@ -433,51 +433,62 @@ We report the clustered analysis above because it is the one the design supports
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\textwidth]{../figures/fig1_main.pdf}
-\caption{Reference matching and the condition that makes it necessary.
-(a) The generative policy is frozen and only the noise policy is trained. A
-rollout is labelled with its behavioural mode from task geometry, and the
-histogram of those labels is compared against the frozen policy's own. The four
-objectives differ only in the mode term; $\hat{I}(k; s)$ denotes the variational
-mutual information bound between the skill index $k$ and the final observation
-$s$. (b) The Kullback-Leibler divergence of each frozen policy's mode
-distribution from uniform, measured over 888 rollouts on the six route groups,
-grouped by how its demonstrations were weighted. Each point is one of the twenty
-policies and the bar is the group mean. No policy lies at the uniform point
-marked in red, which is the only point at which the matching and entropy
-objectives coincide. (c, d) Distance to the pretrained behaviour distribution
-against each policy's own measured reference skew, where lower is closer to the
-behaviour the policy was cloned from. Points are means with standard errors over
-the run counts given in Table~\ref{tab:main}. (e) Paired differences across the
-twenty \emph{Avoiding} frozen policies with 95\% confidence intervals, and the
-number of policies on which reference matching is closer.}
+\includegraphics[width=\textwidth]{figures/fig1_setting.pdf}
+\caption{The setting and the condition that makes the objective necessary.
+(a) Only the noise policy is trained. It selects a latent $z$ that the frozen
+generative policy decodes into an action $a$; the rollout is labelled with its
+behavioural mode from task geometry, and the histogram $C_\phi$ of those labels
+is penalised for its distance to the frozen policy's own histogram
+$C_{\mathrm{ref}}$, measured once before fine-tuning. (b) The
+Kullback-Leibler divergence of each frozen policy's mode distribution from
+uniform, measured over 888 rollouts on the six route groups and grouped by how
+that policy's demonstrations were weighted. Each point is one of the twenty
+policies and the bar is the group mean. None lies at the uniform point in orange,
+which is the only point at which matching and entropy maximisation are the same
+objective.}
+\label{fig:setting}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig2_result.pdf}
+\caption{Distance to the pretrained behaviour distribution. (a, b) Mean distance
+against each group's measured reference skew, with standard errors over the run
+counts of Table~\ref{tab:main} and the success-rate floor of
+Section~\ref{sec:setup} applied. The shaded band is the distance expected
+between two samples of a single distribution at the observed sample sizes, so
+values inside it are not separable from an exact match. (c) Paired differences
+across the twenty \emph{Avoiding} frozen policies, each the mean over its six
+run seeds, with 95\% intervals from the $t$ distribution on 19 degrees of
+freedom. The right-hand figures give the mean reduction and the number of
+policies on which reference matching ends closer.}
 \label{fig:main}
 \end{figure}
 
 \begin{table}[t]
 \caption{Distance to the pretrained behaviour distribution,
-$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$, as mean $\pm$ standard error with
-the number of runs in parentheses. Lower is closer to the behaviour the policy
-was cloned from. Levels are ordered by each group's mean measured reference skew.
+$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$, as mean with its standard error as a subscript, and Skew is $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$. Each
+\emph{Avoiding} cell averages 27 to 30 runs and each \emph{Pushing} cell 6 to 12.
+Lower is closer to the behaviour the policy was cloned from. Levels are ordered by each group's mean measured reference skew.
 Reference matching is closest at every \emph{Avoiding} level and at three of four
 on \emph{Pushing}.}
 \label{tab:main}
-\begin{tabular}{@{}llcccc@{}}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
-Task & $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
-Learned skills & Reference matching \\
+Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching \\
 \midrule
-Avoiding & 0.24 & $0.475 \pm 0.046$ (30) & $0.278 \pm 0.040$ (27) & $0.432 \pm 0.041$ (30) & $\mathbf{0.238 \pm 0.032}$ (30) \\
-Avoiding & 0.33 & $0.447 \pm 0.042$ (30) & $0.257 \pm 0.026$ (30) & $0.380 \pm 0.041$ (30) & $\mathbf{0.212 \pm 0.028}$ (29) \\
-Avoiding & 0.46 & $0.335 \pm 0.051$ (30) & $0.317 \pm 0.044$ (30) & $0.275 \pm 0.044$ (29) & $\mathbf{0.144 \pm 0.019}$ (30) \\
-Avoiding & 0.55 & $0.269 \pm 0.047$ (30) & $0.409 \pm 0.067$ (27) & $0.214 \pm 0.036$ (28) & $\mathbf{0.125 \pm 0.015}$ (30) \\
+\emph{Avoiding} & 0.24 & $.475_{.046}$ & $.278_{.040}$ & $.432_{.041}$ & $\mathbf{.238}_{.032}$ \\
+\emph{Avoiding} & 0.33 & $.447_{.042}$ & $.257_{.026}$ & $.380_{.041}$ & $\mathbf{.212}_{.028}$ \\
+\emph{Avoiding} & 0.46 & $.335_{.051}$ & $.317_{.044}$ & $.275_{.044}$ & $\mathbf{.144}_{.019}$ \\
+\emph{Avoiding} & 0.55 & $.269_{.047}$ & $.409_{.067}$ & $.214_{.036}$ & $\mathbf{.125}_{.015}$ \\
 \midrule
-Pushing & 0.19 & $0.286 \pm 0.050$ (11) & $0.193 \pm 0.019$ (11) & $\mathbf{0.180 \pm 0.029}$ (12) & $0.209 \pm 0.043$ (9) \\
-Pushing & 0.36 & $0.238 \pm 0.053$ (9) & $0.286 \pm 0.052$ (12) & $0.208 \pm 0.036$ (12) & $\mathbf{0.120 \pm 0.028}$ (10) \\
-Pushing & 0.41 & $0.249 \pm 0.061$ (11) & $0.208 \pm 0.035$ (8) & $0.170 \pm 0.046$ (11) & $\mathbf{0.089 \pm 0.014}$ (9) \\
-Pushing & 0.53 & $0.248 \pm 0.068$ (11) & $0.194 \pm 0.070$ (6) & $0.203 \pm 0.053$ (11) & $\mathbf{0.083 \pm 0.025}$ (10) \\
+\emph{Pushing} & 0.19 & $.286_{.050}$ & $.193_{.019}$ & $\mathbf{.180}_{.029}$ & $.209_{.043}$ \\
+\emph{Pushing} & 0.36 & $.238_{.053}$ & $.286_{.052}$ & $.208_{.036}$ & $\mathbf{.120}_{.028}$ \\
+\emph{Pushing} & 0.41 & $.249_{.061}$ & $.208_{.035}$ & $.170_{.046}$ & $\mathbf{.089}_{.014}$ \\
+\emph{Pushing} & 0.53 & $.248_{.068}$ & $.194_{.070}$ & $.203_{.053}$ & $\mathbf{.083}_{.025}$ \\
 \botrule
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \subsection{Task Success}
@@ -490,26 +501,27 @@ another by more at the most skewed \emph{Avoiding} level, where entropy
 maximisation reaches $0.617$ and the learned-skill method $0.767$.
 
 \begin{table}[t]
-\caption{Task success rate as mean $\pm$ standard error, with the number of runs
-in parentheses. Reference matching is within one standard error of the
-unregularised objective at every level on both tasks.}
+\caption{Task success rate as mean with its standard error
+in parentheses, and Skew is $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$. Reference
+matching is within one standard error of the unregularised objective at every
+level on both tasks.}
 \label{tab:success}
-\begin{tabular}{@{}llcccc@{}}
+\small
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
-Task & $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
-Learned skills & Reference matching \\
+Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching \\
 \midrule
-Avoiding & 0.24 & $0.632 \pm 0.034$ (30) & $0.670 \pm 0.027$ (27) & $0.665 \pm 0.026$ (30) & $0.626 \pm 0.029$ (30) \\
-Avoiding & 0.33 & $0.717 \pm 0.031$ (30) & $0.751 \pm 0.015$ (30) & $0.731 \pm 0.028$ (30) & $0.694 \pm 0.030$ (29) \\
-Avoiding & 0.46 & $0.735 \pm 0.028$ (30) & $0.689 \pm 0.023$ (30) & $0.721 \pm 0.022$ (29) & $0.707 \pm 0.020$ (30) \\
-Avoiding & 0.55 & $0.722 \pm 0.036$ (30) & $0.617 \pm 0.037$ (27) & $0.767 \pm 0.025$ (28) & $0.688 \pm 0.032$ (30) \\
+\emph{Avoiding} & 0.24 & $.632_{.034}$ & $.670_{.027}$ & $.665_{.026}$ & $.626_{.029}$ \\
+\emph{Avoiding} & 0.33 & $.717_{.031}$ & $.751_{.015}$ & $.731_{.028}$ & $.694_{.030}$ \\
+\emph{Avoiding} & 0.46 & $.735_{.028}$ & $.689_{.023}$ & $.721_{.022}$ & $.707_{.020}$ \\
+\emph{Avoiding} & 0.55 & $.722_{.036}$ & $.617_{.037}$ & $.767_{.025}$ & $.688_{.032}$ \\
 \midrule
-Pushing & 0.19 & $0.256 \pm 0.028$ (11) & $0.269 \pm 0.018$ (11) & $0.292 \pm 0.023$ (12) & $0.254 \pm 0.021$ (9) \\
-Pushing & 0.36 & $0.364 \pm 0.023$ (9) & $0.305 \pm 0.033$ (12) & $0.310 \pm 0.025$ (12) & $0.331 \pm 0.030$ (10) \\
-Pushing & 0.41 & $0.325 \pm 0.029$ (11) & $0.308 \pm 0.013$ (8) & $0.325 \pm 0.021$ (11) & $0.328 \pm 0.032$ (9) \\
-Pushing & 0.53 & $0.304 \pm 0.033$ (11) & $0.274 \pm 0.028$ (6) & $0.288 \pm 0.035$ (11) & $0.353 \pm 0.023$ (10) \\
+\emph{Pushing} & 0.19 & $.256_{.028}$ & $.269_{.018}$ & $.292_{.023}$ & $.254_{.021}$ \\
+\emph{Pushing} & 0.36 & $.364_{.023}$ & $.305_{.033}$ & $.310_{.025}$ & $.331_{.030}$ \\
+\emph{Pushing} & 0.41 & $.325_{.029}$ & $.308_{.013}$ & $.325_{.021}$ & $.328_{.032}$ \\
+\emph{Pushing} & 0.53 & $.304_{.033}$ & $.274_{.028}$ & $.288_{.035}$ & $.353_{.023}$ \\
 \botrule
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \subsection{Dependence on Reference Skew}
