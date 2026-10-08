@@ -34,8 +34,8 @@ def tvu(r):
 
 
 def gn(r):
-    d = tvu(r)
-    return (r["tv_to_uniform"] - r["tv_to_ref"]) / d if d and np.isfinite(d) and d > 1e-9 else np.nan
+    """Distance to the pretrained behaviour distribution; lower is closer."""
+    return r["tv_to_ref"]
 
 
 def load(pats, floor):
@@ -158,42 +158,50 @@ def main() -> int:
                         color=C[arm],
                         label=NAME[arm] + (" (ours)" if arm == "mop" else ""),
                         zorder=5 if arm == "mop" else 3)
-        ax.axhline(0, color=RULE, lw=0.8, ls=":")
         ax.set_xlabel(r"reference skew  $\mathrm{TV}(C_{\mathrm{ref}},u)$")
         if j == 0:
-            ax.set_ylabel("normalised fidelity\n" r"$[\mathrm{TV}(C_\phi,u)-\mathrm{TV}(C_\phi,C_{\mathrm{ref}})]\,/\,\mathrm{TV}(C_{\mathrm{ref}},u)$",
-                          fontsize=7.0)
-            ax.legend(frameon=False, loc="upper left", handlelength=1.4,
-                      bbox_to_anchor=(0.015, 0.99), labelspacing=0.3)
-        ax.set_title(title + "   higher is closer to the pretrained policy", loc="left", pad=4)
-        ax.set_ylim(-0.08, 1.0)
+            ax.set_ylabel(r"$\mathrm{TV}(C_\phi,\,C_{\mathrm{ref}})$", fontsize=8.6)
+            ax.legend(frameon=False, loc="upper right", handlelength=1.4,
+                      labelspacing=0.3)
+        ax.set_title(title + "   lower is closer to the pretrained policy", loc="left", pad=4)
+        ax.set_ylim(0, 0.60)
 
-    # ---------------- (e) pooled effect sizes ----------------
+    # ---------------- (e) paired differences across frozen policies ----------
     ax = fig.add_subplot(gs[1, 2])
-    tasks = ["Avoiding", "Pushing"]
-    d_vals = {"mi": [0.91, 1.14], "dsrl": [0.38, 0.71], "bmd": [0.31, 0.54]}
-    p_vals = {"mi": [1e-4, 1e-4], "dsrl": [0.0019, 0.0010], "bmd": [0.0086, 0.0078]}
-    x = np.arange(len(tasks)); w = 0.26
-    for i, arm in enumerate(("mi", "dsrl", "bmd")):
-        off = (i - 1) * w
-        ax.bar(x + off, d_vals[arm], w, color=C[arm],
-               label=f"vs {NAME[arm].lower()}")
-        for xi, (v, pv) in enumerate(zip(d_vals[arm], p_vals[arm])):
-            ax.text(xi + off, v + 0.03, f"{v:.2f}", ha="center", fontsize=6.9, color=INK)
-            ax.text(xi + off, v + 0.125,
-                    "p<0.001" if pv < 1e-3 else f"p={pv:.3f}",
-                    ha="center", fontsize=5.8, color=MUT, rotation=90, va="bottom")
-    for yy, t in ((0.2, "small"), (0.5, "medium"), (0.8, "large")):
-        ax.axhline(yy, color=RULE, lw=0.7, ls=":", zorder=0)
-        ax.text(len(tasks) - 0.13, yy + 0.015, t, fontsize=6.2, color=MUT, ha="right")
-    ax.set_xticks(x); ax.set_xticklabels(tasks)
-    ax.set_xlim(-0.52, len(tasks) - 0.10)
-    ax.set_ylabel("Cohen's $d$  (advantage of reference matching)", fontsize=7.2)
-    ax.set_ylim(0, 1.62)
-    ax.legend(frameon=False, loc="upper left", handlelength=1.1, labelspacing=0.3,
-              bbox_to_anchor=(-0.01, 1.0))
-    ax.set_title("(e)  Pooled over reference skew, every\n       comparison favours matching",
-                 loc="left", pad=6)
+    rows_ = load(["mb_skew*.json"], 0.15)
+    bbs = sorted({r.get("bb_seed") for r in rows_} - {None})
+    skews_ = sorted({r["skew"] for r in rows_})
+    labels, means, los, his, wins, cols = [], [], [], [], [], []
+    for arm in ("dsrl", "mi", "bmd"):
+        d = []
+        for s_ in skews_:
+            for bb in bbs:
+                v = [r["tv_to_ref"] for r in rows_
+                     if r["skew"] == s_ and r.get("bb_seed") == bb and r["arm"] == "mop"]
+                w = [r["tv_to_ref"] for r in rows_
+                     if r["skew"] == s_ and r.get("bb_seed") == bb and r["arm"] == arm]
+                if len(v) > 1 and len(w) > 1:
+                    d.append(np.mean(w) - np.mean(v))
+        d = np.array(d)
+        sem = d.std(ddof=1) / np.sqrt(len(d))
+        labels.append(f"vs {NAME[arm].lower()}")
+        means.append(d.mean()); los.append(1.96 * sem); his.append(1.96 * sem)
+        wins.append(f"{int((d > 0).sum())}/{len(d)}")
+        cols.append(C[arm])
+    y = np.arange(len(means))[::-1]
+    ax.errorbar(means, y, xerr=[los, his], fmt="none", ecolor=INK, elinewidth=1.1,
+                capsize=3, zorder=2)
+    ax.scatter(means, y, s=55, c=cols, zorder=3, edgecolor="none")
+    for yy, m, w in zip(y, means, wins):
+        ax.text(m, yy + 0.26, f"{m:+.3f}   {w} policies", ha="center",
+                fontsize=6.9, color=INK)
+    ax.axvline(0, color=RULE, lw=0.9, ls=":")
+    ax.set_yticks(y); ax.set_yticklabels(labels, fontsize=7.4)
+    ax.set_ylim(-0.6, len(means) - 0.25)
+    ax.set_xlim(0, 0.30)
+    ax.set_xlabel("reduction in " r"$\mathrm{TV}(C_\phi,\,C_{\mathrm{ref}})$"
+                  "\npaired within each frozen policy, 95% CI")
+    ax.set_title("(e)  Each frozen policy as one unit,\n       Avoiding", loc="left", pad=6)
 
     fig.savefig(OUT / "fig1_main.png")
     fig.savefig(OUT / "fig1_main.pdf")
