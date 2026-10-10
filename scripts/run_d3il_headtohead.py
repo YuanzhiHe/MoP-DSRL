@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import traceback
 import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
@@ -280,9 +281,21 @@ def run_bmd(lam, skew, seed, args, C_ref, bb_seed=None):
                 hits[k, mg] += 1
         row = hits.sum(1, keepdims=True)
         cond = np.divide(hits, np.maximum(row, 1))        # p(mode | skill)
-        # least-squares weights over skills that best reproduce C_ref
-        w, *_ = np.linalg.lstsq(cond.T, np.asarray(C_ref, float), rcond=None)
-        w = np.clip(w, 0, None)
+        # Least-squares weights over skills that best reproduce C_ref. When a
+        # skill never reaches a labelled mode its row of `cond` is all zero, and
+        # on Pushing enough rows degenerate that LAPACK's divide-and-conquer
+        # driver fails to converge (LinAlgError, eleven hours into a sweep). Fall
+        # back to the SVD-free pseudoinverse, then to the uniform prior: a worse
+        # fit for this arm is recoverable, a dead job is not.
+        A, b = np.nan_to_num(cond.T), np.asarray(C_ref, float)
+        try:
+            w, *_ = np.linalg.lstsq(A, b, rcond=None)
+        except np.linalg.LinAlgError:
+            try:
+                w = np.linalg.pinv(A) @ b
+            except np.linalg.LinAlgError:
+                w = np.full(K, 1.0 / K)
+        w = np.clip(np.nan_to_num(w), 0, None)
         prior = w / w.sum() if w.sum() > 1e-8 else np.full(K, 1.0 / K)
     else:
         prior = np.full(K, 1.0 / K)
@@ -301,6 +314,14 @@ def run_bmd(lam, skew, seed, args, C_ref, bb_seed=None):
     return dict(
         task=args.task, arm="bmd", lam=lam, skew=skew, seed=seed,
         bmd_prior=args.bmd_prior,
+        # Stored so the fitted protocol can be audited after the fact: `skill_prior`
+        # is the mixture evaluation drew from, `skill_modes` row k is the mode
+        # distribution skill k produced during calibration. Their product is what
+        # the fit predicts the evaluation histogram will be; the gap between that
+        # prediction and the realised C_phi is the part fitting cannot reach.
+        skill_prior=[float(x) for x in prior],
+        skill_modes=([[float(x) for x in r] for r in cond]
+                     if args.bmd_prior == "fitted" else None),
         bb_seed=bb_seed,
         SR=float(np.mean(succ)),
         rewarded_SR=float(np.mean([m in rewarded for m in modes[valid]])) if valid.any() else 0.0,
@@ -498,9 +519,22 @@ def _ref_chunk(payload):
 
 
 def _cell(payload):
-    """Worker: one (arm, seed) cell of the sweep."""
+    """Worker: one (arm, seed) cell of the sweep.
+
+    An exception here propagates out of ``ProcessPoolExecutor.map`` and kills the
+    whole sweep, discarding every cell the pool had finished but not yet yielded.
+    One sweep died that way eleven hours in, so a failed cell is reported as a
+    row and the remaining cells carry on.
+    """
     arm, lam, skew, seed, args, C_ref, bb_seed = payload
-    return run_arm(arm, lam, skew, seed, args, C_ref, bb_seed)
+    try:
+        return run_arm(arm, lam, skew, seed, args, C_ref, bb_seed)
+    except Exception as exc:                             # noqa: BLE001
+        traceback.print_exc()
+        return {"arm": arm, "seed": seed, "skew": skew, "bb_seed": bb_seed,
+                "failed": f"{type(exc).__name__}: {exc}",
+                "SR": 0.0, "H_modes": 0.0, "mc_at_08": 0, "tv_to_ref": float("nan"),
+                "tv_to_uniform": float("nan"), "coef_absmax": 0.0, "collapsed": True}
 
 
 def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
@@ -562,14 +596,30 @@ def main() -> int:
                     default=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", type=Path, default=Path("runs/_d3il/headtohead.json"))
+    ap.add_argument("--resume", action="store_true",
+                    help="keep the cells already in --out and run only the rest; "
+                         "the per-cell write makes any killed sweep restartable")
     args = ap.parse_args()
 
     rows = []
+    done = set()
+    if args.resume and args.out.exists():
+        rows = [r for r in json.loads(args.out.read_text()) if not r.get("failed")]
+        done = {(r["skew"], r.get("bb_seed"), r["arm"], r["seed"]) for r in rows}
+        print(f"resume: {len(rows)} cells already in {args.out}", flush=True)
     bb_seeds = args.backbone_seeds if args.backbone_seeds else [None]
     for skew in args.skews:
         for bb in bb_seeds:
             # Each backbone gets its OWN measured reference: C_ref is a property
             # of that checkpoint, not of the skew label it was trained under.
+            todo = [(arm, seed) for seed in range(args.seed_offset,
+                                                  args.seed_offset + args.seeds)
+                    for arm in args.arms
+                    if (skew, bb, arm, seed) not in done]
+            if not todo:
+                print(f"=== skew {skew} backbone {bb}: complete, skipped ===",
+                      flush=True)
+                continue
             C_ref = reference_profile(skew, args, bb)
             nz = C_ref > 0
             K = args.mode_groups
@@ -577,10 +627,8 @@ def main() -> int:
                   f"H={-(C_ref[nz] * np.log(C_ref[nz])).sum():.3f} nats, "
                   f"KL||u={float(np.sum(C_ref[nz] * np.log(C_ref[nz] * K))):.3f} ===",
                   flush=True)
-            cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed, args, C_ref, bb)
-                     for seed in range(args.seed_offset,
-                                       args.seed_offset + args.seeds)
-                     for arm in args.arms]
+            cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed,
+                      args, C_ref, bb) for arm, seed in todo]
             with ProcessPoolExecutor(max_workers=args.workers) as ex:
                 for res in ex.map(_cell, cells):
                     res["C_ref_kl_to_uniform"] = float(

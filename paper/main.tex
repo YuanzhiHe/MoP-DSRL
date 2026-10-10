@@ -345,7 +345,9 @@ BMD, implemented as a skill-conditioned noise policy together with a
 discriminator trained to recover the skill index from the final observation,
 using the variational bound as an intrinsic reward. Its skill cardinality is set
 to the number of mode groups, and at evaluation its skills are sampled uniformly,
-matching the prior the method assumes at training time. The fourth is the reference
+matching the prior the method assumes at training time;
+Section~\ref{sec:prior} reports the same comparison with that prior fitted to
+reproduce the reference. The fourth is the reference
 matching of Equation~\ref{eq:objective}.
 
 \begin{table}[t]
@@ -622,6 +624,36 @@ Task & Distance & No mode & Entropy & Skills & Matching \\
 \end{tabular*}
 \end{table}
 
+\subsection{Skill Prior of the Learned-Skill Method}\label{sec:prior}
+
+The skill prior used at evaluation is a free choice at deployment, so the
+learned-skill method was also run under the prior that suits it best. A held-out
+calibration pass estimates the distribution over mode groups that each skill
+produces, and least squares over those estimates gives the mixture of skills
+whose expected mode histogram reproduces the reference. Evaluation then samples
+skills from that fitted mixture in place of the uniform prior the method assumes
+during training. All four \emph{Avoiding} skew levels were rerun this way, 120
+runs in total, against the same measured references.
+
+Fitting the prior moves the learned-skill method from $0.327$ to $0.321$ in mean
+total variation from the reference, and leaves task success at $0.713$ against
+$0.720$. Per level it gives $0.420$, $0.383$, $0.253$ and $0.221$, against
+$0.432$, $0.380$, $0.275$ and $0.214$ under the uniform prior. Pairing within the
+twenty frozen policies, reference matching stays ahead by $0.139$ in total
+variation, with a 95\% confidence interval of $[0.087, 0.190]$, a win on
+\textbf{19 of 20} policies and $p < 10^{-4}$. The margin under the uniform prior
+is $0.146$ on the same twenty policies, so the advantage of reference matching
+survives the change of protocol almost intact.
+
+Moving the pooled distance by $0.006$ places the gap somewhere other than the
+skill prior, and the training objective is where it sits. The discriminator
+bound of Section~\ref{sec:related} scores how separable the skills are under the
+prior assumed during training, and its optimum lies at a uniform distribution
+over skills; the reference enters nowhere in it. Reweighting the skills at evaluation changes how often each one is drawn,
+and the mode distribution each skill produces is fixed by the training
+objective. Reference matching puts the reference inside the objective instead,
+which is where the remaining $0.139$ comes from.
+
 \subsection{Resolution of the Mode Partition}\label{sec:kres}
 
 \emph{Avoiding}'s twenty-four routes are grouped into six throughout, because a
@@ -702,7 +734,10 @@ $[0.100, 0.192]$, and it differs from that method in machinery. That method main
 latent skill space, conditions the policy on a skill index, and trains a
 discriminator alongside the policy. Reference matching maintains a histogram of
 length $K$ and one scalar weight. Reaching this distance without a learned component
-shows that none is needed for it.
+shows that none is needed for it. The margin holds at $0.139$ when the skill
+prior is fitted to reproduce the reference at evaluation, the protocol most
+favourable to that method, which places the difference in the training objective
+and the skills it shapes.
 
 Two measurement choices shaped what the experiments could show. Defining modes by
 task geometry keeps the measured quantity independent of a learned vocabulary, so
