@@ -16,10 +16,15 @@ import glob
 import json
 from pathlib import Path
 
+import sys
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import d3il_runs
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 OUT = Path("figures")
@@ -48,11 +53,12 @@ plt.rcParams.update({
 
 
 def load(pats, floor):
-    rows = []
-    for p in pats:
-        for f in sorted(glob.glob(f"runs/_d3il/{p}")):
-            rows += json.load(open(f))
-    return [r for r in rows if r["SR"] >= floor]
+    """Rows for the figures, through the shared deduplicating loader.
+
+    A level split across jobs by frozen policy can produce a cell twice; counting
+    it twice would weight that policy above the others in every panel.
+    """
+    return d3il_runs.load(pats, floor)
 
 
 def tvu(r):

@@ -8,14 +8,26 @@ award its maximum to a policy that has moved further from uniform than the
 reference, past the reference rather than onto it.
 """
 import glob, json
+import sys
+from pathlib import Path
+
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import d3il_runs
 from scipy import stats
 
 def load(pats, floor):
-    rows = []
-    for p in pats:
-        for f in sorted(glob.glob(f"runs/_d3il/{p}")): rows += json.load(open(f))
-    return [r for r in rows if r["SR"] >= floor]
+    """Rows as the manuscript scores them.
+
+    Deduplicated, because a level split across jobs by frozen policy can produce
+    a cell twice, and unified so every arm in a group is scored against the one
+    reference that group's frozen policy defines. The second step changes only
+    the earlier Pushing runs, where the learned-skill arm estimated its own
+    reference in a separate job; it leaves Avoiding and the multi-policy sweeps
+    untouched. scripts/maint/verify_unify.py checks both.
+    """
+    return d3il_runs.unify_reference(d3il_runs.load(pats, floor))
 def tvu(r):
     q = np.asarray(r.get("C_ref", []), float)
     return float(0.5*np.abs(q-1.0/q.size).sum()) if q.size else np.nan
