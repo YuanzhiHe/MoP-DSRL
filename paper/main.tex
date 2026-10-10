@@ -1,24 +1,9 @@
-% Tectonic builds with XeTeX; hyperref otherwise selects a PostScript driver
-% that sn-jnl's \burl support cannot use.
-\PassOptionsToPackage{xetex}{hyperref}
 \documentclass[sn-mathphys-num]{sn-jnl}
 
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{booktabs}
-
-\makeatletter
-% sn-jnl pulls in hyperref's PostScript header emission, which the XeTeX engine
-% used to build this document cannot execute. Neutralising it affects only the
-% PDF-mark side channel, not the typeset output.
-\providecommand{\headerps@out}[1]{}
-% The bibliography style formats DOIs through a pdfTeX-specific box primitive,
-% and defines \doiurl only once the class has loaded, so the replacement waits.
-\providecommand{\pdf@box}{\relax}
-\AtBeginDocument{\providecommand{\doiurl}[1]{}%
-  \renewcommand{\doiurl}[1]{\href{https://doi.org/#1}{https://doi.org/#1}}}
-\makeatother
 
 \begin{document}
 
@@ -689,17 +674,17 @@ coefficient is the per-episode weight of Equation~\ref{eq:grad} before batch
 standardisation, and a run is counted as collapsed when its policy visits one
 route group.}
 \label{tab:divergence}
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
 Divergence & $D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$ & Collapsed &
 Largest coefficient & Success \\
 \midrule
-Kullback-Leibler, raw reference & 0.399 & 8 / 24 & 7.27 & 0.184 \\
-Kullback-Leibler, smoothed reference & 0.437 & 4 / 24 & 4.33 & 0.311 \\
+$D_{\mathrm{KL}}$, raw reference & 0.399 & 8 / 24 & 7.27 & 0.184 \\
+$D_{\mathrm{KL}}$, smoothed reference & 0.437 & 4 / 24 & 4.33 & 0.311 \\
 Jensen-Shannon & 0.215 & 5 / 24 & 1.76 & \textbf{0.875} \\
 Total variation & \textbf{0.179} & \textbf{2 / 24} & \textbf{0.50} & 0.622 \\
 \botrule
-\end{tabular}
+\end{tabular*}
 \end{table}
 
 \subsection{Skew of Cloned Reference Distributions}
