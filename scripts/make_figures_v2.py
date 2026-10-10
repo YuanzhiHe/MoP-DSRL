@@ -24,6 +24,11 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 OUT = Path("figures")
 W = 5.15                      # sn-jnl text width, measured
+# Smallest type on the page. matplotlib's tight bbox makes the saved file a
+# little wider than the canvas, so \includegraphics[width=\textwidth] scales
+# the result to about 0.986; everything is authored at 6.3 pt or more so that
+# nothing lands under the 6 pt floor once scaled.
+MIN_PT = 6.3
 INK, MUT, RULE = "#1a1d21", "#5d6670", "#c2c9d2"
 # Okabe-Ito, colourblind safe, distinguishable in greyscale by lightness
 C = {"dsrl": "#999999", "mi": "#D55E00", "bmd": "#009E73", "mop": "#0072B2"}
@@ -33,7 +38,7 @@ NAME = {"dsrl": "No mode term", "mi": "Mode entropy",
 
 plt.rcParams.update({
     "font.size": 7, "axes.labelsize": 7, "axes.titlesize": 7.5,
-    "legend.fontsize": 6.2, "xtick.labelsize": 6.3, "ytick.labelsize": 6.3,
+    "legend.fontsize": 6.3, "xtick.labelsize": 6.3, "ytick.labelsize": 6.3,
     "axes.spines.top": False, "axes.spines.right": False,
     "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
     "lines.linewidth": 1.1, "lines.markersize": 3.2,
@@ -71,7 +76,7 @@ def figure_one():
                 va="center", fontsize=6.4, color=tc, zorder=3)
         if sub:
             ax.text(x + w / 2, y + h * 0.24, sub, ha="center", va="center",
-                    fontsize=5.4, color=MUT, zorder=3)
+                    fontsize=6.3, color=MUT, zorder=3)
 
     def arrow(p0, p1, color=INK, ls="-"):
         ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="-|>", mutation_scale=5,
@@ -83,8 +88,8 @@ def figure_one():
     box(0.30, 0.60, 0.26, 0.33, r"generative policy $v_\theta$", "frozen")
     box(0.63, 0.60, 0.21, 0.33, "rollout", "simulator", fc="#fff")
     arrow((0.23, 0.765), (0.30, 0.765)); arrow((0.56, 0.765), (0.63, 0.765))
-    ax.text(0.265, 0.55, r"$z$", ha="center", fontsize=6, color=MUT)
-    ax.text(0.595, 0.55, r"$a$", ha="center", fontsize=6, color=MUT)
+    ax.text(0.265, 0.55, r"$z$", ha="center", fontsize=6.3, color=MUT)
+    ax.text(0.595, 0.55, r"$a$", ha="center", fontsize=6.3, color=MUT)
 
     box(0.63, 0.14, 0.21, 0.31, r"$C_\phi$", "policy histogram", fc="#fff",
         ec=C["mop"], lw=1.0)
@@ -92,7 +97,7 @@ def figure_one():
     arrow((0.735, 0.60), (0.735, 0.45))
     arrow((0.63, 0.295), (0.23, 0.295), color=C["mop"])
     ax.text(0.43, 0.345, r"penalise $D(C_\phi, C_{\mathrm{ref}})$", ha="center",
-            fontsize=6.2, color=C["mop"])
+            fontsize=6.3, color=C["mop"])
 
     ax = fig.add_subplot(gs[1])
     MEAS = {"unmodified": [], "0.15": [], "0.30": [], "0.60": []}
@@ -112,7 +117,7 @@ def figure_one():
         ax.plot([v.mean()], [i], marker="|", ms=11, mew=1.2, color=INK, zorder=4)
     ax.axvline(0, color=C["mi"], lw=1.2, zorder=2)
     ax.annotate("a uniform policy, where\nthe two objectives agree",
-                xy=(0.02, 3.25), xytext=(0.30, 3.45), fontsize=5.8, color=C["mi"],
+                xy=(0.02, 3.25), xytext=(0.30, 3.45), fontsize=6.3, color=C["mi"],
                 va="center", arrowprops=dict(arrowstyle="->", color=C["mi"], lw=0.6))
     ax.set_yticks(range(4))
     ax.set_yticklabels(["unmodified", "0.15 nats", "0.30 nats", "0.60 nats"])
@@ -152,7 +157,7 @@ def figure_two():
         floor_v = 0.055 if row == 0 else 0.079
         ax.axhspan(0, floor_v, color=RULE, alpha=.45, zorder=0)
         ax.text(xs[-1], floor_v, "sampling floor", ha="right", va="bottom",
-                fontsize=5.4, color=MUT)
+                fontsize=6.3, color=MUT)
         ax.set_ylabel(r"$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$", fontsize=6.8)
         ax.set_title(title + "    lower is closer to the pretrained policy",
                      loc="left", pad=2)
@@ -190,7 +195,7 @@ def figure_two():
         ax.scatter([m], [yy], s=26, color=c, zorder=3, edgecolor="none")
     for yy, m, w in zip(y, ys, wins):
         ax.text(0.287, yy, f"{m:+.3f}   {w}", ha="right", va="center",
-                fontsize=6.1, color=INK)
+                fontsize=6.3, color=INK)
     ax.axvline(0, color=RULE, lw=0.7, ls=":")
     ax.set_yticks(y); ax.set_yticklabels([f"vs {l.lower()}" for l in labs], fontsize=6.3)
     ax.set_xlim(0, 0.30); ax.set_ylim(-0.7, len(ys) - 0.3)
