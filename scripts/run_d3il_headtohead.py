@@ -549,8 +549,25 @@ def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     per = max(1, args.ref_episodes // n_w)
     payloads = [(skew, per, 12345 + i, args.M, args.device, args.task, bb_seed)
                 for i in range(n_w)]
+    # This runs outside _cell, so an exception here takes the whole sweep down
+    # rather than one cell; three Pushing jobs died this way after a day of work.
+    # A chunk that raises contributes nothing and the estimate uses the rest.
     with ProcessPoolExecutor(max_workers=n_w) as ex:
-        counts24 = sum(ex.map(_ref_chunk, payloads))
+        futures = [ex.submit(_ref_chunk, pl) for pl in payloads]
+        chunks, lost = [], 0
+        for fu in futures:
+            try:
+                chunks.append(fu.result())
+            except Exception:                            # noqa: BLE001
+                traceback.print_exc()
+                lost += 1
+    if not chunks:
+        raise RuntimeError(f"every reference chunk failed for skew {skew} "
+                           f"backbone {bb_seed}")
+    if lost:
+        print(f"  reference estimate lost {lost}/{len(payloads)} chunks",
+              flush=True)
+    counts24 = sum(chunks)
     K = args.mode_groups
     counts = np.zeros(K)
     for m in range(TASKS[args.task]['n_modes']):

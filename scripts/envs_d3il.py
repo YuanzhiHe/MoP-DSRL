@@ -125,6 +125,7 @@ class D3ILAvoidingEnv:
         self._t = 0
         self._last_mode_encoding = np.zeros(9)
         self._frames = []
+        self._last_raw = raw
         return self._obs(raw)
 
     def step(self, action: np.ndarray):
@@ -132,7 +133,23 @@ class D3ILAvoidingEnv:
         delta = np.asarray(action, dtype=np.float64).reshape(-1)[: self.action_dim]
         self._desired_xy = self._desired_xy + delta
         pose = np.concatenate([self._desired_xy, self._fixed_z, [0, 1, 0, 0]])
-        raw, reward, done, info = self._env.step(pose)
+        try:
+            raw, reward, done, info = self._env.step(pose)
+        except np.linalg.LinAlgError:
+            # The simulator solves inverse kinematics for the commanded pose, and
+            # its SVD occasionally fails to converge when the policy drives the arm
+            # into a near-singular configuration. The episode cannot continue, so
+            # it ends here: no reward, and the route stays whatever was latched
+            # before, which is -1 unless the arm had already committed to one. The
+            # analysis excludes unlabelled episodes either way. Counted on the
+            # class so the rate can be reported rather than assumed negligible.
+            type(self).ik_failures = getattr(type(self), "ik_failures", 0) + 1
+            return self._obs(self._last_raw), 0.0, True, {
+                "success": False,
+                "mode_encoding": self._last_mode_encoding,
+                "mode_id": self.mode_id, "ik_failure": True,
+            }
+        self._last_raw = raw
         self._t += 1
         if self._t >= self.max_steps:
             done = True
@@ -263,13 +280,29 @@ class D3ILPushingEnv:
         self._t = 0
         self._mode = -1
         self._frames = []
+        self._last_raw = raw
         return self._obs(raw)
 
     def step(self, action: np.ndarray):
         delta = np.asarray(action, dtype=np.float64).reshape(-1)[: self.action_dim]
         self._desired_xy = self._desired_xy + delta
         pose = np.concatenate([self._desired_xy, self._fixed_z, [0, 1, 0, 0]])
-        raw, reward, done, info = self._env.step(pose)
+        try:
+            raw, reward, done, info = self._env.step(pose)
+        except np.linalg.LinAlgError:
+            # The simulator solves inverse kinematics for the commanded pose, and
+            # its SVD occasionally fails to converge when the policy drives the arm
+            # into a near-singular configuration. The episode cannot continue, so
+            # it ends here: no reward, and the route stays whatever was latched
+            # before, which is -1 unless the arm had already committed to one. The
+            # analysis excludes unlabelled episodes either way. Counted on the
+            # class so the rate can be reported rather than assumed negligible.
+            type(self).ik_failures = getattr(type(self), "ik_failures", 0) + 1
+            return self._obs(self._last_raw), 0.0, True, {
+                "success": False,
+                "mode_id": self._mode, "ik_failure": True,
+            }
+        self._last_raw = raw
         self._t += 1
         if self._t >= self.max_steps:
             done = True
