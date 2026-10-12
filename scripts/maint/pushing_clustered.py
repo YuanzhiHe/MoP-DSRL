@@ -27,9 +27,24 @@ def tv_uniform(r):
 
 
 def main() -> int:
-    rows = D.unify_reference(D.load("pm_skew*.json", floor=FLOOR))
+    # The learned-skill arm in the multi-policy sweep was run with the fitted
+    # skill prior. On Avoiding the main table uses the uniform prior and reports
+    # the fitted one as a robustness check, so the same split applies here: the
+    # headline comparison takes that arm from the uniform-prior sweep, and the
+    # fitted rows are reported separately at the end.
+    rows = [r for r in D.unify_reference(D.load("pm_skew*.json", floor=FLOOR))
+            if r["arm"] != "bmd"]
+    fitted = [r for r in D.unify_reference(D.load("pm_skew*.json", floor=FLOOR))
+              if r["arm"] == "bmd"]
+    uniform = D.unify_reference(D.load("pu_skew*.json", floor=FLOOR))
+    if uniform:
+        rows += uniform
+    else:
+        print("NOTE: no uniform-prior runs yet; the learned-skill arm below uses "
+              "the fitted prior, which is not the protocol Avoiding reports")
+        rows += fitted
     print(f"Pushing multi-policy: {len(rows)} runs above the success floor, "
-          f"{D.load.duplicates_dropped} duplicate cells dropped")
+          f"learned-skill prior = {'uniform' if uniform else 'fitted'}")
 
     skews = sorted({r["skew"] for r in rows})
     bbs = sorted({r.get("bb_seed") for r in rows} - {None})
@@ -81,6 +96,25 @@ def main() -> int:
 
     sr = np.mean([r["SR"] for r in rows if r["arm"] == "mop"])
     print(f"\nreference matching task success {sr:.3f}")
+
+    if uniform and fitted:
+        print("\nthe learned-skill arm under the fitted prior, for comparison")
+        d = []
+        for sk in skews:
+            for bb in bbs:
+                m = [r["tv_to_ref"] for r in rows
+                     if r["skew"] == sk and r.get("bb_seed") == bb and r["arm"] == "mop"]
+                y = [r["tv_to_ref"] for r in fitted
+                     if r["skew"] == sk and r.get("bb_seed") == bb]
+                if len(m) > 1 and len(y) > 1:
+                    d.append(np.mean(y) - np.mean(m))
+        d = np.array(d)
+        if d.size >= 3:
+            sem = d.std(ddof=1) / np.sqrt(d.size)
+            t, p2 = stats.ttest_1samp(d, 0)
+            print(f"  vs learned skills, fitted prior  diff={d.mean():+.3f} "
+                  f"p={(p2 / 2 if t > 0 else 1 - p2 / 2):.4f} "
+                  f"wins={int((d > 0).sum())}/{d.size}")
 
     # The floor can exclude arms at different rates, which would make the
     # comparison a selected one. Report what each arm loses to it.

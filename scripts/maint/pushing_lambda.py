@@ -62,8 +62,17 @@ def main() -> int:
 
     print("\n=== step 3: the comparison at the selected weight, reported either way ===")
     sel = [r for r in rows_at(chosen) if r["SR"] >= FLOOR]
+    # The learned-skill baseline is taken from the uniform-prior sweep, which is
+    # the protocol the Avoiding main table uses; the fitted prior belongs in the
+    # robustness section on both tasks, not in the headline comparison.
+    bmd_pat = "pu_skew*.json" if list(D.load("pu_skew*.json", floor=0.0)) else "pm_skew*.json"
+    if bmd_pat == "pm_skew*.json":
+        print("  NOTE: uniform-prior runs absent, falling back to the fitted-prior "
+              "learned-skill rows, which is not the Avoiding protocol")
     base = [r for r in D.unify_reference(D.load("pm_skew*.json", floor=0.0))
-            if r["skew"] in LEVELS and r["arm"] in ("dsrl", "bmd") and r["SR"] >= FLOOR]
+            if r["skew"] in LEVELS and r["arm"] == "dsrl" and r["SR"] >= FLOOR]
+    base += [r for r in D.unify_reference(D.load(bmd_pat, floor=0.0))
+             if r["skew"] in LEVELS and r["arm"] == "bmd" and r["SR"] >= FLOOR]
     pool = sel + base
     x = np.array([r["tv_to_ref"] for r in pool if r["arm"] == "mop"])
     print(f"  reference matching: n={x.size}, mean {x.mean():.3f}, "
