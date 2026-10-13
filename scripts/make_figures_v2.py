@@ -144,9 +144,21 @@ def figure_two():
 
     for row, (title, pats, floor) in enumerate([
             ("(a)  Avoiding", ["mb_skew*.json"], 0.15),
-            ("(b)  Pushing", ["pushrw_skew*.json", "bmdP_skew*.json"], 0.10)]):
+            ("(b)  Pushing", ["pm_skew*.json", "pu_skew*.json"], 0.10)]):
         ax = fig.add_subplot(gs[row])
         rows = load(pats, floor)
+        if pats[0].startswith("pm_"):
+            # The learned-skill arm appears in both sweeps: pm_ ran it under the
+            # fitted skill prior, pu_ under the uniform one. Panel (a) plots the
+            # uniform prior, so panel (b) plots it too; mixing the protocols
+            # across the two panels would make them incomparable.
+            rows = [r for r in rows
+                    if r["arm"] != "bmd" or r.get("bmd_prior") != "fitted"]
+            if not any(r["arm"] == "bmd" for r in rows):
+                raise SystemExit(
+                    "panel (b): no uniform-prior learned-skill runs found. "
+                    "Plotting the fitted-prior ones instead would put the two "
+                    "panels under different protocols, so the figure is not built.")
         sks = sorted({r["skew"] for r in rows},
                      key=lambda s: np.nanmean([tvu(r) for r in rows if r["skew"] == s]))
         xs = [np.nanmean([tvu(r) for r in rows if r["skew"] == s]) for s in sks]
