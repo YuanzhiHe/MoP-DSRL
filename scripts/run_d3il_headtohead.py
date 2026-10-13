@@ -36,6 +36,20 @@ import json
 import traceback
 import os
 import sys
+
+# Cap the BLAS thread pools BEFORE numpy and torch load. The sweep runs one
+# worker process per allocated core, and each would otherwise inherit
+# OMP_NUM_THREADS from the batch script, which sets it to the core count: 24
+# workers of 24 threads each against a 192-core node, twice that where two jobs
+# share one. Rollouts then crawl -- two sweeps spent thirty-six hours without
+# finishing a reference estimate whose work is three minutes per worker. These
+# variables are read when the libraries initialise their pools, so setting them
+# inside the worker, after the import, does nothing. The pool supplies the
+# parallelism; each worker takes one thread.
+for _var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+             "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
+    os.environ[_var] = "1"
+
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -499,6 +513,7 @@ def run_arm(arm, lam, skew, seed, args, C_ref, bb_seed=None):
 
 def _ref_chunk(payload):
     """Worker: roll the frozen backbone out and count modes."""
+    _single_threaded()
     skew, n, seed, M, device, task, bb_seed = payload
     model, blob = load_backbone(backbone_path(task, skew, bb_seed), device)
     env = TASKS[task]["env"](seed=seed, history=blob.get("history", 1))
@@ -518,6 +533,16 @@ def _ref_chunk(payload):
     return counts
 
 
+def _single_threaded():
+    """One torch thread per worker process.
+
+    The BLAS pools are capped at import time at the top of this file, which is
+    the part that mattered; this covers torch's own pool, which is set through
+    an API rather than the environment.
+    """
+    torch.set_num_threads(1)
+
+
 def _cell(payload):
     """Worker: one (arm, seed) cell of the sweep.
 
@@ -526,6 +551,7 @@ def _cell(payload):
     One sweep died that way eleven hours in, so a failed cell is reported as a
     row and the remaining cells carry on.
     """
+    _single_threaded()
     arm, lam, skew, seed, args, C_ref, bb_seed = payload
     try:
         return run_arm(arm, lam, skew, seed, args, C_ref, bb_seed)
@@ -616,6 +642,11 @@ def main() -> int:
     ap.add_argument("--resume", action="store_true",
                     help="keep the cells already in --out and run only the rest; "
                          "the per-cell write makes any killed sweep restartable")
+    ap.add_argument("--resume-also", nargs="*", default=[], metavar="FILE",
+                    help="count cells in these files as done without writing to "
+                         "them. Lets a sweep that was split differently pick up "
+                         "earlier work: two jobs writing one file clobber each "
+                         "other, so each keeps its own output and reads the rest")
     args = ap.parse_args()
 
     rows = []
@@ -624,6 +655,15 @@ def main() -> int:
         rows = [r for r in json.loads(args.out.read_text()) if not r.get("failed")]
         done = {(r["skew"], r.get("bb_seed"), r["arm"], r["seed"]) for r in rows}
         print(f"resume: {len(rows)} cells already in {args.out}", flush=True)
+    for extra in args.resume_also:
+        for f in sorted(Path().glob(extra)) or [Path(extra)]:
+            if not f.exists():
+                continue
+            seen = [r for r in json.loads(f.read_text()) if not r.get("failed")]
+            before = len(done)
+            done |= {(r["skew"], r.get("bb_seed"), r["arm"], r["seed"]) for r in seen}
+            print(f"resume-also: {len(done) - before} further cells from {f}",
+                  flush=True)
     bb_seeds = args.backbone_seeds if args.backbone_seeds else [None]
     for skew in args.skews:
         for bb in bb_seeds:
