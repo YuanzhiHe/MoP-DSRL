@@ -6,9 +6,11 @@ continuation takes over may redo cells the split job already produced. Counting
 such a cell twice would weight one frozen policy above the others, so rows are
 keyed and the first occurrence kept.
 
-The key carries ``bmd_prior``: the learned-skill arm is run under both the
-uniform and the fitted skill prior with everything else identical, so without it
-the fitted runs would silently displace the uniform ones.
+The key carries ``lam`` and ``bmd_prior``, the two settings varied with
+everything else held identical. Without ``bmd_prior`` the fitted-prior
+learned-skill runs displace the uniform ones. Without ``lam`` the penalty-weight
+sweep loses every weight but the first to sort: the 0.50 runs were being dropped
+as duplicates of the 0.25 runs, which differ from them in nothing else.
 """
 from __future__ import annotations
 
@@ -18,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "runs" / "_d3il"
 
-KEY = ("task", "skew", "bb_seed", "arm", "seed", "bmd_prior")
+KEY = ("task", "skew", "bb_seed", "arm", "seed", "lam", "bmd_prior")
 
 
 def row_key(r: dict) -> tuple:
