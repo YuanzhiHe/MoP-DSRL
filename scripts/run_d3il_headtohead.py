@@ -50,8 +50,19 @@ for _var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
              "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS"):
     os.environ[_var] = "1"
 
+import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+
+# Worker processes are started through forkserver, not fork. The parent holds
+# BLAS and OpenMP threads, and a fork taken while one of them owns a lock leaves
+# the child blocked on a lock that will never be released: the pool then sits
+# with no workers and the parent at zero percent CPU. Two sweeps died that way,
+# one after thirty-six hours and one after twenty-five, each having written a
+# single cell before the pool stopped. forkserver takes its children from a
+# clean single-threaded process, and measured on this workload it is also
+# faster than fork.
+_MP = mp.get_context("forkserver")
 
 import numpy as np
 import torch
@@ -578,7 +589,7 @@ def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     # This runs outside _cell, so an exception here takes the whole sweep down
     # rather than one cell; three Pushing jobs died this way after a day of work.
     # A chunk that raises contributes nothing and the estimate uses the rest.
-    with ProcessPoolExecutor(max_workers=n_w) as ex:
+    with ProcessPoolExecutor(max_workers=n_w, mp_context=_MP) as ex:
         futures = [ex.submit(_ref_chunk, pl) for pl in payloads]
         chunks, lost = [], 0
         for fu in futures:
@@ -686,7 +697,7 @@ def main() -> int:
                   flush=True)
             cells = [(arm, 0.0 if arm == "dsrl" else args.lam, skew, seed,
                       args, C_ref, bb) for arm, seed in todo]
-            with ProcessPoolExecutor(max_workers=args.workers) as ex:
+            with ProcessPoolExecutor(max_workers=args.workers, mp_context=_MP) as ex:
                 for res in ex.map(_cell, cells):
                     res["C_ref_kl_to_uniform"] = float(
                         np.sum(C_ref[nz] * np.log(C_ref[nz] * K)))
