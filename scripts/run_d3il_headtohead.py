@@ -54,15 +54,19 @@ import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-# Worker processes are started through forkserver, not fork. The parent holds
-# BLAS and OpenMP threads, and a fork taken while one of them owns a lock leaves
-# the child blocked on a lock that will never be released: the pool then sits
-# with no workers and the parent at zero percent CPU. Two sweeps died that way,
-# one after thirty-six hours and one after twenty-five, each having written a
-# single cell before the pool stopped. forkserver takes its children from a
-# clean single-threaded process, and measured on this workload it is also
-# faster than fork.
-_MP = mp.get_context("forkserver")
+# Worker processes are started through spawn. The parent holds BLAS and OpenMP
+# threads, and a child that inherits the parent's memory inherits whatever lock
+# state those threads were in: every worker then blocks in futex and the pool
+# sits idle, having produced at most the one cell that happened to start first.
+# Sweeps died this way after thirty-six, twenty-eight and twenty-two hours.
+#
+# forkserver does not avoid it. Its server process is created lazily, at first
+# use, which is after numpy and torch have loaded, so the server is itself
+# forked from the threaded parent and hands that state to every child. spawn
+# execs a fresh interpreter instead and inherits nothing; on this workload it
+# measured 20.6 seconds against forkserver's 18.1, which is not a difference
+# worth the deadlock.
+_MP = mp.get_context("spawn")
 
 import numpy as np
 import torch
