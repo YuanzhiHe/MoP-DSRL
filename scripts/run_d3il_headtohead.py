@@ -616,7 +616,13 @@ def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     return counts / max(counts.sum(), 1)
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The sweep's options, as a parser a test can reuse.
+
+    Pulled out of main so a diagnostic can construct the same
+    namespace the driver sees; a hand-written stub went stale the
+    moment an option was added.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", default="avoiding", choices=sorted(TASKS))
     ap.add_argument("--skews", nargs="+", default=["0.00", "0.05", "0.15", "0.30", "0.60"])
@@ -662,6 +668,11 @@ def main() -> int:
                          "them. Lets a sweep that was split differently pick up "
                          "earlier work: two jobs writing one file clobber each "
                          "other, so each keeps its own output and reads the rest")
+    return ap
+
+
+def main() -> int:
+    ap = build_parser()
     args = ap.parse_args()
 
     rows = []

@@ -58,7 +58,9 @@ def load(pats, floor):
     A level split across jobs by frozen policy can produce a cell twice; counting
     it twice would weight that policy above the others in every panel.
     """
-    return d3il_runs.load(pats, floor)
+    # unify_reference as well, so the figure and the text are computed the same
+    # way: without it the two disagreed in the third decimal.
+    return d3il_runs.unify_reference(d3il_runs.load(pats, floor))
 
 
 def tvu(r):
@@ -138,8 +140,8 @@ def figure_one():
 
 # ----------------------------------------------------------------- figure 2
 def figure_two():
-    fig = plt.figure(figsize=(W, 4.6))
-    gs = fig.add_gridspec(3, 1, height_ratios=[1, 1, 0.85], hspace=0.62,
+    fig = plt.figure(figsize=(W, 5.3))
+    gs = fig.add_gridspec(3, 1, height_ratios=[1, 1, 1.35], hspace=0.55,
                           left=0.155, right=0.985, top=0.955, bottom=0.085)
 
     for row, (title, pats, floor) in enumerate([
@@ -174,8 +176,11 @@ def figure_two():
                         zorder=5 if arm == "mop" else 3)
         floor_v = 0.055 if row == 0 else 0.079
         ax.axhspan(0, floor_v, color=RULE, alpha=.45, zorder=0)
-        ax.text(xs[-1], floor_v, "sampling floor", ha="right", va="bottom",
-                fontsize=6.3, color=MUT)
+        # Anchored at the left on Pushing: at the right the curves run into the
+        # band and the label sat on top of three of them.
+        lab_x, lab_ha = ((xs[-1], "right") if row == 0 else (xs[0], "left"))
+        ax.text(lab_x, floor_v + 0.004, "sampling floor", ha=lab_ha,
+                va="bottom", fontsize=6.3, color=MUT)
         ax.set_ylabel(r"$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$", fontsize=6.8)
         ax.set_title(title + "    lower is closer to the pretrained policy",
                      loc="left", pad=2)
@@ -187,39 +192,48 @@ def figure_two():
             ax.set_xlabel(r"reference skew  $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$")
 
     ax = fig.add_subplot(gs[2])
-    rows = load(["mb_skew*.json"], 0.15)
-    bbs = sorted({r.get("bb_seed") for r in rows} - {None})
-    sks = sorted({r["skew"] for r in rows})
-    ys, labs, cols, lo, hi, wins = [], [], [], [], [], []
-    for arm in ("dsrl", "mi", "bmd"):
+
+    def paired(rows, arm):
+        """One difference per (weighting, frozen policy), in our favour if positive."""
+        bbs = sorted({r.get("bb_seed") for r in rows} - {None})
         d = []
-        for s in sks:
+        for s in sorted({r["skew"] for r in rows}):
             for bb in bbs:
-                v = [r["tv_to_ref"] for r in rows if r["skew"] == s
-                     and r.get("bb_seed") == bb and r["arm"] == "mop"]
-                w = [r["tv_to_ref"] for r in rows if r["skew"] == s
-                     and r.get("bb_seed") == bb and r["arm"] == arm]
+                sel = [r for r in rows if r["skew"] == s and r.get("bb_seed") == bb]
+                v = [r["tv_to_ref"] for r in sel if r["arm"] == "mop"]
+                w = [r["tv_to_ref"] for r in sel if r["arm"] == arm]
                 if len(v) > 1 and len(w) > 1:
                     d.append(np.mean(w) - np.mean(v))
-        d = np.array(d); sem = d.std(ddof=1) / np.sqrt(len(d))
-        t = 2.093                                   # t_{0.975, 19}
-        ys.append(d.mean()); lo.append(t * sem); hi.append(t * sem)
-        labs.append(NAME[arm]); cols.append(C[arm])
-        wins.append(f"{int((d > 0).sum())}/{len(d)}")
+        return np.array(d)
+
+    AV = load(["mb_skew*.json"], 0.15)
+    PU = [r for r in load(["pm_skew*.json", "pu_skew*.json"], 0.10)
+          if r["arm"] != "bmd" or r.get("bmd_prior") != "fitted"]
+    ys, labs, cols, lo, hi, wins = [], [], [], [], [], []
+    for task, rows in (("Pushing", PU), ("Avoiding", AV)):
+        for arm in ("bmd", "mi", "dsrl"):
+            d = paired(rows, arm)
+            if d.size < 3:
+                continue
+            sem = d.std(ddof=1) / np.sqrt(d.size)
+            t = 2.093 if d.size >= 15 else 2.262
+            ys.append(d.mean()); lo.append(t * sem); hi.append(t * sem)
+            labs.append(f"{task}, vs {NAME[arm].lower()}"); cols.append(C[arm])
+            wins.append(f"{int((d > 0).sum())}/{d.size}")
     y = np.arange(len(ys))[::-1]
     for yy, m, l, h, c in zip(y, ys, lo, hi, cols):
         ax.errorbar([m], [yy], xerr=[[l], [h]], fmt="none", ecolor=c,
                     elinewidth=1.1, capsize=2.4, zorder=2)
         ax.scatter([m], [yy], s=26, color=c, zorder=3, edgecolor="none")
     for yy, m, w in zip(y, ys, wins):
-        ax.text(0.287, yy, f"{m:+.3f}   {w}", ha="right", va="center",
+        ax.text(0.335, yy, f"{m:+.3f}   {w}", ha="right", va="center",
                 fontsize=6.3, color=INK)
     ax.axvline(0, color=RULE, lw=0.7, ls=":")
-    ax.set_yticks(y); ax.set_yticklabels([f"vs {l.lower()}" for l in labs], fontsize=6.3)
-    ax.set_xlim(0, 0.30); ax.set_ylim(-0.7, len(ys) - 0.3)
+    ax.set_yticks(y); ax.set_yticklabels(labs, fontsize=6.3)
+    ax.set_xlim(-0.06, 0.34); ax.set_ylim(-0.7, len(ys) - 0.3)
     ax.set_xlabel("reduction in " r"$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$"
                   ",  paired within each frozen policy")
-    ax.set_title("(c)  Each frozen policy as one unit, Avoiding "
+    ax.set_title("(c)  Each frozen policy as one unit "
                  "(95% CI; policies won)", loc="left", pad=2)
 
     fig.savefig(OUT / "fig2_result.pdf"); fig.savefig(OUT / "fig2_result.png")

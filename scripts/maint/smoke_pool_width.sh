@@ -8,13 +8,13 @@
 # of twenty -- and cuts only the episodes.
 set -uo pipefail
 cd "$(dirname "$0")/../.."
-OUT=runs/_d3il/_smoke_width.json
+OUT=runs/_d3il/_smoke_width_${SMOKE_TASK:-avoiding}.json
 rm -f "$OUT"
 START=$(date +%s)
 
 timeout 1800 python scripts/run_d3il_headtohead.py \
-  --task avoiding --skews 0.00 --backbone-seeds 0 --arms dsrl mop mi bmd \
-  --seeds 5 --seed-offset 7500 --lam 1.0 --mode-groups 6 --ema 0.15 \
+  --task ${SMOKE_TASK:-avoiding} --skews ${SMOKE_SKEW:-0.00} --backbone-seeds ${SMOKE_BB:-0} --arms dsrl mop mi bmd \
+  --seeds 5 --seed-offset 7500 --lam 1.0 --mode-groups ${SMOKE_K:-6} --ema 0.15 \
   --divergence tv --n-rewarded 1 --bmd-prior fitted \
   --iters 2 --episodes-per-iter 4 --eval-episodes 10 --ref-episodes 24 \
   --workers 24 --out "$OUT" 2>&1 | grep -E "=== skew|^  bb|resume|Error" | tail -8

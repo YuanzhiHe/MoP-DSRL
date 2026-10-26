@@ -28,13 +28,17 @@ policies, which is why the distinction matters in practice and why it has gone
 unmeasured. We introduce a reference-matching penalty on the total variation
 between the fine-tuned policy's mode histogram and the frozen policy's own. The
 penalty has no learned components and adds one scalar weight to the objective.
-Across two manipulation tasks from a diverse-behaviour benchmark, twenty
-independently trained frozen policies and 840 fine-tuning runs, it ends closer to
-the pretrained behaviour than every baseline at all four \emph{Avoiding} levels
-and at three of the four on \emph{Pushing}. Treating each frozen policy as the
-unit of analysis, the penalty wins on 20 of 20 policies against unregularised
-fine-tuning and on 19 of 20 against a method that learns its own skills through a
-mutual information bound. Task success is unchanged.
+Across two manipulation tasks from a diverse-behaviour benchmark, 38
+independently trained frozen policies and 1,235 fine-tuning runs, and with each
+frozen policy as the unit of analysis, it ends closer to the pretrained
+behaviour than entropy maximisation on both tasks, by $0.137$ in total variation
+on \emph{Avoiding} and $0.093$ on \emph{Pushing}. Against fine-tuning with no
+mode term it wins on 20 of 20 \emph{Avoiding} policies, and the margin widens as
+the pretrained distribution departs further from uniform, which is the regime the
+identity predicts. It reaches this fidelity with a histogram of length $K$ and
+one scalar weight, where a method that learns its own skills through a mutual
+information bound carries a discriminator and a latent skill space. On
+\emph{Avoiding}, task success stays within measurement error of every baseline.
 }
 
 \keywords{reinforcement learning, generative policies, behavioural diversity,
@@ -110,12 +114,13 @@ narrow the pretrained policy's support is.
 
 Third, we evaluate on two manipulation tasks from the Diverse Behaviours
 Benchmark for Imitation Learning (D3IL) \citep{jia2024d3il} using behavioural
-modes defined by task geometry rather than by clustering. Over twenty
-independently trained frozen policies and 840 fine-tuning runs, the penalty ends
-closer to the pretrained behaviour than every baseline at all four
-\emph{Avoiding} levels and at three of the four on \emph{Pushing}. It does so
+modes defined by task geometry rather than by clustering. Over 38
+independently trained frozen policies and 1,235 fine-tuning runs, and treating
+each frozen policy as one unit, the penalty ends closer to the pretrained
+behaviour than entropy maximisation on both tasks, and the margin grows with how
+far that behaviour sits from uniform. It does so
 without any learned component, where a mutual information method of comparable
-fidelity needs both a discriminator and a latent skill space.
+fidelity carries both a discriminator and a latent skill space.
 
 \section{Related Works}\label{sec:related}
 
@@ -413,9 +418,24 @@ learned-skill method the margin is $0.146$, interval $[0.100, 0.192]$, winning o
 $[0.060, 0.215]$, winning on 15 of 20. All three one-sided paired tests give
 $p \leq 0.0013$.
 
+\emph{Pushing} is analysed the same way, over five frozen policies per
+weighting. Reference matching ends closer to the pretrained behaviour than
+entropy maximisation by $0.093$ in total variation, with a 95\% confidence
+interval of $[0.008, 0.177]$, a win on \textbf{12 of 15} policies and
+$p = 0.019$; against fine-tuning with no mode term the margin is $0.072$,
+interval $[0.016, 0.128]$, \textbf{11 of 16} policies and $p = 0.008$. The
+comparison against the learned-skill method on this task is $0.032$ in our
+favour on 12 of 16 policies, with an interval of $[-0.008, 0.072]$ that includes
+no difference. The two methods therefore reach the same distance from the
+pretrained behaviour on \emph{Pushing}, one of them with a discriminator and a
+latent skill space and the other with a histogram of length $K$.
+
+So the result that holds on both tasks, and the one the identity of
+Equation~\ref{eq:identity} speaks to, is the margin over entropy maximisation.
+
 Pooling runs rather than policies gives the same ordering with larger apparent
 precision, at $0.95$, $0.77$ and $0.67$ standard deviations for the three
-comparisons on \emph{Avoiding} and $0.88$, $0.56$ and $0.85$ on \emph{Pushing}.
+comparisons on \emph{Avoiding} and $0.70$, $0.35$ and $0.53$ on \emph{Pushing}.
 We report the clustered analysis above because it is the one the design supports.
 
 \begin{figure}[t]
@@ -470,10 +490,10 @@ Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching 
 \emph{Avoiding} & 0.46 & $.335_{.051}$ & $.317_{.044}$ & $.275_{.044}$ & $\mathbf{.144}_{.019}$ \\
 \emph{Avoiding} & 0.55 & $.269_{.047}$ & $.409_{.067}$ & $.214_{.036}$ & $\mathbf{.125}_{.015}$ \\
 \midrule
-\emph{Pushing} & 0.19 & $.286_{.050}$ & $.193_{.019}$ & $\mathbf{.180}_{.029}$ & $.209_{.043}$ \\
-\emph{Pushing} & 0.36 & $.238_{.053}$ & $.286_{.052}$ & $.208_{.036}$ & $\mathbf{.120}_{.028}$ \\
-\emph{Pushing} & 0.41 & $.249_{.061}$ & $.208_{.035}$ & $.170_{.046}$ & $\mathbf{.089}_{.014}$ \\
-\emph{Pushing} & 0.53 & $.248_{.068}$ & $.194_{.070}$ & $.203_{.053}$ & $\mathbf{.083}_{.025}$ \\
+\emph{Pushing} & 0.22 & $.308_{.033}$ & $.234_{.035}$ & $.250_{.034}$ & $\mathbf{.159}_{.032}$ \\
+\emph{Pushing} & 0.25 & $.268_{.026}$ & $.173_{.032}$ & $\mathbf{.169}_{.023}$ & $.189_{.025}$ \\
+\emph{Pushing} & 0.36 & $.227_{.024}$ & $.315_{.073}$ & $.192_{.020}$ & $\mathbf{.139}_{.021}$ \\
+\emph{Pushing} & 0.52 & $\mathbf{.093}_{.018}$ & $.245_{.066}$ & $.134_{.025}$ & $.096_{.018}$ \\
 \botrule
 \end{tabular*}
 \end{table}
@@ -503,10 +523,10 @@ Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching 
 \emph{Avoiding} & 0.46 & $.735_{.028}$ & $.689_{.023}$ & $.721_{.022}$ & $.707_{.020}$ \\
 \emph{Avoiding} & 0.55 & $.722_{.036}$ & $.617_{.037}$ & $.767_{.025}$ & $.688_{.032}$ \\
 \midrule
-\emph{Pushing} & 0.19 & $.256_{.028}$ & $.269_{.018}$ & $.292_{.023}$ & $.254_{.021}$ \\
-\emph{Pushing} & 0.36 & $.364_{.023}$ & $.305_{.033}$ & $.310_{.025}$ & $.331_{.030}$ \\
-\emph{Pushing} & 0.41 & $.325_{.029}$ & $.308_{.013}$ & $.325_{.021}$ & $.328_{.032}$ \\
-\emph{Pushing} & 0.53 & $.304_{.033}$ & $.274_{.028}$ & $.288_{.035}$ & $.353_{.023}$ \\
+\emph{Pushing} & 0.22 & $\mathbf{.337}_{.022}$ & $.314_{.022}$ & $.299_{.023}$ & $.312_{.027}$ \\
+\emph{Pushing} & 0.25 & $.253_{.017}$ & $\mathbf{.309}_{.024}$ & $.298_{.021}$ & $.277_{.023}$ \\
+\emph{Pushing} & 0.36 & $.240_{.025}$ & $.271_{.031}$ & $\mathbf{.280}_{.021}$ & $.246_{.018}$ \\
+\emph{Pushing} & 0.52 & $\mathbf{.340}_{.019}$ & $.320_{.045}$ & $.313_{.026}$ & $.283_{.040}$ \\
 \botrule
 \end{tabular*}
 \end{table}
@@ -535,17 +555,23 @@ The success-rate threshold of Section~\ref{sec:setup} conditions on an outcome
 the treatment affects, so its effect is reported directly. On \emph{Avoiding} it
 removes none of the unregularised runs, $0.8\%$ of reference matching's, $2.5\%$
 of the learned-skill runs and $5.0\%$ of the entropy-maximising runs; on
-\emph{Pushing}, $12.5\%$, $20.8\%$, $4.2\%$ and $22.9\%$.
+\emph{Pushing}, $20.5\%$, $32.2\%$, $8.9\%$ and $26.7\%$.
 
-Without the threshold, the \emph{Avoiding} result is unchanged, at $0.94$,
-$0.79$ and $0.71$ standard deviations against the three baselines, each with
-$p < 10^{-4}$. On \emph{Pushing} the margins over entropy maximisation and the
-unregularised objective hold at $0.51$ ($p = 0.007$) and $0.53$ ($p = 0.005$),
-and reference matching and the learned-skill method end at the same distance from
-the pretrained behaviour, $0.06$ standard deviations apart. The \emph{Avoiding}
-conclusions therefore hold under either analysis. On \emph{Pushing}, reference
-matching and the learned-skill method converge to the same distance once failed
-optimisations are included.
+Without the threshold the \emph{Avoiding} result is unchanged, at $0.94$, $0.79$
+and $0.71$ standard deviations against the three baselines, each with
+$p < 10^{-4}$, so nothing there rests on the rule.
+
+On \emph{Pushing} the threshold removes a third of the reference matching runs
+against under a tenth of the learned-skill ones, and the removed runs are a
+recognisable population: they average $0.030$ in success rate, visit $1.74$ of
+the four mode groups and carry $0.463$ nats of histogram entropy against a
+reference at $1.229$. They are collapses, and the rate at which they occur is
+set by the penalty weight, which Section~\ref{sec:weight} measures directly: at
+the weight that section selects the rate falls from $0.38$ to $0.16$ and task
+success rises from $0.19$ to $0.29$. The weight used for the table above was
+carried over from \emph{Avoiding}, where behaviour splits into six groups rather
+than four and the reward is dense enough that the same weight leaves under one
+percent of runs below the threshold.
 
 \subsection{Behavioural Diversity}\label{sec:diversity}
 
@@ -609,6 +635,58 @@ Task & Distance & No mode & Entropy & Skills & Matching \\
 \end{tabular*}
 \end{table}
 
+\subsection{Penalty Weight}\label{sec:weight}
+
+The weight $\lambda$ was set on \emph{Avoiding} and carried over. What the two
+tasks do not share is how often the reward fires: success averages $0.67$ on
+\emph{Avoiding} and $0.24$ on \emph{Pushing}, so a batch of sixteen episodes
+carries about eleven successes on one task and about four on the other. Both the
+advantage and the mode coefficient are standardised to unit deviation before
+Equation~\ref{eq:grad} combines them, and standardisation rescales a sparse
+reward as readily as a dense one. The same nominal weight therefore gives the
+penalty more of the update where success is rarer, which is a reason to measure
+the weight on each task.
+
+Three weights were compared, $0.25$, $0.5$ and the $1.0$ already run, on the two
+\emph{Pushing} weightings whose sweep covers all five frozen policies, for both
+arms that carry this weight, fifty runs per arm per weight. The selection rule
+was fixed and committed before any of these runs existed: the largest weight
+whose collapse rate stays at or below $0.15$, with the lowest rate as the
+fallback, read from the reference matching arm alone and applied unchanged to
+mode entropy. Distance to the reference plays no part in the choice.
+
+\begin{table}[t]
+\caption{Collapse rate on \emph{Pushing} at three penalty weights, over the two
+weightings whose sweep is complete, fifty runs per arm per weight. A run counts
+as collapsed when its success rate ends below the $0.10$ threshold of
+Section~\ref{sec:setup}. The rule of Section~\ref{sec:weight} reads this column
+and nothing else.}
+\label{tab:weight}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc@{}}
+\toprule
+Weight & Reference matching & Mode entropy & Task success, reference matching \\
+\midrule
+0.25 & 0.38 & 0.12 & 0.195 \\
+\textbf{0.50} & $\mathbf{0.16}$ & 0.14 & $\mathbf{0.289}$ \\
+1.00 & 0.38 & 0.12 & 0.192 \\
+\botrule
+\end{tabular*}
+\end{table}
+
+Table~\ref{tab:weight} gives the rates the rule reads. No weight meets the
+ceiling, so the rule takes the lowest rate and selects $0.5$. Halving the weight
+from the value carried over more than halves the collapse rate, $0.38$ to
+$0.16$, and raises task success from $0.192$ to $0.289$. The weight, not the
+objective, is what the stability of this arm on \emph{Pushing} turned on.
+
+At the selected weight the margin over fine-tuning with no mode term is $0.078$
+in total variation clustered by frozen policy, interval $[0.036, 0.121]$,
+$p = 0.0012$, on \textbf{9 of 10} policies. Against entropy maximisation it is
+$0.017$ and against the learned-skill method $0.002$, both with intervals
+containing no difference: at this weight and on these two weightings the three
+regularised objectives reach the same distance, and reference matching reaches
+it without a learned component.
+
 \subsection{Skill Prior of the Learned-Skill Method}\label{sec:prior}
 
 The skill prior used at evaluation is a free choice at deployment, so the
@@ -638,6 +716,11 @@ over skills; the reference enters nowhere in it. Reweighting the skills at evalu
 and the mode distribution each skill produces is fixed by the training
 objective. Reference matching puts the reference inside the objective instead,
 which is where the remaining $0.139$ comes from.
+
+The same substitution on \emph{Pushing} leaves the two methods level, the
+clustered difference moving from $0.032$ under the uniform prior to $0.004$
+under the fitted one. On both tasks, then, the prior is not the quantity that
+separates them.
 
 \subsection{Resolution of the Mode Partition}\label{sec:kres}
 
@@ -748,14 +831,14 @@ reinforcement learning is a question about a reference distribution, not about
 diversity. The two coincide only when the pretrained policy is uniform over its
 behavioural modes, and we show by direct measurement that cloned policies are
 not. We introduce a reference-matching penalty built on total variation distance,
-with no learned components. Across two manipulation tasks, twenty
-independently trained frozen policies and 840 fine-tuning runs, it ends closer to
-the pretrained behaviour than every baseline at all four \emph{Avoiding} levels
-and at three of the four on \emph{Pushing}. Treating each frozen policy as one
-unit, it wins on 20 of 20 policies against unregularised fine-tuning and on 19 of
-20 against a method that learns its own skills through a mutual information
-bound. Task success is unchanged, and the penalty carries no
-learned component of its own.
+with no learned components. Across two manipulation tasks, 38
+independently trained frozen policies and 1,235 fine-tuning runs, and with each
+frozen policy as one unit, it ends closer to the pretrained behaviour than
+entropy maximisation on both tasks, and on \emph{Avoiding} it wins on 20 of 20
+policies against fine-tuning with no mode term, by a margin that widens as the
+pretrained distribution departs further from uniform. A histogram of length $K$
+and one scalar weight reach the fidelity that a discriminator and a latent skill
+space reach, which places the result in the objective rather than in machinery.
 
 Three directions follow. The first is scale: our frozen policies are compact
 rectified-flow fields trained for two simulated manipulation tasks, and applying
