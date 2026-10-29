@@ -578,6 +578,10 @@ def _cell(payload):
                 "tv_to_uniform": float("nan"), "coef_absmax": 0.0, "collapsed": True}
 
 
+def _ref_cache_path(task, skew, bb_seed, n) -> Path:
+    return Path("runs/_d3il/_cref") / f"{task}_skew{skew}_bb{bb_seed}_n{n}.json"
+
+
 def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     """C_ref: the frozen backbone's own mode distribution, measured by rollout.
 
@@ -586,10 +590,46 @@ def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     total variation from the distribution it estimates, which is the size of the
     effect being measured.
     """
-    n_w = max(1, args.workers)
-    per = max(1, args.ref_episodes // n_w)
-    payloads = [(skew, per, 12345 + i, args.M, args.device, args.task, bb_seed)
-                for i in range(n_w)]
+    cache = _ref_cache_path(args.task, skew, bb_seed, args.ref_episodes)
+    if cache.exists():
+        prof = np.asarray(json.loads(cache.read_text()), float)
+        if prof.size == args.mode_groups:
+            print(f"  reference read from {cache}", flush=True)
+            return prof
+
+    # The reference is measured once per group and is small beside the cells, so
+    # --ref-workers can be set to 1 to compute it in this process. The pooled
+    # path stopped returning on Pushing at six hundred episodes, in a way that
+    # survived every start method and both chunk layouts and that a worker
+    # handling several tasks does not reproduce; several sweeps spent a day in
+    # here without printing a reference. Serially it costs about seventy minutes
+    # and the cells still get the full pool.
+    n_w = max(1, args.ref_workers if args.ref_workers else args.workers)
+    chunk = max(1, min(8, args.ref_episodes))
+    n_chunks = max(1, -(-args.ref_episodes // chunk))
+    payloads = [(skew, chunk, 12345 + i, args.M, args.device, args.task, bb_seed)
+                for i in range(n_chunks)]
+    if n_w == 1:
+        # Progress is printed because silence here was indistinguishable from the
+        # pooled path's stall: a serial Pushing reference is six hundred episodes
+        # at about ten seconds each, so it is quiet for well over an hour.
+        import time as _t
+        t0, counts24 = _t.time(), 0
+        for i, pl in enumerate(payloads, 1):
+            counts24 = counts24 + _ref_chunk(pl)
+            if i % 10 == 0 or i == len(payloads):
+                done = i * chunk
+                print(f"  reference {done}/{args.ref_episodes} episodes, "
+                      f"{_t.time() - t0:.0f}s elapsed", flush=True)
+        K = args.mode_groups
+        counts = np.zeros(K)
+        for m in range(TASKS[args.task]['n_modes']):
+            counts[coarsen(m, K)] += counts24[m]
+        prof = counts / max(counts.sum(), 1)
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps([float(x) for x in prof]))
+        print(f"  reference cached to {cache}", flush=True)
+        return prof
     # This runs outside _cell, so an exception here takes the whole sweep down
     # rather than one cell; three Pushing jobs died this way after a day of work.
     # A chunk that raises contributes nothing and the estimate uses the rest.
@@ -613,7 +653,10 @@ def reference_profile(skew, args, bb_seed=None) -> np.ndarray:
     counts = np.zeros(K)
     for m in range(TASKS[args.task]['n_modes']):
         counts[coarsen(m, K)] += counts24[m]
-    return counts / max(counts.sum(), 1)
+    prof = counts / max(counts.sum(), 1)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps([float(x) for x in prof]))
+    return prof
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -660,6 +703,9 @@ def build_parser() -> argparse.ArgumentParser:
                     default=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", type=Path, default=Path("runs/_d3il/headtohead.json"))
+    ap.add_argument("--ref-workers", type=int, default=0,
+                    help="workers for the reference estimate; 1 computes it in "
+                         "this process, 0 uses --workers")
     ap.add_argument("--resume", action="store_true",
                     help="keep the cells already in --out and run only the rest; "
                          "the per-cell write makes any killed sweep restartable")

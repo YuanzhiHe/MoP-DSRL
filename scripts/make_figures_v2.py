@@ -185,8 +185,8 @@ def figure_two():
         ax.set_title(title + "    lower is closer to the pretrained policy",
                      loc="left", pad=2)
         ax.set_ylim(0, 0.56)
-        if row == 1:
-            ax.legend(frameon=False, loc="upper right", ncol=2,
+        if row == 0:
+            ax.legend(frameon=False, loc="lower left", ncol=2,
                       handlelength=1.3, columnspacing=0.9, handletextpad=0.4)
         if row == 1:
             ax.set_xlabel(r"reference skew  $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$")

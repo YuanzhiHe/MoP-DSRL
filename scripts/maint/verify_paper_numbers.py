@@ -41,7 +41,7 @@ rows = pm + pu
 
 print(f"{'claim':<34}{'computed':>12}{'in main.tex':>14}  match")
 ok = True
-for other, claim in (("mi", "0.093"), ("dsrl", "0.072"), ("bmd", "0.032")):
+for other, claim in (("mi", "0.095"), ("dsrl", "0.072"), ("bmd", "0.032")):
     m, h, p1, w, n = clustered(rows, other, 0.10)
     found = f"{m:.3f}" == claim
     ok &= found
@@ -50,7 +50,7 @@ for other, claim in (("mi", "0.093"), ("dsrl", "0.072"), ("bmd", "0.032")):
     assert claim in TEX or not found, f"{claim} absent from main.tex"
 
 # exclusion rates
-for arm, claim in (("dsrl", "20.5"), ("mop", "32.2"), ("bmd", "8.9"), ("mi", "26.7")):
+for arm, claim in (("dsrl", "20.2"), ("mop", "32.2"), ("bmd", "8.9"), ("mi", "26.4")):
     tot = [r for r in rows if r["arm"] == arm]
     pct = 100 * (1 - sum(1 for r in tot if r["SR"] >= 0.10) / len(tot))
     found = f"{pct:.1f}" == claim and f"{claim}\\%" in TEX
