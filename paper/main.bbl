@@ -1,0 +1,70 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{wagenmaker2025dsrl}
+A.~Wagenmaker, M.~Nakamoto, Y.~Zhang, S.~Park, W.~Yagoub, Steering your
+  diffusion policy with latent space reinforcement learning, arXiv preprint
+  arXiv:2506.15799 (2025).
+\newblock \href {http://arxiv.org/abs/2506.15799} {\path{arXiv:2506.15799}}.
+
+\bibitem{longhini2026bmd}
+A.~Longhini, D.~Emukpere, J.-M. Renders, S.~Kim, Behavioral mode discovery for
+  fine-tuning multimodal generative policies, arXiv preprint arXiv:2605.11387
+  (2026).
+\newblock \href {http://arxiv.org/abs/2605.11387} {\path{arXiv:2605.11387}}.
+
+\bibitem{eysenbach2018diayn}
+B.~Eysenbach, A.~Gupta, J.~Ibarz, S.~Levine, Diversity is all you need:
+  Learning skills without a reward function, arXiv preprint arXiv:1802.06070
+  (2018).
+\newblock \href {http://arxiv.org/abs/1802.06070} {\path{arXiv:1802.06070}}.
+
+\bibitem{jia2024d3il}
+X.~Jia, D.~Blessing, X.~Jiang, M.~Reuss, A.~Donat, Towards diverse behaviors: A
+  benchmark for imitation learning with human demonstrations, arXiv preprint
+  arXiv:2402.14606 (2024).
+\newblock \href {http://arxiv.org/abs/2402.14606} {\path{arXiv:2402.14606}}.
+
+\bibitem{chi2023diffusionpolicy}
+C.~Chi, Z.~Xu, S.~Feng, E.~Cousineau, Y.~Du, Diffusion policy: Visuomotor
+  policy learning via action diffusion, arXiv preprint arXiv:2303.04137 (2023).
+\newblock \href {http://arxiv.org/abs/2303.04137} {\path{arXiv:2303.04137}}.
+
+\bibitem{lipman2022flowmatching}
+Y.~Lipman, R.~T.~Q. Chen, H.~Ben-Hamu, M.~Nickel, M.~Le, Flow matching for
+  generative modeling, arXiv preprint arXiv:2210.02747 (2022).
+\newblock \href {http://arxiv.org/abs/2210.02747} {\path{arXiv:2210.02747}}.
+
+\bibitem{liu2022rectifiedflow}
+X.~Liu, C.~Gong, Q.~Liu, Flow straight and fast: Learning to generate and
+  transfer data with rectified flow, arXiv preprint arXiv:2209.03003 (2022).
+\newblock \href {http://arxiv.org/abs/2209.03003} {\path{arXiv:2209.03003}}.
+
+\bibitem{black2024pi0}
+K.~Black, N.~Brown, D.~Driess, A.~Esmail, $\pi_0$: A vision-language-action
+  flow model for general robot control, arXiv preprint arXiv:2410.24164 (2024).
+\newblock \href {http://arxiv.org/abs/2410.24164} {\path{arXiv:2410.24164}}.
+
+\bibitem{reuss2023beso}
+M.~Reuss, M.~Li, X.~Jia, R.~Lioutikov, Goal-conditioned imitation learning
+  using score-based diffusion policies, in: Robotics: Science and Systems XIX,
+  2023.
+\newblock \href {https://doi.org/10.15607/RSS.2023.XIX.028}
+  {\path{doi:10.15607/RSS.2023.XIX.028}}.
+
+\bibitem{haarnoja2018sac}
+T.~Haarnoja, A.~Zhou, P.~Abbeel, S.~Levine, Soft actor-critic: Off-policy
+  maximum entropy deep reinforcement learning with a stochastic actor, arXiv
+  preprint arXiv:1801.01290 (2018).
+\newblock \href {http://arxiv.org/abs/1801.01290} {\path{arXiv:1801.01290}}.
+
+\bibitem{liu2023libero}
+B.~Liu, Y.~Zhu, C.~Gao, Y.~Feng, Q.~Liu, {LIBERO}: Benchmarking knowledge
+  transfer for lifelong robot learning, arXiv preprint arXiv:2306.03310 (2023).
+\newblock \href {http://arxiv.org/abs/2306.03310} {\path{arXiv:2306.03310}}.
+
+\end{thebibliography}
