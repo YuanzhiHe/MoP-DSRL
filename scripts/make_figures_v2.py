@@ -28,12 +28,11 @@ import d3il_runs
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 OUT = Path("figures")
-W = 5.15                      # sn-jnl text width, measured
-# Smallest type on the page. matplotlib's tight bbox makes the saved file a
-# little wider than the canvas, so \includegraphics[width=\textwidth] scales
-# the result to about 0.986; everything is authored at 6.3 pt or more so that
-# nothing lands under the 6 pt floor once scaled.
-MIN_PT = 6.3
+W = 5.4167                    # elsarticle preprint text width, 390 pt, measured
+# Authored at the measured text width so the figure is placed at scale 1 and
+# the type on the page is the type set here. matplotlib's tight bounding box
+# still adds a few points, so the floor is held a little above 6 pt.
+MIN_PT = 6.6
 INK, MUT, RULE = "#1a1d21", "#5d6670", "#c2c9d2"
 # Okabe-Ito, colourblind safe, distinguishable in greyscale by lightness
 C = {"dsrl": "#999999", "mi": "#D55E00", "bmd": "#009E73", "mop": "#0072B2"}
@@ -42,12 +41,12 @@ NAME = {"dsrl": "No mode term", "mi": "Mode entropy",
         "bmd": "Learned skills", "mop": "Reference matching"}
 
 plt.rcParams.update({
-    "font.size": 7, "axes.labelsize": 7, "axes.titlesize": 7.5,
-    "legend.fontsize": 6.3, "xtick.labelsize": 6.3, "ytick.labelsize": 6.3,
+    "font.size": 7.4, "axes.labelsize": 7.4, "axes.titlesize": 8,
+    "legend.fontsize": 6.6, "xtick.labelsize": 6.6, "ytick.labelsize": 6.6,
     "axes.spines.top": False, "axes.spines.right": False,
     "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
     "lines.linewidth": 1.1, "lines.markersize": 3.2,
-    "figure.dpi": 400, "savefig.bbox": "tight", "savefig.pad_inches": 0.01,
+    "figure.dpi": 400, "savefig.bbox": None, "savefig.pad_inches": 0.0,
     "font.family": "DejaVu Sans",
 })
 
@@ -84,7 +83,7 @@ def figure_one():
                 va="center", fontsize=6.4, color=tc, zorder=3)
         if sub:
             ax.text(x + w / 2, y + h * 0.24, sub, ha="center", va="center",
-                    fontsize=6.3, color=MUT, zorder=3)
+                    fontsize=6.6, color=MUT, zorder=3)
 
     def arrow(p0, p1, color=INK, ls="-"):
         ax.add_patch(FancyArrowPatch(p0, p1, arrowstyle="-|>", mutation_scale=5,
@@ -96,8 +95,8 @@ def figure_one():
     box(0.30, 0.60, 0.26, 0.33, r"generative policy $v_\theta$", "frozen")
     box(0.63, 0.60, 0.21, 0.33, "rollout", "simulator", fc="#fff")
     arrow((0.23, 0.765), (0.30, 0.765)); arrow((0.56, 0.765), (0.63, 0.765))
-    ax.text(0.265, 0.55, r"$z$", ha="center", fontsize=6.3, color=MUT)
-    ax.text(0.595, 0.55, r"$a$", ha="center", fontsize=6.3, color=MUT)
+    ax.text(0.265, 0.55, r"$z$", ha="center", fontsize=6.6, color=MUT)
+    ax.text(0.595, 0.55, r"$a$", ha="center", fontsize=6.6, color=MUT)
 
     box(0.63, 0.14, 0.21, 0.31, r"$C_\phi$", "policy histogram", fc="#fff",
         ec=C["mop"], lw=1.0)
@@ -105,7 +104,7 @@ def figure_one():
     arrow((0.735, 0.60), (0.735, 0.45))
     arrow((0.63, 0.295), (0.23, 0.295), color=C["mop"])
     ax.text(0.43, 0.345, r"penalise $D(C_\phi, C_{\mathrm{ref}})$", ha="center",
-            fontsize=6.3, color=C["mop"])
+            fontsize=6.6, color=C["mop"])
 
     ax = fig.add_subplot(gs[1])
     MEAS = {"unmodified": [], "0.15": [], "0.30": [], "0.60": []}
@@ -125,7 +124,7 @@ def figure_one():
         ax.plot([v.mean()], [i], marker="|", ms=11, mew=1.2, color=INK, zorder=4)
     ax.axvline(0, color=C["mi"], lw=1.2, zorder=2)
     ax.annotate("a uniform policy, where\nthe two objectives agree",
-                xy=(0.02, 3.25), xytext=(0.30, 3.45), fontsize=6.3, color=C["mi"],
+                xy=(0.02, 3.25), xytext=(0.30, 3.45), fontsize=6.6, color=C["mi"],
                 va="center", arrowprops=dict(arrowstyle="->", color=C["mi"], lw=0.6))
     ax.set_yticks(range(4))
     ax.set_yticklabels(["unmodified", "0.15 nats", "0.30 nats", "0.60 nats"])
@@ -142,7 +141,7 @@ def figure_one():
 def figure_two():
     fig = plt.figure(figsize=(W, 5.3))
     gs = fig.add_gridspec(3, 1, height_ratios=[1, 1, 1.35], hspace=0.55,
-                          left=0.155, right=0.985, top=0.955, bottom=0.085)
+                          left=0.19, right=0.985, top=0.955, bottom=0.085)
 
     for row, (title, pats, floor) in enumerate([
             ("(a)  Avoiding", ["mb_skew*.json"], 0.15),
@@ -180,7 +179,7 @@ def figure_two():
         # band and the label sat on top of three of them.
         lab_x, lab_ha = ((xs[-1], "right") if row == 0 else (xs[0], "left"))
         ax.text(lab_x, floor_v + 0.004, "sampling floor", ha=lab_ha,
-                va="bottom", fontsize=6.3, color=MUT)
+                va="bottom", fontsize=6.6, color=MUT)
         ax.set_ylabel(r"$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$", fontsize=6.8)
         ax.set_title(title + "    lower is closer to the pretrained policy",
                      loc="left", pad=2)
@@ -209,7 +208,7 @@ def figure_two():
     AV = load(["mb_skew*.json"], 0.15)
     PU = [r for r in load(["pm_skew*.json", "pu_skew*.json"], 0.10)
           if r["arm"] != "bmd" or r.get("bmd_prior") != "fitted"]
-    ys, labs, cols, lo, hi, wins = [], [], [], [], [], []
+    ys, labs, cols, lo, hi, wins, tasks = [], [], [], [], [], [], []
     for task, rows in (("Pushing", PU), ("Avoiding", AV)):
         for arm in ("bmd", "mi", "dsrl"):
             d = paired(rows, arm)
@@ -218,7 +217,8 @@ def figure_two():
             sem = d.std(ddof=1) / np.sqrt(d.size)
             t = 2.093 if d.size >= 15 else 2.262
             ys.append(d.mean()); lo.append(t * sem); hi.append(t * sem)
-            labs.append(f"{task}, vs {NAME[arm].lower()}"); cols.append(C[arm])
+            labs.append(NAME[arm].lower()); cols.append(C[arm])
+            tasks.append(task)
             wins.append(f"{int((d > 0).sum())}/{d.size}")
     y = np.arange(len(ys))[::-1]
     for yy, m, l, h, c in zip(y, ys, lo, hi, cols):
@@ -227,14 +227,21 @@ def figure_two():
         ax.scatter([m], [yy], s=26, color=c, zorder=3, edgecolor="none")
     for yy, m, w in zip(y, ys, wins):
         ax.text(0.335, yy, f"{m:+.3f}   {w}", ha="right", va="center",
-                fontsize=6.3, color=INK)
+                fontsize=6.6, color=INK)
     ax.axvline(0, color=RULE, lw=0.7, ls=":")
-    ax.set_yticks(y); ax.set_yticklabels(labs, fontsize=6.3)
-    ax.set_xlim(-0.06, 0.34); ax.set_ylim(-0.7, len(ys) - 0.3)
+    ax.set_yticks(y); ax.set_yticklabels(labs, fontsize=6.6)
+    # The task names head each group of three inside the axes, where they do not
+    # compete with the tick labels for the margin.
+    for t in sorted(set(tasks)):
+        rows_t = [yy for yy, tt in zip(y, tasks) if tt == t]
+        ax.text(0.002, max(rows_t) + 0.42, t, transform=ax.get_yaxis_transform(),
+                ha="left", va="center", fontsize=7.4, color=INK)
+        ax.axhline(min(rows_t) - 0.45, color=RULE, lw=0.6, zorder=0)
+    ax.set_xlim(-0.06, 0.34); ax.set_ylim(-0.95, len(ys) + 0.1)
     ax.set_xlabel("reduction in " r"$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$"
                   ",  paired within each frozen policy")
-    ax.set_title("(c)  Each frozen policy as one unit "
-                 "(95% CI; policies won)", loc="left", pad=2)
+    ax.set_title("(c)  Reduction per frozen policy (95% CI; policies won)",
+                 loc="left", pad=2)
 
     fig.savefig(OUT / "fig2_result.pdf"); fig.savefig(OUT / "fig2_result.png")
     print("wrote figures/fig2_result.{pdf,png}")

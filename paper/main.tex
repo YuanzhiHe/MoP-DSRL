@@ -12,6 +12,9 @@
 \renewcommand{\bottomfraction}{0.8}
 \renewcommand{\textfraction}{0.06}
 \renewcommand{\floatpagefraction}{0.75}
+% Let a page end short rather than stretch to the full height: with the float
+% fractions above, a stretched page overruns by a few points.
+\raggedbottom
 \usepackage{url}
 \usepackage{lineno}
 \linenumbers
@@ -145,9 +148,16 @@ fidelity carries both a discriminator and a latent skill space.
 Diffusion models and flow-based models have become a standard policy class for
 manipulation. Diffusion Policy \citep{chi2023diffusionpolicy} represents the
 action distribution by a denoising process conditioned on observations, which
-lets a single policy express several distinct ways of completing a task. Flow
+lets a single policy express several distinct ways of completing a task.
+Earlier treatments of the same multimodality fit an energy over actions
+\citep{florence2022ibc} or discretise behaviour into a small set of modes a
+transformer selects among \citep{shafiullah2022bet}, and action chunking
+\citep{zhao2023act} is now standard in these policies. Diffusion has also been
+used to plan directly over trajectories \citep{janner2022diffuser}. Flow
 matching \citep{lipman2022flowmatching} and rectified flow
-\citep{liu2022rectifiedflow} replace the stochastic denoising chain with a
+\citep{liu2022rectifiedflow} replace the denoising chain of
+\citet{ho2020ddpm}, which deterministic samplers such as DDIM
+\citep{song2021ddim} already shorten, with a
 deterministic transport that is cheaper to integrate, and underpin recent
 vision-language-action models such as $\pi_0$ \citep{black2024pi0}. Score-based
 policies have also been trained specifically for goal-conditioned manipulation
@@ -155,9 +165,18 @@ policies have also been trained specifically for goal-conditioned manipulation
 fine-tuning schemes that leave their weights unchanged.
 
 \paragraph{Reinforcement learning in the latent space of a frozen policy.}
-DSRL \citep{wagenmaker2025dsrl} formulates fine-tuning as control over the noise
+Reinforcement learning for manipulation is sample-hungry, and transfer across
+tasks is one route to a usable budget, whether by adapting a trained policy from
+a handful of episodes \citep{he2024fewshot}, by reusing low-level motion skills
+without further training \citep{he2026zeroshot}, or by decomposing a task so
+that each part is learned against a shorter horizon
+\citep{he2026decomposition}. Those methods change the policy they start from.
+DSRL \citep{wagenmaker2025dsrl} instead formulates fine-tuning as control over the noise
 input of a frozen generative policy, training a compact policy over that input
-with an off-policy algorithm \citep{haarnoja2018sac}. Because the decoder is
+with an off-policy algorithm \citep{haarnoja2018sac}. A parallel line
+back-propagates policy-gradient updates through the denoising chain itself
+\citep{ren2024dppo}, which reaches the generative weights and so forgoes the
+property this paper relies on. Because the decoder is
 fixed and deterministic for flow-based models, the mapping from noise to action
 is differentiable and the search space is small. The resulting policy is still a
 reweighting of the pretrained one, which is what makes a fidelity objective
@@ -168,8 +187,9 @@ the generative weights directly.
 BMD \citep{longhini2026bmd} conditions the policy on a latent skill index and
 trains a discriminator to recover that index from the resulting behaviour, using
 the variational mutual information bound as an intrinsic reward. The construction
-follows unsupervised skill discovery \citep{eysenbach2018diayn}, where the same
-bound is used to learn skills without any task reward. Both discover their own
+follows unsupervised skill discovery \citep{gregor2016vic,eysenbach2018diayn},
+later extended with dynamics-aware variants \citep{sharma2020dads}, where the
+same bound is used to learn skills without any task reward. Both discover their own
 notion of a mode. A lighter alternative, and the one closest to our setting,
 maximises the entropy of a histogram over externally defined modes directly. Our
 analysis applies to this family as a whole, since Equation~\ref{eq:identity}
@@ -180,13 +200,30 @@ reference.
 Penalising divergence from a fixed reference is standard in reinforcement
 learning applied to pretrained generative models, where a Kullback-Leibler term
 between the fine-tuned and reference policies keeps the optimised policy near the
-one it started from, and in offline reinforcement learning, where a similar term
-keeps a policy near the behaviour that generated its data. Those penalties act on
+one it started from \citep{ziegler2019finetune,stiennon2020summarize}, and in
+offline reinforcement learning, where a conservative value estimate
+\citep{kumar2020cql} or a behaviour-cloning term added to the actor loss
+\citep{fujimoto2021td3bc} keeps a policy near the behaviour that generated its
+data. Matching a distribution rather than a policy also underlies adversarial
+imitation \citep{ho2016gail}. Those penalties act on
 the action or trajectory distribution directly. The penalty studied here acts on a
 histogram over externally labelled behavioural modes, which is a far smaller
 object. That difference is what makes the estimator, the reference measurement and
 the choice of divergence the substance of the method rather than implementation
 detail.
+
+\paragraph{What a manipulation benchmark measures.}
+A benchmark score reports behaviour only to the extent that the evaluation
+protocol admits. Auditing the observation contract of several manipulation
+benchmarks shows scores driven by state information the modality comparison was
+meant to exclude \citep{he2026contract}, parallel evaluation of the same policy
+can diverge from the serial path the benchmark intends \citep{he2026fidelity},
+and a confidence signal read as evidence of occlusion turns out to track mere
+presence \citep{he2026detector}. Each is the same failure: a quantity assumed to
+measure one thing measures another, which is also what
+Equation~\ref{eq:identity} says about maximising behavioural entropy. Both bear on the choice made here to define modes from
+task geometry and to measure the reference by rollout rather than infer it,
+which keeps the quantity being compared independent of the evaluation harness.
 
 \paragraph{Benchmarks that admit several solutions.}
 Measuring mode preservation requires tasks with more than one valid solution.
@@ -273,7 +310,8 @@ per-episode coefficient behaves when the reference assigns a mode little or no
 probability, and total variation keeps it bounded there.
 The histogram $C_\phi$ is a statistic of the sampled batch, not a differentiable
 function of $\phi$. Its gradient therefore comes from the score-function
-estimator. Each trajectory is credited by the partial derivative of the penalty,
+estimator \citep{williams1992reinforce}. Each trajectory is credited by the
+partial derivative of the penalty,
 evaluated at that trajectory's own mode,
 \begin{equation}\label{eq:grad}
   \nabla_\phi \, D\!\left(C_\phi, C_{\mathrm{ref}}\right)
