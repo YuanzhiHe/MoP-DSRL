@@ -6,7 +6,7 @@ frozen backbone through its noise input; they differ only in what, if anything,
 regularizes the behavioural-mode distribution:
 
   dsrl  maximize E[r]                                    (lambda = 0)
-  mop   maximize E[r] - lambda * KL(C_phi || C_ref)       anchor to the backbone's
+  mop   maximize E[r] - lambda * D(C_phi, C_ref)          match the backbone's
                                                           own mode profile (ours)
   mi    maximize E[r] + lambda * H(C_phi)                 push toward uniform
                                                           (BMD-style intrinsic reward)
@@ -380,14 +380,14 @@ def run_arm(arm, lam, skew, seed, args, C_ref, bb_seed=None):
     policy = NoisePolicy(blob["obs_dim"], blob["act_dim"]).to(device)
     opt = torch.optim.Adam(policy.parameters(), lr=args.lr)
     K = args.mode_groups
-    # Smooth the reference. The anchoring coefficient is -log(p_m/q_m), which is
+    # Smooth the reference. The matching coefficient is -log(p_m/q_m), which is
     # UNBOUNDED as q_m -> 0: at skew 0.60 the backbone covers only 18 of 24
     # routes, so any visit to a mode outside its support drew a penalty near -18
     # against a reward advantage in [-1, 1]. Mixing in a uniform floor bounds the
     # coefficient by log(K/eps). The entropy objective needs no such guard --
     # -log(p_m) is bounded by the visited support -- which is the asymmetry that
     # makes MoP the harder estimator of the two.
-    # The anchoring TARGET may be smoothed, but scoring always uses the raw
+    # The matching TARGET may be smoothed, but scoring always uses the raw
     # C_ref. Scoring a smoothed arm against its own smoothed target would
     # flatter it; scoring it against C_ref when it was given 0.8*C_ref + 0.2*u
     # charges it for hitting the target it was handed. Keeping both explicit
@@ -690,8 +690,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--lr", type=float, default=3e-3)
     ap.add_argument("--mode-groups", type=int, default=24, choices=[2, 4, 6, 24],
                     help="ground-truth partition resolution (2, 6 or all 24 routes)")
-    ap.add_argument("--divergence", default="kl", choices=["kl", "tv", "js"],
-                    help="anchoring divergence for the mop arm; tv and js have\n"
+    ap.add_argument("--divergence", default="tv", choices=["tv", "kl", "js"],
+                    help="divergence for the reference-matching arm; tv and js have\n"
                          "bounded coefficients where kl does not")
     ap.add_argument("--coef-clip", type=float, default=0.0,
                     help="clip |mode coefficient| before standardising (0 = off)")

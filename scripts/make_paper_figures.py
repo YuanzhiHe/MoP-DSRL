@@ -23,7 +23,7 @@ MIN_SR = 0.15
 # KL(C_ref || uniform), measured over 1200 rollouts per backbone, 6-group partition
 REF_KL = {"0.00": 0.127, "0.15": 0.370, "0.30": 0.302, "0.60": 0.798}
 COL = {"dsrl": "#8c8c8c", "mop": "#1b6ca8", "mi": "#c4562a"}
-LAB = {"dsrl": "DSRL (no mode objective)", "mop": "MoP (anchor to $C_{ref}$)",
+LAB = {"dsrl": "DSRL (no mode objective)", "mop": "Reference matching",
        "mi": "MI (maximize mode entropy)"}
 
 plt.rcParams.update({

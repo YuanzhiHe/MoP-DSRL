@@ -2,7 +2,7 @@
 """Aggregate the D3IL head-to-head sweep and test the separation claim.
 
 The prediction under test, established analytically and reproduced in the toy:
-KL(p || uniform) = ln K - H(p), so anchoring to the reference and maximizing mode
+KL(p || uniform) = ln K - H(p), so matching the reference and maximizing mode
 entropy are the SAME objective when the reference is uniform. mop and mi must
 therefore coincide at zero backbone skew and can only diverge as the backbone's
 own mode profile departs from uniform.
