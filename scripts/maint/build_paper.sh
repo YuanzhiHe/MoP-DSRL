@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Compile the manuscript with pdfLaTeX.
 #
-# sn-jnl.cls is written for pdfLaTeX and calls pdfTeX primitives directly, so
-# this is the engine the journal expects the submitted source to build under.
 # TeX Live lives on scratch because home has a hard quota a TeX tree exhausts;
 # the conda texlive env is binaries with no TeX tree and compiles nothing.
 set -uo pipefail
@@ -33,7 +31,11 @@ echo "=== overfull hboxes ==="
 grep -c "Overfull \\\\hbox" main.log || true
 grep "Overfull \\\\hbox" main.log | head -10
 echo "=== undefined citations/refs ==="
-grep -E "Citation .* undefined|Reference .* undefined|LaTeX Warning: There were undefined" main.log | head -10
+grep -E "Citation .* undefined|Reference .* undefined|There were undefined" main.log | head -10
 echo "=== pages ==="
-pdfinfo main.pdf 2>/dev/null | grep -E "Pages|Page size" || grep -oE "\([0-9]+ pages" main.log | tail -1
+grep -oE "\([0-9]+ pages" main.log | tail -1
 ls -l main.pdf
+
+echo "=== highlights ==="
+pdflatex -interaction=nonstopmode highlights.tex > h.log 2>&1 && echo "highlights rc=0" \
+  || grep -E "^! " h.log | head -5

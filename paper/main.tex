@@ -1,19 +1,37 @@
-\documentclass[sn-mathphys-num]{sn-jnl}
+\documentclass[preprint,12pt]{elsarticle}
 
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{booktabs}
+\usepackage{array}
+\usepackage{microtype}
+% The result figure is tall, and at the default \topfraction a float of its
+% height is refused on a text page and deferred past the bibliography.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.75}
+\usepackage{url}
+\usepackage{lineno}
+\linenumbers
+
+\journal{Neurocomputing}
 
 \begin{document}
 
+\begin{frontmatter}
+
 \title{Reference Matching for Noise-Space Policy Fine-Tuning}
 
-\author*[1]{\fnm{Yuanzhi} \sur{He}}\email{heyuanzhi0728@163.com}
-\affil[1]{\orgdiv{School of Computational and Mathematical Sciences},
-  \orgname{Cardiff University}, \city{Cardiff}, \country{United Kingdom}}
+\author{Yuanzhi He}
+\ead{heyuanzhi0728@163.com}
+\affiliation{organization={School of Computational and Mathematical Sciences,
+    Cardiff University},
+  city={Cardiff},
+  country={United Kingdom}}
 
-\abstract{
+\begin{abstract}
 Reinforcement learning applied to the latent noise input of a frozen generative
 policy raises reward without touching the policy's weights, but it also changes
 which of several valid behaviours that policy produces. Methods that aim to keep
@@ -40,12 +58,14 @@ wins on 20 of 20 \emph{Avoiding} policies. It reaches this fidelity with a histo
 one scalar weight, where a method that learns its own skills through a mutual
 information bound carries a discriminator and a latent skill space. On
 \emph{Avoiding}, task success stays within measurement error of every baseline.
-}
+\end{abstract}
 
-\keywords{reinforcement learning, generative policies, behavioural diversity,
-diffusion models, robot manipulation}
+\begin{keyword}
+reinforcement learning \sep generative policies \sep behavioural diversity \sep
+diffusion models \sep robot manipulation
+\end{keyword}
 
-\maketitle
+\end{frontmatter}
 
 \section{Introduction}\label{sec:intro}
 
@@ -364,7 +384,7 @@ Noise dimension $d$ & 2 & 2 \\
 Learning rate & $3\times10^{-3}$ & $3\times10^{-3}$ \\
 Discriminator learning rate & $10^{-3}$ & $10^{-3}$ \\
 Success-rate floor & 0.15 & 0.10 \\
-\botrule
+\bottomrule
 \end{tabular}
 \end{table}
 
@@ -451,7 +471,7 @@ precision, at $0.95$, $0.77$ and $0.67$ standard deviations for the three
 comparisons on \emph{Avoiding} and $0.70$, $0.35$ and $0.53$ on \emph{Pushing}.
 We report the clustered analysis above because it is the one the design supports.
 
-\begin{figure}[t]
+\begin{figure}[!t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig1_setting.pdf}
 \caption{The setting and the condition that makes the objective necessary.
@@ -469,7 +489,7 @@ objective.}
 \label{fig:setting}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[!t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig2_result.pdf}
 \caption{Distance to the pretrained behaviour distribution. (a, b) Mean distance
@@ -494,9 +514,11 @@ Reference matching is closest at every \emph{Avoiding} level and at three of fou
 on \emph{Pushing}.}
 \label{tab:main}
 \small
+\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
-Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching \\
+Task & Skew & No mode & Mode entropy & Learned skills & Reference \\
+ &  & term &  &  & matching \\
 \midrule
 \emph{Avoiding} & 0.24 & $.475_{.046}$ & $.278_{.040}$ & $.432_{.041}$ & $\mathbf{.238}_{.032}$ \\
 \emph{Avoiding} & 0.33 & $.447_{.042}$ & $.257_{.026}$ & $.380_{.041}$ & $\mathbf{.212}_{.028}$ \\
@@ -507,7 +529,7 @@ Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching 
 \emph{Pushing} & 0.25 & $.268_{.026}$ & $.173_{.032}$ & $\mathbf{.169}_{.023}$ & $.189_{.025}$ \\
 \emph{Pushing} & 0.36 & $.227_{.024}$ & $.315_{.073}$ & $.192_{.020}$ & $\mathbf{.139}_{.021}$ \\
 \emph{Pushing} & 0.52 & $\mathbf{.093}_{.018}$ & $.245_{.066}$ & $.134_{.025}$ & $.096_{.018}$ \\
-\botrule
+\bottomrule
 \end{tabular*}
 \end{table}
 
@@ -527,9 +549,11 @@ matching is within one standard error of the unregularised objective at every
 level on both tasks.}
 \label{tab:success}
 \small
+\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
-Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching \\
+Task & Skew & No mode & Mode entropy & Learned skills & Reference \\
+ &  & term &  &  & matching \\
 \midrule
 \emph{Avoiding} & 0.24 & $.632_{.034}$ & $.670_{.027}$ & $.665_{.026}$ & $.626_{.029}$ \\
 \emph{Avoiding} & 0.33 & $.717_{.031}$ & $.751_{.015}$ & $.731_{.028}$ & $.694_{.030}$ \\
@@ -540,7 +564,7 @@ Task & Skew & No mode term & Mode entropy & Learned skills & Reference matching 
 \emph{Pushing} & 0.25 & $.253_{.017}$ & $\mathbf{.309}_{.024}$ & $.298_{.021}$ & $.277_{.023}$ \\
 \emph{Pushing} & 0.36 & $.240_{.025}$ & $.271_{.031}$ & $\mathbf{.280}_{.021}$ & $.246_{.018}$ \\
 \emph{Pushing} & 0.52 & $\mathbf{.340}_{.019}$ & $.320_{.045}$ & $.313_{.026}$ & $.283_{.040}$ \\
-\botrule
+\bottomrule
 \end{tabular*}
 \end{table}
 
@@ -604,17 +628,16 @@ maximisation is highest throughout, the quantity its objective maximises. The re
 matching exceeds both the unregularised objective and the learned-skill method at
 the first three levels.}
 \label{tab:diversity}
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
-$D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ & No mode term & Mode entropy &
-Learned skills & Reference matching \\
+Skew & No mode & Mode entropy & Learned skills & Reference matching \\
 \midrule
 0.24 & 4.80 / 0.948 & 5.81 / 1.440 & 5.40 / 1.099 & 5.80 / 1.458 \\
 0.33 & 4.23 / 0.762 & 5.93 / 1.416 & 4.47 / 0.867 & 5.48 / 1.207 \\
 0.46 & 4.53 / 0.663 & 5.77 / 1.347 & 5.21 / 0.927 & 5.37 / 1.071 \\
 0.55 & 4.70 / 0.842 & 4.93 / 1.060 & 4.43 / 0.683 & 4.33 / 0.828 \\
-\botrule
-\end{tabular}
+\bottomrule
+\end{tabular*}
 \end{table}
 
 \subsection{Endpoints the Objectives Do Not Optimise}\label{sec:indep}
@@ -633,6 +656,7 @@ $\max_k |C_\phi[k] - C_{\mathrm{ref}}[k]|$, and the column headings abbreviate t
 four objectives named in Table~\ref{tab:main}.}
 \label{tab:indep}
 \small
+\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
 Task & Distance & No mode & Entropy & Skills & Matching \\
@@ -644,7 +668,7 @@ Task & Distance & No mode & Entropy & Skills & Matching \\
 \emph{Pushing} & Chi-square & 0.736 & 0.818 & 0.394 & $\mathbf{0.187}$ \\
 \emph{Pushing} & Largest error & 0.238 & 0.202 & 0.169 & $\mathbf{0.113}$ \\
 \emph{Pushing} & Hellinger & 0.220 & 0.201 & 0.166 & $\mathbf{0.125}$ \\
-\botrule
+\bottomrule
 \end{tabular*}
 \end{table}
 
@@ -675,6 +699,7 @@ as collapsed when its success rate ends below the $0.10$ threshold of
 Section~\ref{sec:setup}. The rule of Section~\ref{sec:weight} reads this column
 and nothing else.}
 \label{tab:weight}
+\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc@{}}
 \toprule
 Weight & Reference matching & Mode entropy & Task success, reference matching \\
@@ -682,7 +707,7 @@ Weight & Reference matching & Mode entropy & Task success, reference matching \\
 0.25 & 0.38 & 0.12 & 0.195 \\
 \textbf{0.50} & $\mathbf{0.16}$ & 0.14 & $\mathbf{0.289}$ \\
 1.00 & 0.38 & 0.12 & 0.192 \\
-\botrule
+\bottomrule
 \end{tabular*}
 \end{table}
 
@@ -770,16 +795,17 @@ coefficient is the per-episode weight of Equation~\ref{eq:grad} before batch
 standardisation, and a run is counted as collapsed when its policy visits one
 route group.}
 \label{tab:divergence}
+\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
 \toprule
-Divergence & $D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$ & Collapsed &
+Divergence & $D_{\mathrm{TV}}$ to ref. & Collapsed &
 Largest coefficient & Success \\
 \midrule
 $D_{\mathrm{KL}}$, raw reference & 0.399 & 8 / 24 & 7.27 & 0.184 \\
 $D_{\mathrm{KL}}$, smoothed reference & 0.437 & 4 / 24 & 4.33 & 0.311 \\
 Jensen-Shannon & 0.215 & 5 / 24 & 1.76 & \textbf{0.875} \\
 Total variation & \textbf{0.179} & \textbf{2 / 24} & \textbf{0.50} & 0.622 \\
-\botrule
+\bottomrule
 \end{tabular*}
 \end{table}
 
@@ -865,6 +891,38 @@ $C_{\mathrm{ref}}$ once and hold it fixed, which suits a frozen decoder, and
 allowing it to adapt when the pretrained policy is also updated would connect
 this objective to full fine-tuning.
 
+\section*{CRediT authorship contribution statement}
+
+\textbf{Yuanzhi He:} Conceptualization, Methodology, Software, Formal analysis,
+Investigation, Data curation, Writing -- original draft, Writing -- review and
+editing, Visualization.
+
+\section*{Declaration of competing interest}
+
+The author declares no known competing financial interests or personal
+relationships that could have appeared to influence the work reported in this
+paper.
+
+\section*{Declaration of generative AI and AI-assisted technologies in the
+writing process}
+
+During the preparation of this work the author used a large language model to
+polish the wording of the manuscript. After using this tool the author reviewed
+and edited the content as needed and takes full responsibility for the content
+of the publication.
+
+\section*{Data availability}
+
+The code that produces every result, the run records behind each table and
+figure, and the pre-registered analysis plans are available at
+\url{https://github.com/YuanzhiHe/MoP-DSRL}. The D3IL benchmark and its
+demonstrations are public and cited in Section~\ref{sec:setup}.
+
+\section*{Acknowledgements}
+
+This work used the Supercomputing Wales facility.
+
+\bibliographystyle{elsarticle-num}
 \bibliography{references}
 
 \end{document}
