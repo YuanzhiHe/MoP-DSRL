@@ -703,6 +703,11 @@ def build_parser() -> argparse.ArgumentParser:
                     default=int(os.environ.get("SLURM_CPUS_PER_TASK", 8)))
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--out", type=Path, default=Path("runs/_d3il/headtohead.json"))
+    ap.add_argument("--reference-only", action="store_true",
+                    help="measure and cache each group's reference, then stop. "
+                         "Without it a group with no cells left to run is "
+                         "skipped before the reference is reached, which is the "
+                         "opposite of what a reference job wants")
     ap.add_argument("--ref-workers", type=int, default=0,
                     help="workers for the reference estimate; 1 computes it in "
                          "this process, 0 uses --workers")
@@ -741,6 +746,9 @@ def main() -> int:
         for bb in bb_seeds:
             # Each backbone gets its OWN measured reference: C_ref is a property
             # of that checkpoint, not of the skew label it was trained under.
+            if args.reference_only:
+                reference_profile(skew, args, bb)
+                continue
             todo = [(arm, seed) for seed in range(args.seed_offset,
                                                   args.seed_offset + args.seeds)
                     for arm in args.arms
