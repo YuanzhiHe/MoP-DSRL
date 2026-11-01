@@ -1,0 +1,8 @@
+*.aux
+*.blg
+*.out
+*.spl
+b.log
+build.log
+h.log
+p[0-9].log

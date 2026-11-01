@@ -32,32 +32,28 @@
   country={United Kingdom}}
 
 \begin{abstract}
-Reinforcement learning applied to the latent noise input of a frozen generative
-policy raises reward without touching the policy's weights, but it also changes
-which of several valid behaviours that policy produces. Methods that aim to keep
-this behaviour regularise the distribution over behavioural modes, and almost all
-of them maximise its entropy or a mutual information bound. We show that this
-choice makes an unstated assumption. For a reference distribution that is uniform
-over $K$ modes, the Kullback-Leibler divergence to that reference equals $\ln K$
-minus the entropy, so matching a policy to its pretrained behaviour and maximising
-behavioural entropy are the same objective, and no benchmark whose pretrained
-policy is uniform can tell them apart. Behaviour cloning does not produce uniform
-policies, which is why the distinction matters in practice and why it has gone
-unmeasured. We introduce a reference-matching penalty on the total variation
-between the fine-tuned policy's mode histogram and the frozen policy's own. The
-penalty has no learned components and adds one scalar weight to the objective.
-Across two manipulation tasks from a diverse-behaviour benchmark, 38
-independently trained frozen policies and 1,235 fine-tuning runs, and with each
-frozen policy as the unit of analysis, it ends closer to the pretrained
+Reinforcement learning on the latent noise input of a frozen generative policy
+raises reward without touching the policy's weights, and it also changes which
+of several valid behaviours that policy produces. Methods that keep this
+behaviour regularise the distribution over behavioural modes, almost always by
+maximising its entropy or a mutual information bound. That choice makes an
+unstated assumption. For a reference uniform over $K$ modes, the
+Kullback-Leibler divergence to it equals $\ln K$ minus the entropy, so matching
+a policy to its pretrained behaviour and maximising behavioural entropy are one
+objective, and no benchmark with a uniform pretrained policy separates them.
+Behaviour cloning produces skewed policies, which is why the distinction matters
+and why it has gone unmeasured. We penalise the total variation between the
+fine-tuned policy's mode histogram and the frozen policy's own, with no learned
+components and one scalar weight. Across two manipulation tasks, 38
+independently trained frozen policies and 1,235 fine-tuning runs, with each
+frozen policy as the unit of analysis, the penalty ends closer to the pretrained
 behaviour than entropy maximisation on both tasks, by $0.137$ in total variation
-on \emph{Avoiding} and $0.095$ on \emph{Pushing}. That margin widens as the pretrained
-distribution departs further from uniform, the trend the identity predicts and
-the one that separates the two objectives, reaching $0.284$ at the most skewed
-\emph{Avoiding} reference. Against fine-tuning with no mode term the penalty
-wins on 20 of 20 \emph{Avoiding} policies. It reaches this fidelity with a histogram of length $K$ and
-one scalar weight, where a method that learns its own skills through a mutual
-information bound carries a discriminator and a latent skill space. On
-\emph{Avoiding}, task success stays within measurement error of every baseline.
+on \emph{Avoiding} and $0.095$ on \emph{Pushing}. That margin widens as the
+pretrained distribution departs from uniform, the trend the identity predicts,
+reaching $0.284$ at the most skewed reference. It wins on 20 of 20
+\emph{Avoiding} policies against fine-tuning with no mode term while task
+success holds, using a histogram and one weight where a learned-skill method
+carries a discriminator and a latent skill space.
 \end{abstract}
 
 \begin{keyword}

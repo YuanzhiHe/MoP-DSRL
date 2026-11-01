@@ -1,0 +1,39 @@
+\documentclass[11pt,a4paper]{letter}
+\usepackage[margin=1in]{geometry}
+\usepackage{parskip}
+\signature{Yuanzhi He}
+\address{School of Computational and Mathematical Sciences\\Cardiff University\\
+Cardiff, United Kingdom\\heyuanzhi0728@163.com}
+\begin{document}
+\begin{letter}{The Editors\\\textit{Neurocomputing}}
+\opening{Dear Editors,}
+
+I submit for your consideration the manuscript \textit{Reference Matching for
+Noise-Space Policy Fine-Tuning}.
+
+Reinforcement learning over the latent noise input of a frozen generative policy
+is an increasingly common way to raise the reward of an imitation-learned robot
+policy, and the methods that try to preserve its behaviour almost all maximise
+the entropy of a distribution over behavioural modes. The manuscript shows that
+this rests on an assumption no one states: under a uniform reference, matching
+the pretrained distribution and maximising entropy are the same objective, since
+the Kullback-Leibler divergence to a uniform reference is $\ln K$ minus the
+entropy. Behaviour cloning does not give uniform policies, so the two objectives
+come apart in exactly the regime where these methods are used, and the
+difference has gone unmeasured.
+
+The paper replaces the entropy term with a total-variation penalty toward the
+frozen policy's own mode histogram. It carries no learned component and one
+scalar weight. Across 38 independently trained frozen policies and 1{,}235
+fine-tuning runs on two manipulation tasks, with each frozen policy as the unit
+of analysis, it ends closer to the pretrained behaviour than entropy
+maximisation on both tasks, and the margin widens as the pretrained
+distribution departs from uniform, which is the trend the identity predicts.
+
+The work is original, is not under consideration elsewhere, and has no competing
+interests to declare. The code, the run records behind every table and figure,
+and the analysis plans registered before the runs are public.
+
+\closing{Yours sincerely,}
+\end{letter}
+\end{document}
