@@ -1,20 +1,22 @@
-% Every entry below was retrieved from a live index (arXiv API or Crossref) on
-% 2026-10-06. None was written from memory. Identifiers are recorded so each can
-% be re-checked.
+% Every entry below was retrieved from a live index (arXiv API or Crossref) and
+% re-checked against that index on 2026-11-01 by scripts/maint/verify_bib.py.
+% None was written from memory. Identifiers are recorded so each can be
+% re-checked at any time by re-running that script.
 
-@article{longhini2026bmd,
-  title   = {Behavioral Mode Discovery for Fine-tuning Multimodal Generative Policies},
-  author  = {Longhini, Alberta and Emukpere, David and Renders, Jean-Michel and Kim, Seungsu},
-  journal = {arXiv preprint arXiv:2605.11387},
-  year    = {2026},
-  eprint  = {2605.11387},
+@inproceedings{longhini2026bmd,
+  title     = {Behavioral Mode Discovery for Fine-tuning Multimodal Generative Policies},
+  author    = {Longhini, Alberta and Emukpere, David and Renders, Jean-Michel and Kim, Seungsu},
+  booktitle = {International Conference on Machine Learning (ICML)},
+  year      = {2026},
+  eprint    = {2605.11387},
   archivePrefix = {arXiv}
 }
 
 @article{wagenmaker2025dsrl,
   title   = {Steering Your Diffusion Policy with Latent Space Reinforcement Learning},
   author  = {Wagenmaker, Andrew and Nakamoto, Mitsuhiko and Zhang, Yunchu and
-             Park, Seohong and Yagoub, Waleed},
+             Park, Seohong and Yagoub, Waleed and Nagabandi, Anusha and
+             Gupta, Abhishek and Levine, Sergey},
   journal = {arXiv preprint arXiv:2506.15799},
   year    = {2025},
   eprint  = {2506.15799},
@@ -25,7 +27,8 @@
   title   = {Towards Diverse Behaviors: A Benchmark for Imitation Learning with
              Human Demonstrations},
   author  = {Jia, Xiaogang and Blessing, Denis and Jiang, Xinkai and
-             Reuss, Moritz and Donat, Atalay},
+             Reuss, Moritz and Donat, Atalay and Lioutikov, Rudolf and
+             Neumann, Gerhard},
   journal = {arXiv preprint arXiv:2402.14606},
   year    = {2024},
   eprint  = {2402.14606},
@@ -42,7 +45,8 @@
 
 @article{chi2023diffusionpolicy,
   title   = {Diffusion Policy: Visuomotor Policy Learning via Action Diffusion},
-  author  = {Chi, Cheng and Xu, Zhenjia and Feng, Siyuan and Cousineau, Eric and Du, Yilun},
+  author  = {Chi, Cheng and Xu, Zhenjia and Feng, Siyuan and Cousineau, Eric and
+             Du, Yilun and Burchfiel, Benjamin and Tedrake, Russ and Song, Shuran},
   journal = {arXiv preprint arXiv:2303.04137},
   year    = {2023},
   eprint  = {2303.04137},
@@ -80,7 +84,8 @@
 
 @article{liu2023libero,
   title   = {{LIBERO}: Benchmarking Knowledge Transfer for Lifelong Robot Learning},
-  author  = {Liu, Bo and Zhu, Yifeng and Gao, Chongkai and Feng, Yihao and Liu, Qiang},
+  author  = {Liu, Bo and Zhu, Yifeng and Gao, Chongkai and Feng, Yihao and
+             Liu, Qiang and Zhu, Yuke and Stone, Peter},
   journal = {arXiv preprint arXiv:2306.03310},
   year    = {2023},
   eprint  = {2306.03310},
@@ -89,7 +94,12 @@
 
 @article{black2024pi0,
   title   = {$\pi_0$: A Vision-Language-Action Flow Model for General Robot Control},
-  author  = {Black, Kevin and Brown, Noah and Driess, Danny and Esmail, Adnan},
+  author  = {Black, Kevin and Brown, Noah and Driess, Danny and Esmail, Adnan and
+             Equi, Michael and Finn, Chelsea and Fusai, Niccolo and Groom, Lachy and
+             Hausman, Karol and Ichter, Brian and Jakubczak, Szymon and Jones, Tim and
+             Ke, Liyiming and Levine, Sergey and Li-Bell, Adrian and Mothukuri, Mohith and
+             Nair, Suraj and Pertsch, Karl and Shi, Lucy Xiaoyang and Tanner, James and
+             Vuong, Quan and Walling, Anna and Wang, Haohuan and Zhilinsky, Ury},
   journal = {arXiv preprint arXiv:2410.24164},
   year    = {2024},
   eprint  = {2410.24164},
@@ -212,12 +222,15 @@
 }
 
 @article{williams1992reinforce,
-  title   = {Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning},
+  title   = {Simple statistical gradient-following algorithms for connectionist
+             reinforcement learning},
   author  = {Williams, Ronald J.},
-  journal = {Reinforcement Learning},
+  journal = {Machine Learning},
+  volume  = {8},
+  number  = {3--4},
+  pages   = {229--256},
   year    = {1992},
-  pages   = {5-32},
-  doi     = {10.1007/978-1-4615-3618-5_2}
+  doi     = {10.1007/BF00992696}
 }
 
 @article{sharma2020dads,
@@ -247,13 +260,15 @@
   archivePrefix = {arXiv}
 }
 
-@article{shafiullah2022bet,
-  title   = {Behavior Transformers: Cloning k Modes with One Stone},
-  author  = {Shafiullah, Nur Muhammad and Cui, Zichen and Altanzaya, Ariuntuya (Arty) and Pinto, Lerrel},
-  journal = {Advances in Neural Information Processing Systems 35},
-  year    = {2022},
-  pages   = {22955-22968},
-  doi     = {10.52202/068431-1668}
+@inproceedings{shafiullah2022bet,
+  title     = {Behavior Transformers: Cloning k Modes with One Stone},
+  author    = {Shafiullah, Nur Muhammad and Cui, Zichen and Altanzaya, Ariuntuya and
+               Pinto, Lerrel},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {35},
+  pages     = {22955--22968},
+  year      = {2022},
+  doi       = {10.52202/068431-1668}
 }
 
 @article{janner2022diffuser,
