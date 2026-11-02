@@ -168,3 +168,10 @@ learned-skill arm under a uniform prior on Avoiding and a fitted one on
 Pushing, so its two tasks were not comparing the same baseline. Both tasks now
 run uniform in the main matrix and fitted as a separate labelled comparison. No
 corrected cell of either kind had been launched when this was fixed.
+
+**2026-11-02, ablations, squared-error matching.** A squared-error histogram
+objective, `D = (1/2) sum_j (p_j - q_j)^2` with derivative `p - q`, joins the
+divergence comparison. It separates two explanations of any advantage the
+proposed arm shows: matching a reference at all, against the particular choice
+of total variation. Ablations are exploratory under section 6 and no ablation
+cell had been launched when this was added.

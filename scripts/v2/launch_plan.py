@@ -90,7 +90,11 @@ def ablation(workers, choice):
     for task, t in TASK.items():
         top = t["weightings"][-1]
         lam = choice[task]["mop"]["lam"]
-        for div, extra in (("js", []), ("kl", ["--kl-eps", "1e-6"]),
+        # l2 is here to separate two explanations of any advantage: matching a
+        # reference at all, against the particular choice of total variation.
+        # Its derivative p - q is bounded and smooth, so it isolates the first.
+        for div, extra in (("js", []), ("l2", []),
+                           ("kl", ["--kl-eps", "1e-6"]),
                            ("kl", ["--kl-eps", "1e-8", "--ref-smooth", "0.05"])):
             tag = div + ("-smooth" if "--ref-smooth" in extra else "")
             cmd = base(task, f"ablation_divergence_{task}_{tag}.jsonl",
