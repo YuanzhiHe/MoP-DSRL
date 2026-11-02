@@ -64,13 +64,20 @@ def select(rows, task):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--calibration", type=Path,
-                    default=ROOT / "runs" / "_d3il_v2" / "calibration.jsonl")
+    ap.add_argument("--calibration", nargs="+",
+                    default=[str(ROOT / "runs" / "_d3il_v2"
+                                 / "calibration_*.jsonl")])
     ap.add_argument("--out", type=Path,
                     default=ROOT / "runs" / "_d3il_v2" / "lambda_choice.json")
     args = ap.parse_args()
 
-    rows = [json.loads(l) for l in args.calibration.open() if l.strip()]
+    rows = []
+    for pat in args.calibration:
+        for f in sorted(Path().glob(str(pat))) or [Path(pat)]:
+            if f.exists():
+                rows += [json.loads(l) for l in f.open() if l.strip()]
+    if not rows:
+        raise SystemExit(f"no calibration rows under {args.calibration}")
     report = {}
     for task in ("avoiding", "pushing"):
         chosen = select(rows, task)
