@@ -774,56 +774,72 @@ def main() -> int:
               f"{failed_before} cells have a failed attempt on record", flush=True)
 
     bbs = args.backbone_seeds if args.backbone_seeds else [None]
-    fh = args.out.open("a")
+
+    # References first, every one of them, then a single pool over every cell
+    # the job owns. Measuring and running block by block would cap the job at
+    # the cells of one checkpoint no matter how many cores it holds, which on
+    # a 192-core node leaves most of them idle for most of the run.
+    refs = {}
     for weighting in args.weightings:
         for bb in bbs:
             ref = reference_record(weighting, args, bb)
-            if args.reference_only:
-                continue
+            refs[(weighting, bb)] = ref
             C = np.asarray(ref["C_ref"], float)
-            nz = C > 0
             B = n_bins(args)
             print(f"=== {args.task} weighting {weighting} backbone {bb}: "
-                  f"{int(nz.sum())}/{B} bins, "
+                  f"{int((C > 0).sum())}/{B} bins, "
                   f"TV to uniform {EST.tv(C, np.full(B, 1.0 / B)):.3f}, "
                   f"{ref['valid_episodes']}/{ref['episodes']} labelled ===",
                   flush=True)
-            cells = []
-            for seed in range(args.seed_offset, args.seed_offset + args.seeds):
-                for arm in args.arms:
-                    lam = lam_for(args, arm)
-                    probe = dict(task=args.task, weighting=weighting,
-                                 backbone_seed=bb, arm=arm, rl_seed=seed,
-                                 config_sha256=config_hash(args, arm, lam),
-                                 checkpoint_sha256=ref["checkpoint_sha256"],
-                                 reference_sha256=ref["reference_sha256"])
-                    k = cell_key(probe)
-                    if k in done:
-                        continue
-                    if attempts[k] > args.max_attempts:
-                        print(f"  {arm} seed{seed}: {attempts[k]} attempts on "
-                              f"record, at the limit, left unrun", flush=True)
-                        continue
-                    cells.append((arm, lam, weighting, seed, args, ref, bb,
-                                  attempts[k] + 1))
-            if not cells:
-                print("  every cell already completed, skipped", flush=True)
-                continue
-            with ProcessPoolExecutor(max_workers=args.workers, mp_context=_MP) as ex:
-                for res in ex.map(_cell, cells):
-                    fh.write(json.dumps(res) + "\n")
-                    fh.flush()
-                    if res["status"] == "completed":
-                        print(f"  bb{bb} {res['arm']:5s} seed{res['rl_seed']} "
-                              f"SR={res['success_rate']:.3f} "
-                              f"rew={res['rewarded_success_rate']:.3f} "
-                              f"comp={res['completion_rate']:.3f} "
-                              f"tv_ref={res['tv_to_ref'] if res['tv_to_ref'] is None else round(res['tv_to_ref'],3)} "
-                              f"|coef|={res['coef_absmax']:.2f} "
-                              f"inert={res['frac_inert']:.2f}", flush=True)
-                    else:
-                        print(f"  bb{bb} {res['arm']:5s} seed{res['rl_seed']} "
-                              f"EXCEPTION {res['exception']}", flush=True)
+    if args.reference_only:
+        print("references only, no cell run")
+        return 0
+
+    cells = []
+    for (weighting, bb), ref in refs.items():
+        for seed in range(args.seed_offset, args.seed_offset + args.seeds):
+            for arm in args.arms:
+                lam = lam_for(args, arm)
+                probe = dict(task=args.task, weighting=weighting,
+                             backbone_seed=bb, arm=arm, rl_seed=seed,
+                             config_sha256=config_hash(args, arm, lam),
+                             checkpoint_sha256=ref["checkpoint_sha256"],
+                             reference_sha256=ref["reference_sha256"])
+                k = cell_key(probe)
+                if k in done:
+                    continue
+                if attempts[k] > args.max_attempts:
+                    print(f"  w{weighting} bb{bb} {arm} seed{seed}: "
+                          f"{attempts[k]} attempts on record, at the limit, "
+                          f"left unrun", flush=True)
+                    continue
+                cells.append((arm, lam, weighting, seed, args, ref, bb,
+                              attempts[k] + 1))
+    if not cells:
+        print("every cell already completed, nothing to run", flush=True)
+        return 0
+
+    print(f"{len(cells)} cells over {len(refs)} checkpoints, "
+          f"{args.workers} workers", flush=True)
+
+    fh = args.out.open("a")
+    with ProcessPoolExecutor(max_workers=args.workers, mp_context=_MP) as ex:
+        for res in ex.map(_cell, cells):
+            fh.write(json.dumps(res) + "\n")
+            fh.flush()
+            tag = (f"  w{res['weighting']} bb{res['backbone_seed']} "
+                   f"{res['arm']:5s} seed{res['rl_seed']}")
+            if res["status"] == "completed":
+                tv = res["tv_to_ref"]
+                print(f"{tag} SR={res['success_rate']:.3f} "
+                      f"rew={res['rewarded_success_rate']:.3f} "
+                      f"comp={res['completion_rate']:.3f} "
+                      f"tv_ref={'undefined' if tv is None else round(tv, 3)} "
+                      f"|coef|={res['coef_absmax']:.2f} "
+                      f"inert={res['frac_inert']:.2f} "
+                      f"{res['cell_seconds']:.0f}s", flush=True)
+            else:
+                print(f"{tag} EXCEPTION {res['exception']}", flush=True)
     fh.close()
     print(f"\nwrote {args.out}")
     return 0

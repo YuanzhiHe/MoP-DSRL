@@ -40,6 +40,12 @@ BUDGET = ["--iters", "60", "--episodes-per-iter", "16", "--lr", "0.003",
 
 
 def base(task, out, workers):
+    """The settings every job of a task shares.
+
+    The driver measures every reference first and then runs one pool over all
+    the cells the job owns, so sizing the pool to the cell count puts the whole
+    job in a single wave. Reference measurement gets the same width.
+    """
     t = TASK[task]
     return (["python", "-u", "scripts/v2/run_d3il_v2.py", "--task", task,
              "--mode-groups", str(t["mode_groups"]),
@@ -51,9 +57,10 @@ def base(task, out, workers):
                "--out", f"{RUNS}/{out}"])
 
 
-def calibration(workers):
+def calibration(_):
     jobs = []
     for task, t in TASK.items():
+        workers = 4 * 3 * 3                     # weightings x seeds x arms
         for lam in CANDIDATES:
             # One file per job. Several jobs appending to one file on a
             # shared filesystem is a way to lose a row, and a lost row is a
@@ -63,13 +70,15 @@ def calibration(workers):
                 "--arms", "mi", "mop", "bmd",
                 "--seeds", "3", "--seed-offset", str(t["calib_seed"]),
                 "--lam", f"{lam:.2f}"]
-            jobs.append((f"cal-{task[:2]}-{lam:.2f}", "12:00:00", cmd))
+            jobs.append((f"cal-{task[:2]}-{lam:.2f}", "1-00:00:00",
+                         workers, cmd))
     return jobs
 
 
-def main_matrix(workers, choice):
+def main_matrix(_, choice):
     jobs = []
     for task, t in TASK.items():
+        workers = 5 * 5 * 4                     # policies x seeds x arms
         lam = choice[task]
         for w in t["weightings"]:
             cmd = base(task, f"main_{task}_{w}.jsonl", workers) + [
@@ -80,13 +89,15 @@ def main_matrix(workers, choice):
                 "--lam-mop", f"{lam['mop']['lam']:.2f}",
                 "--lam-mi", f"{lam['mi']['lam']:.2f}",
                 "--lam-bmd", f"{lam['bmd']['lam']:.2f}"]
-            jobs.append((f"main-{task[:2]}-{w}", "2-00:00:00", cmd))
+            jobs.append((f"main-{task[:2]}-{w}", "2-00:00:00",
+                         workers, cmd))
     return jobs
 
 
-def ablation(workers, choice):
-    """Divergence comparison, and the Pushing weight comparison."""
+def ablation(_, choice):
+    """Divergence comparison, skill prior, and the Pushing weight comparison."""
     jobs = []
+    workers = 5 * 5                             # policies x seeds, one arm
     for task, t in TASK.items():
         top = t["weightings"][-1]
         lam = choice[task]["mop"]["lam"]
@@ -103,7 +114,8 @@ def ablation(workers, choice):
                 "--arms", "mop", "--seeds", "5",
                 "--seed-offset", str(t["main_seed"]),
                 "--lam", f"{lam:.2f}", "--divergence", div] + extra
-            jobs.append((f"abl-{task[:2]}-{tag}", "1-00:00:00", cmd))
+            jobs.append((f"abl-{task[:2]}-{tag}", "1-00:00:00",
+                         workers, cmd))
 
     # The learned-skill arm with its prior fitted to the reference. It is the
     # stronger control, since fitting hands it the target the proposed arm is
@@ -117,45 +129,57 @@ def ablation(workers, choice):
             "--seed-offset", str(t["main_seed"]),
             "--lam", f"{choice[task]['bmd']['lam']:.2f}",
             "--bmd-prior", "fitted"]
-        jobs.append((f"abl-{task[:2]}-fitted", "1-00:00:00", cmd))
+        jobs.append((f"abl-{task[:2]}-fitted", "1-00:00:00",
+                     workers, cmd))
 
     t = TASK["pushing"]
     for lam in CANDIDATES:
         cmd = base("pushing", f"ablation_weight_pushing_{lam:.2f}.jsonl",
-                   workers) + [
+                   2 * 5 * 5 * 2) + [
             "--weightings", "0.00", "0.10",
             "--backbone-seeds", "0", "1", "2", "3", "4",
             "--arms", "mi", "mop", "--seeds", "5",
-            "--seed-offset", str(t["main_seed"]), "--lam", f"{lam:.2f}"]
-        jobs.append((f"abl-pu-lam{lam:.2f}", "1-00:00:00", cmd))
+            "--seed-offset", str(t["main_seed"]), "--lam", f"{lam:.2f}",
+            # Where the main matrix already ran this exact configuration the
+            # cell key matches and the run is reused rather than repeated. A
+            # weight that differs from the main one has a different hash and
+            # runs here.
+            "--resume", "--resume-also",
+            f"{RUNS}/main_pushing_0.00.jsonl",
+            f"{RUNS}/main_pushing_0.10.jsonl"]
+        jobs.append((f"abl-pu-lam{lam:.2f}", "2-00:00:00",
+                     2 * 5 * 5 * 2, cmd))
     return jobs
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("stage", choices=("calibration", "main", "ablation"))
-    ap.add_argument("--workers", type=int, default=96)
-    ap.add_argument("--cpus", type=int, default=96)
-    ap.add_argument("--mem", default="160G")
+    ap.add_argument("--headroom", type=int, default=4,
+                    help="cores above the worker count, for the parent")
+    ap.add_argument("--mem-per-worker-mb", type=int, default=1400,
+                    help="measured peak was about 890 MB per worker")
     ap.add_argument("--choice", type=Path,
                     default=ROOT / "runs" / "_d3il_v2" / "lambda_choice.json")
     ap.add_argument("--submit", action="store_true")
     args = ap.parse_args()
 
     if args.stage == "calibration":
-        jobs = calibration(args.workers)
+        jobs = calibration(None)
     else:
         if not args.choice.exists():
             raise SystemExit(f"{args.choice} does not exist: run the "
                              f"calibration and select_lambda.py first")
         choice = json.loads(args.choice.read_text())
-        jobs = (main_matrix(args.workers, choice) if args.stage == "main"
-                else ablation(args.workers, choice))
+        jobs = (main_matrix(None, choice) if args.stage == "main"
+                else ablation(None, choice))
 
-    for name, walltime, cmd in jobs:
+    for name, walltime, workers, cmd in jobs:
+        cpus = workers + args.headroom
+        mem = max(16, (workers * args.mem_per_worker_mb) // 1024 + 8)
         sbatch = ["sbatch", "--parsable", f"--job-name={name}",
-                  f"--time={walltime}", f"--cpus-per-task={args.cpus}",
-                  f"--mem={args.mem}", "scripts/v2/cpu_job_v2.sh"] + cmd
+                  f"--time={walltime}", f"--cpus-per-task={cpus}",
+                  f"--mem={mem}G", "scripts/v2/cpu_job_v2.sh"] + cmd
         print(" ".join(sbatch))
         if args.submit:
             jid = subprocess.run(sbatch, cwd=ROOT, capture_output=True,
