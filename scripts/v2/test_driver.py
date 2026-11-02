@@ -139,7 +139,9 @@ check("a constant coefficient survives the fixed rule",
 
 print("\n4. diagnostics are recorded")
 for f in ("coef_absmax", "coef_absmax_raw", "n_clipped", "n_inert",
-          "grad_norm_last", "n_nonfinite", "s_min", "n_zero_reward_batches",
+          "grad_norm_last", "n_nonfinite", "n_nonfinite_grad", "s_min",
+          "obs_steps", "obs_absmax", "obs_clipped_steps", "obs_clipped_frac",
+          "n_zero_reward_batches",
           "n_batches", "completion_rate", "success_rate",
           "rewarded_success_rate", "episode_return", "valid_episodes",
           "mode_counts", "mode_counts_raw", "fidelity_defined"):

@@ -84,6 +84,8 @@ def summarise(rows, task, key):
             coef_absmax_used=m("coef_absmax", done),
             grad_norm_last=m("grad_norm_last", done),
             nonfinite=sum(r.get("n_nonfinite", 0) for r in done),
+            nonfinite_grad=sum(r.get("n_nonfinite_grad", 0) for r in done),
+            obs_clipped_frac=m("obs_clipped_frac", done),
             frac_inert=m("frac_inert", done),
             collapsed=sum(1 for r in done if r.get("collapsed")))
     return out
@@ -115,6 +117,8 @@ COLS = [("runs", "completed", "d"), ("exceptions", "exception", "d"),
         ("coefficient, used", "coef_absmax_used", ".3g"),
         ("gradient norm", "grad_norm_last", ".3g"),
         ("non-finite", "nonfinite", "d"),
+        ("non-finite gradients", "nonfinite_grad", "d"),
+        ("steps at the obs bound", "obs_clipped_frac", ".4f"),
         ("inert batches", "frac_inert", ".3f")]
 
 

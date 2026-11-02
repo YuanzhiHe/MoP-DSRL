@@ -18,6 +18,7 @@ optimisation fall over is not a weight to carry into the main experiment.
 """
 import argparse
 import collections
+import glob
 import json
 from pathlib import Path
 
@@ -29,6 +30,11 @@ MAIN_BACKBONES = (0, 1, 2, 3, 4)
 
 def select(rows, task):
     """Chosen weight per arm, with the table the choice was made from."""
+    versions = {r.get("estimator_version") for r in rows if r.get("task") == task}
+    if len(versions) > 1:
+        raise SystemExit(
+            f"{task} calibration spans estimator versions {sorted(versions)}; "
+            f"a weight cannot be selected across two update rules")
     by = collections.defaultdict(list)
     for r in rows:
         if r.get("task") != task or r["arm"] == "dsrl":
@@ -73,14 +79,23 @@ def main():
 
     rows = []
     for pat in args.calibration:
-        for f in sorted(Path().glob(str(pat))) or [Path(pat)]:
+        for f in sorted(Path(g) for g in glob.glob(str(pat))) or [Path(pat)]:
             if f.exists():
                 rows += [json.loads(l) for l in f.open() if l.strip()]
     if not rows:
         raise SystemExit(f"no calibration rows under {args.calibration}")
-    report = {}
+    # A task's weights are selected when that task's calibration lands, which
+    # need not be the same day. Keep what is already decided and add to it, so
+    # that selecting the second task cannot silently redecide the first.
+    report = json.loads(args.out.read_text()) if args.out.exists() else {}
     for task in ("avoiding", "pushing"):
+        if not any(r.get("task") == task for r in rows):
+            continue
         chosen = select(rows, task)
+        if task in report and report[task] != chosen:
+            raise SystemExit(
+                f"{task} weights are already recorded in {args.out} and the "
+                f"calibration now gives a different answer; resolve by hand")
         report[task] = chosen
         print(f"=== {task} (floor {FLOOR[task]}) ===")
         for arm, c in chosen.items():

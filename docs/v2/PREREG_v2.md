@@ -85,6 +85,12 @@ Declared here, before calibration, and recorded in every row.
 | coefficient clipping | off |
 | KL guard | 1e-8, used only by the KL ablation |
 | reference smoothing | 0.0 in the main experiment |
+| observation bound | 50 standard deviations of the demonstration data |
+
+The observation bound applies to every arm, both tasks, the training
+rollouts, the evaluation rollouts and the reference measurement alike, and
+every row records how many of its steps met it. A batch whose gradient is not
+finite is dropped and counted rather than stepped on.
 
 The `legacy` standardisation is retained only as a diagnostic contrast and is
 described as a surrogate wherever it appears, because no fixed
@@ -168,6 +174,26 @@ learned-skill arm under a uniform prior on Avoiding and a fitted one on
 Pushing, so its two tasks were not comparing the same baseline. Both tasks now
 run uniform in the main matrix and fitted as a separate labelled comparison. No
 corrected cell of either kind had been launched when this was fixed.
+
+**2026-11-02, section 4, bounded observations.** Channels 6 and 9 of the
+Pushing observation are unwrapped orientation angles, with demonstration
+standard deviations of 313 and 693 radians. Measured over 6,695 steps under the
+frozen policy's own latent prior, channel 6 reaches 6.1e11 normalised units and
+more than one step in a hundred exceeds 1e11, so every network reading that
+observation saturates. In the learned-skill arm the final observation is also
+the discriminator's input, which turned the intrinsic reward into a term of
+order 1e10 and took two of the eight Pushing smoke cells to NaN. Wrapping the
+angle is not available, because the frozen decoder was trained on the unwrapped
+value. The normalised observation is therefore bounded at 50 standard
+deviations, the same bound for every arm and both tasks. Over the same 6,695
+Pushing steps and 1,825 Avoiding steps, the largest value any other channel
+reached was 11.8, so the bound sits more than four times outside the range a
+behaving rollout occupies and ten orders of magnitude below the runaway. The
+estimator version moves to v2.1, which invalidates every cached reference and
+every configuration hash, so no bounded and unbounded result can be pooled. The
+smoke runs that exposed this are debugging data under section III of the brief
+and do not enter any analysis; no main or calibration cell of the bounded code
+had been launched when this was fixed.
 
 **2026-11-02, ablations, squared-error matching.** A squared-error histogram
 objective, `D = (1/2) sum_j (p_j - q_j)^2` with derivative `p - q`, joins the

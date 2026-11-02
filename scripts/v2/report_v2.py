@@ -131,6 +131,11 @@ def descriptives(cells):
                                     if r["success_rate"] < FLOOR[task])),
                 collapsed=int(sum(1 for r in sel if r.get("collapsed"))),
                 nonfinite=int(sum(r.get("n_nonfinite", 0) for r in sel)),
+                nonfinite_grad=int(sum(r.get("n_nonfinite_grad", 0) for r in sel)),
+                obs_absmax=float(max([r.get("obs_absmax", 0.0) for r in sel],
+                                     default=0.0)),
+                obs_clipped_frac=float(np.mean([r.get("obs_clipped_frac", 0.0)
+                                                for r in sel])) if sel else 0.0,
                 frac_inert=float(np.mean([r.get("frac_inert", 0.0)
                                           for r in sel])))
         out[task] = per

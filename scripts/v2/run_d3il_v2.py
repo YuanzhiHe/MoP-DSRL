@@ -81,7 +81,7 @@ from run_d3il_headtohead import (  # noqa: E402
     coarsen, decode, load_backbone,
 )
 
-ESTIMATOR_VERSION = "v2.0"
+ESTIMATOR_VERSION = "v2.1"
 _MP = mp.get_context("spawn")
 OUT_ROOT = ROOT / "runs" / "_d3il_v2"
 
@@ -124,7 +124,8 @@ def sha256_file(path: Path) -> str:
 SEMANTIC = ("task", "objective", "standardise", "arm", "lam", "divergence",
             "mode_groups", "bmd_prior", "iters", "episodes_per_iter",
             "eval_episodes", "ref_episodes", "lr", "M", "n_rewarded", "ema",
-            "s_ema", "s_floor", "ref_smooth", "coef_clip", "kl_eps")
+            "s_ema", "s_floor", "ref_smooth", "coef_clip", "kl_eps",
+            "obs_clip")
 
 
 def lam_for(args, arm: str) -> float:
@@ -151,12 +152,37 @@ def cell_key(row: dict) -> tuple:
 
 
 # ---------------------------------------------------------------- rollouts
-def rollout(env, policy, model, blob, rewarded, device, M, greedy=False):
+def norm_obs(obs, blob, clip, stat=None):
+    """Normalised observation, bounded, with how often the bound engaged.
+
+    Two of the ten Pushing channels are unbounded along a rollout: a noise
+    policy that drives the arm hard carries them past 1e11 in normalised units,
+    which saturates every network they feed and, in the learned-skill arm,
+    turns the discriminator's log-probability into a reward of order 1e10 that
+    takes the policy to NaN. The bound is declared in advance, identical for
+    every arm and both tasks, and sits far outside anything the frozen policy's
+    own latent prior reaches, so a run that is behaving never touches it. Runs
+    record how many steps did touch it, because a run that spends time against
+    the bound is a run in the regime the bound exists for.
+    """
+    v = (np.asarray(obs, dtype=np.float64) - blob["obs_mean"]) / blob["obs_std"]
+    v = np.nan_to_num(v, nan=0.0, posinf=clip, neginf=-clip)
+    if stat is not None:
+        stat["obs_steps"] = stat.get("obs_steps", 0) + 1
+        stat["obs_absmax"] = max(stat.get("obs_absmax", 0.0),
+                                 float(np.abs(v).max()))
+        if np.abs(v).max() > clip:
+            stat["obs_clipped_steps"] = stat.get("obs_clipped_steps", 0) + 1
+    return np.clip(v, -clip, clip)
+
+
+def rollout(env, policy, model, blob, rewarded, device, M, clip, stat=None,
+            greedy=False):
     """One episode. The reward is earned on the RAW route id, never a coarsened one."""
     obs = env.reset()
     logps, done = [], False
     while not done:
-        o = torch.tensor((obs - blob["obs_mean"]) / blob["obs_std"],
+        o = torch.tensor(norm_obs(obs, blob, clip, stat),
                          dtype=torch.float32, device=device)[None]
         d = policy.dist(o)
         z = d.mean if greedy else d.rsample()
@@ -264,14 +290,15 @@ def run_arm(arm, lam, weighting, seed, args, ref, bb_seed=None):
     C_ema = np.full(B, 1.0 / B)
     s_ema = 1.0
     diag = dict(coef_absmax=0.0, coef_absmax_raw=0.0, n_clipped=0, n_inert=0,
-                grad_norm_last=None, n_nonfinite=0, s_min=1.0,
-                n_zero_reward_batches=0, n_batches=0)
+                grad_norm_last=None, n_nonfinite=0, n_nonfinite_grad=0,
+                s_min=1.0, n_zero_reward_batches=0, n_batches=0,
+                obs_steps=0, obs_absmax=0.0, obs_clipped_steps=0)
 
     for _ in range(args.iters):
         batch_lp, batch_r, batch_raw = [], [], []
         for _ in range(args.episodes_per_iter):
             lp, r, raw_mode, _ = rollout(env, policy, model, blob, rewarded,
-                                         device, args.M)
+                                         device, args.M, args.obs_clip, diag)
             batch_lp.append(torch.stack(lp).sum())
             batch_r.append(r)
             batch_raw.append(raw_mode)
@@ -338,15 +365,22 @@ def run_arm(arm, lam, weighting, seed, args, ref, bb_seed=None):
         loss.backward()
         gn = torch.nn.utils.clip_grad_norm_(policy.parameters(), float("inf"))
         diag["grad_norm_last"] = float(gn)
-        opt.step()
+        if np.isfinite(float(gn)):
+            opt.step()
+        else:
+            # Stepping on a non-finite gradient leaves every weight NaN for the
+            # rest of the run, so the batch is dropped and counted instead.
+            diag["n_nonfinite_grad"] = diag.get("n_nonfinite_grad", 0) + 1
+            opt.zero_grad(set_to_none=True)
 
     def ep(_i):
         _, _, raw_mode, success = rollout(env, policy, model, blob, rewarded,
-                                          device, args.M)
+                                          device, args.M, args.obs_clip, diag)
         return raw_mode, success
 
     row = evaluate(ep, args.eval_episodes, args, rewarded, n_raw)
     row.update(diag)
+    row["obs_clipped_frac"] = diag["obs_clipped_steps"] / max(diag["obs_steps"], 1)
     row["frac_inert"] = diag["n_inert"] / max(args.iters, 1)
     return row
 
@@ -416,21 +450,22 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
         obs = env.reset()
         logps, done = [], False
         while not done:
-            o = torch.tensor((obs - blob["obs_mean"]) / blob["obs_std"],
+            o = torch.tensor(norm_obs(obs, blob, args.obs_clip, diag),
                              dtype=torch.float32, device=device)[None]
             d = policy.dist(o, k)
             z = d.rsample()
             logps.append(d.log_prob(z.detach()).sum())
             obs, _, done, info = env.step(decode(model, blob, o, z.detach(), args.M)[0])
-        last = torch.tensor((obs - blob["obs_mean"]) / blob["obs_std"],
+        last = torch.tensor(norm_obs(obs, blob, args.obs_clip, diag),
                             dtype=torch.float32, device=device)
         success = bool(info["success"])
         raw_mode = int(info["mode_id"])
         return logps, float(success and raw_mode in rewarded), last, raw_mode, success
 
     diag = dict(n_batches=0, n_zero_reward_batches=0, grad_norm_last=None,
-                n_nonfinite=0, coef_absmax=0.0, coef_absmax_raw=0.0,
-                n_clipped=0, n_inert=0, s_min=1.0)
+                n_nonfinite=0, n_nonfinite_grad=0, coef_absmax=0.0,
+                coef_absmax_raw=0.0, n_clipped=0, n_inert=0, s_min=1.0,
+                obs_steps=0, obs_absmax=0.0, obs_clipped_steps=0)
     for _ in range(args.iters):
         lps, rs, lasts, ks = [], [], [], []
         for _ in range(args.episodes_per_iter):
@@ -466,9 +501,13 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
             shaped = torch.nan_to_num(shaped, nan=0.0, posinf=0.0, neginf=0.0)
         loss = -(shaped * torch.stack(lps)).mean()
         opt.zero_grad(set_to_none=True); loss.backward()
-        diag["grad_norm_last"] = float(
-            torch.nn.utils.clip_grad_norm_(policy.parameters(), float("inf")))
-        opt.step()
+        gn = float(torch.nn.utils.clip_grad_norm_(policy.parameters(), float("inf")))
+        diag["grad_norm_last"] = gn
+        if np.isfinite(gn):
+            opt.step()
+        else:
+            diag["n_nonfinite_grad"] = diag.get("n_nonfinite_grad", 0) + 1
+            opt.zero_grad(set_to_none=True)
 
     calib = None
     if args.bmd_prior == "fitted":
@@ -501,6 +540,7 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
 
     row = evaluate(ep, args.eval_episodes, args, rewarded, n_raw)
     row.update(diag)
+    row["obs_clipped_frac"] = diag["obs_clipped_steps"] / max(diag["obs_steps"], 1)
     row["skill_prior"] = [float(x) for x in prior]
     row["bmd_calibration"] = calib
     row["frac_inert"] = 0.0
@@ -510,7 +550,7 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
 # -------------------------------------------------------------- reference
 def _ref_chunk(payload):
     _single_threaded()
-    weighting, n, seed, M, device, task, bb_seed = payload
+    weighting, n, seed, M, device, task, bb_seed, clip = payload
     model, blob = load_backbone(backbone_path(task, weighting, bb_seed), device)
     env = TASKS[task]["env"](seed=seed, history=blob.get("history", 1))
     rng = np.random.default_rng(seed)
@@ -520,7 +560,7 @@ def _ref_chunk(payload):
         obs = env.reset()
         done = False
         while not done:
-            o = torch.tensor((obs - blob["obs_mean"]) / blob["obs_std"],
+            o = torch.tensor(norm_obs(obs, blob, clip),
                              dtype=torch.float32, device=device)[None]
             z = torch.tensor(rng.standard_normal((1, blob["act_dim"])),
                              dtype=torch.float32, device=device)
@@ -545,7 +585,7 @@ def reference_record(weighting, args, bb_seed=None) -> dict:
     key = dict(checkpoint_sha256=ck_hash, task=args.task, K=args.mode_groups,
                M=args.M, ref_episodes=args.ref_episodes, chunk=args.ref_chunk,
                seed_base=args.ref_seed_base, estimator_version=ESTIMATOR_VERSION,
-               objective=args.objective)
+               objective=args.objective, obs_clip=args.obs_clip)
     kh = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()
     cache = OUT_ROOT / "_cref" / f"{kh}.json"
     if cache.exists():
@@ -558,7 +598,7 @@ def reference_record(weighting, args, bb_seed=None) -> dict:
     chunk = max(1, min(args.ref_chunk, args.ref_episodes))
     n_chunks = max(1, -(-args.ref_episodes // chunk))
     payloads = [(weighting, chunk, args.ref_seed_base + i, args.M, args.device,
-                 args.task, bb_seed) for i in range(n_chunks)]
+                 args.task, bb_seed, args.obs_clip) for i in range(n_chunks)]
     n_w = max(1, args.ref_workers if args.ref_workers else args.workers)
     raw = np.zeros(TASKS[args.task]["n_modes"], dtype=np.int64)
     n_ep = n_valid = lost = 0
@@ -712,6 +752,11 @@ def build_parser() -> argparse.ArgumentParser:
                     help="EMA rate for the lagged valid-label probability")
     ap.add_argument("--s-floor", type=float, default=0.05,
                     help="floor on the 1/s factor; fixed before any run")
+    ap.add_argument("--obs-clip", type=float, default=50.0,
+                    help="bound on the normalised observation fed to every "
+                         "network, in standard deviations of the demonstration "
+                         "data; two Pushing channels are unwrapped angles that "
+                         "run away without it")
     ap.add_argument("--coef-clip", type=float, default=0.0,
                     help="clip |coefficient|; 0 = off. Fixed before any run")
     ap.add_argument("--kl-eps", type=float, default=1e-8)

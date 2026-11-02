@@ -105,6 +105,37 @@ status, exception and traceback and is never deleted; the retry is appended
 beside it with the next attempt number; a cell at the attempt limit is reported
 as missing.
 
+## G. Bounded observations
+
+Two of the ten Pushing observation channels are unwrapped orientation angles.
+Their demonstration standard deviations are 313 and 693 radians, and along a
+rollout they accumulate without bound: over 6,695 steps driven by the frozen
+policy's own latent prior, channel 6 reached 6.1e11 normalised units, and more
+than one step in a hundred exceeded 1e11. Every network that reads the
+observation saturates there. The learned-skill arm feels it twice, because the
+final observation is also its discriminator's input, so its intrinsic reward
+reached 5.1e10 and two of the eight Pushing smoke cells ended in NaN.
+
+Wrapping the angle is not available: the frozen decoder was trained on the
+unwrapped value and its normaliser was fitted to it. `norm_obs` therefore
+bounds the normalised observation at `--obs-clip`, 50 by default, in the
+training rollouts, the evaluation rollouts and the reference measurement
+alike, identically for every arm and both tasks. The largest value any other
+channel reached in the same measurement was 11.8 on Pushing and 6.0 on
+Avoiding, so the bound is four times outside a behaving rollout and ten orders
+of magnitude inside the runaway. Every row records `obs_absmax`,
+`obs_clipped_steps` and `obs_clipped_frac`, so a run that spent time against
+the bound is visible rather than silently repaired.
+
+A batch whose gradient norm is not finite is dropped and counted in
+`n_nonfinite_grad` instead of being stepped on, in both arms, because one such
+step leaves every weight NaN for the remainder of the run.
+
+`obs_clip` is a semantic setting and enters both the configuration hash and the
+reference cache key, and `ESTIMATOR_VERSION` moves to `v2.1`. Bounded and
+unbounded results cannot be pooled or resumed into one another, and every
+cached reference is remeasured.
+
 ## Verification
 
 `check_mathematics.py` - derivatives against central differences, and the
