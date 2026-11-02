@@ -50,6 +50,7 @@ for _var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
     os.environ[_var] = "1"
 
 import argparse  # noqa: E402
+import collections  # noqa: E402
 import hashlib  # noqa: E402
 import json  # noqa: E402
 import multiprocessing as mp  # noqa: E402
@@ -598,9 +599,9 @@ def reference_record(weighting, args, bb_seed=None) -> dict:
 # ------------------------------------------------------------------- sweep
 def _cell(payload):
     _single_threaded()
-    arm, lam, weighting, seed, args, ref, bb_seed = payload
+    arm, lam, weighting, seed, args, ref, bb_seed, attempt = payload
     base = dict(task=args.task, weighting=weighting, backbone_seed=bb_seed,
-                arm=arm, rl_seed=seed, lam=lam,
+                arm=arm, rl_seed=seed, lam=lam, attempt=int(attempt),
                 objective=args.objective, standardise=args.standardise,
                 divergence=args.divergence if arm == "mop" else None,
                 mode_groups=args.mode_groups,
@@ -690,13 +691,23 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--out", type=Path, required=True,
                     help="JSONL; one record per cell, appended as it finishes")
     ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--max-attempts", type=int, default=2,
+                    help="a cell that has already failed this many times is "
+                         "left unrun and reported as missing")
     ap.add_argument("--resume-also", nargs="*", default=[])
     ap.add_argument("--reference-only", action="store_true")
     return ap
 
 
-def load_done(paths) -> set:
-    done = set()
+def load_done(paths):
+    """Completed cells, and how many times each cell has already been attempted.
+
+    An exception never removes a row: the failed attempt stays in the file with
+    its reason and traceback, and the retry is written beside it carrying the
+    next attempt number. Counting attempts here is what keeps a cell that fails
+    deterministically from being retried without limit.
+    """
+    done, attempts = set(), collections.Counter()
     for p in paths:
         for f in sorted(Path().glob(str(p))) or [Path(p)]:
             if not f.exists():
@@ -706,9 +717,10 @@ def load_done(paths) -> set:
                 if not line:
                     continue
                 r = json.loads(line)
+                attempts[cell_key(r)] += 1
                 if r.get("status") == "completed":
                     done.add(cell_key(r))
-    return done
+    return done, attempts
 
 
 def main() -> int:
@@ -719,12 +731,16 @@ def main() -> int:
         text=True).stdout.strip()
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
-    done = set()
+    done, attempts = set(), collections.Counter()
     if args.resume:
-        done |= load_done([args.out])
-    done |= load_done(args.resume_also)
-    if done:
-        print(f"resume: {len(done)} completed cells recognised", flush=True)
+        d, a = load_done([args.out])
+        done |= d; attempts.update(a)
+    d, a = load_done(args.resume_also)
+    done |= d; attempts.update(a)
+    if done or attempts:
+        failed_before = sum(1 for k, v in attempts.items() if k not in done)
+        print(f"resume: {len(done)} completed cells recognised, "
+              f"{failed_before} cells have a failed attempt on record", flush=True)
 
     bbs = args.backbone_seeds if args.backbone_seeds else [None]
     fh = args.out.open("a")
@@ -750,9 +766,15 @@ def main() -> int:
                                  config_sha256=config_hash(args, arm, lam),
                                  checkpoint_sha256=ref["checkpoint_sha256"],
                                  reference_sha256=ref["reference_sha256"])
-                    if cell_key(probe) in done:
+                    k = cell_key(probe)
+                    if k in done:
                         continue
-                    cells.append((arm, lam, weighting, seed, args, ref, bb))
+                    if attempts[k] > args.max_attempts:
+                        print(f"  {arm} seed{seed}: {attempts[k]} attempts on "
+                              f"record, at the limit, left unrun", flush=True)
+                        continue
+                    cells.append((arm, lam, weighting, seed, args, ref, bb,
+                                  attempts[k] + 1))
             if not cells:
                 print("  every cell already completed, skipped", flush=True)
                 continue
