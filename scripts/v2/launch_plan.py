@@ -101,6 +101,20 @@ def ablation(workers, choice):
                 "--lam", f"{lam:.2f}", "--divergence", div] + extra
             jobs.append((f"abl-{task[:2]}-{tag}", "1-00:00:00", cmd))
 
+    # The learned-skill arm with its prior fitted to the reference. It is the
+    # stronger control, since fitting hands it the target the proposed arm is
+    # matching, and it is reported under its own label rather than folded into
+    # the main table.
+    for task, t in TASK.items():
+        cmd = base(task, f"ablation_fitted_prior_{task}.jsonl", workers) + [
+            "--weightings", t["weightings"][-1],
+            "--backbone-seeds", "0", "1", "2", "3", "4",
+            "--arms", "bmd", "--seeds", "5",
+            "--seed-offset", str(t["main_seed"]),
+            "--lam", f"{choice[task]['bmd']['lam']:.2f}",
+            "--bmd-prior", "fitted"]
+        jobs.append((f"abl-{task[:2]}-fitted", "1-00:00:00", cmd))
+
     t = TASK["pushing"]
     for lam in CANDIDATES:
         cmd = base("pushing", f"ablation_weight_pushing_{lam:.2f}.jsonl",

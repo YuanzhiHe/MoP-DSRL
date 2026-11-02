@@ -51,7 +51,14 @@ Arms:
 3. `mop` - reference matching, corrected, total variation;
 4. `bmd` - learned-skill baseline with a variational mutual-information bound,
    labelled in every table as an adaptation that sees only the final
-   observation.
+   observation. In the main matrix it deploys its skills under a **uniform**
+   prior, which keeps it blind to the reference the proposed arm is matching.
+   The prior fitted to the reference is a separate labelled comparison, run at
+   each task's highest weighting, and is the stronger control of the two
+   because it is handed the target: the mixture weights are solved on the
+   simplex against `A[k, j] = P(valid and mode = j | skill = k)`, so a skill
+   that rarely finishes contributes rarely, and the weights are fitted on
+   episodes that the evaluation then discards.
 
 Budgets, identical across arms within a task: 60 updates, 16 episodes per
 update, Euler steps M = 10, Adam at 3e-3, evaluation 500 episodes on Avoiding
@@ -155,3 +162,9 @@ amendment is made after the results it would affect have been seen.
 checkpoints per weighting, so no such index exists. The cohort is now the
 separately trained unnumbered checkpoint of each weighting. No calibration run
 had been launched when this was changed.
+
+**2026-11-02, section 3, the learned-skill prior.** The legacy sweep ran the
+learned-skill arm under a uniform prior on Avoiding and a fitted one on
+Pushing, so its two tasks were not comparing the same baseline. Both tasks now
+run uniform in the main matrix and fitted as a separate labelled comparison. No
+corrected cell of either kind had been launched when this was fixed.

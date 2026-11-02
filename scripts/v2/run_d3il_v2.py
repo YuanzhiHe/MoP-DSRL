@@ -472,9 +472,8 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
 
     calib = None
     if args.bmd_prior == "fitted":
-        # Calibration draws from its own stream and its own episodes, so the
-        # weights are not fitted on the episodes they are then scored on.
-        crng = np.random.default_rng(seed + 10_000_000)
+        # The weights are fitted on episodes that are then discarded, so the
+        # evaluation below scores the prior on episodes it never saw.
         n_per = max(args.bmd_calib_per_skill, 8)
         A = np.zeros((K, B))
         tot = np.zeros(K)
@@ -488,8 +487,8 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
         A = A / tot[:, None]                      # P(valid and mode=j | skill=k)
         prior, resid = fit_skill_prior(A, np.asarray(ref["C_ref"], float))
         calib = dict(skill_mode_joint=A.tolist(), calib_episodes_per_skill=int(n_per),
-                     fit_residual=float(resid), fitted_on_independent_episodes=True)
-        _ = crng
+                     fit_residual=float(resid), fitted_on_independent_episodes=True,
+                     calib_episodes_total=int(tot.sum()))
     else:
         prior = np.full(K, 1.0 / K)
 
