@@ -91,6 +91,13 @@ def main():
         kept = [r for r in rows if r["SR"] >= FLOOR[task]]
         print(f"  success floor {FLOOR[task]} would drop "
               f"{len(rows) - len(kept)} of them")
+        report[f"{task}/cohort"] = dict(
+            runs=len(rows), policies=len({policy_of(r) for r in rows}),
+            success_floor=FLOOR[task], runs_kept=len(kept),
+            runs_dropped=len(rows) - len(kept),
+            policies_kept=len({policy_of(r) for r in kept}),
+            runs_per_arm={a: sum(1 for r in rows if arm_of(r) == a)
+                          for a in ("mop", "mi", "dsrl", "bmd")})
 
         for label, sel in (("primary, every run", rows),
                            ("sensitivity, success floor", kept)):
@@ -114,29 +121,56 @@ def main():
                             name=f"mop closer than {o}, {nm}")
                    for o in ("mi", "dsrl", "bmd")]
             S.holm(fam)
+            report[f"{task}/other distances, every run/{nm}"] = \
+                [c.__dict__ for c in fam]
             for c in fam:
                 print("   ", c.line())
 
         print("\n  --- the shared reference's own sampling error ---")
         have = [r for r in rows if r.get("reference_counts")]
         print(f"    reference counts recovered for {len(have)}/{len(rows)} runs")
+        resampled = dict(runs_with_counts=len(have), runs=len(rows),
+                         policies_with_counts=len({policy_of(r) for r in have}))
+        # Counts survive only where the stored probabilities rationalise, which
+        # is not a random subset of the runs. The fixed-reference contrast is
+        # recomputed on exactly the runs that enter the resampling so that the
+        # two numbers are about the same cohort.
         for other in ("mi", "dsrl", "bmd"):
             res = S.reference_resample(have, policy_of, arm_of, "mop", other,
                                        draws=200, seed=1)
+            # reference_resample returns TV(mop) - TV(other); report it in the
+            # same direction as the paired contrasts, where positive is closer.
+            for k in ("mean", "lo", "hi"):
+                res[k] = -res[k]
+            res["lo"], res["hi"] = res["hi"], res["lo"]
+            fixed = S.paired(have, "closeness_tv", other, "mop", policy_of,
+                             arm_of, "greater", name=f"subcohort vs {other}")
+            res["fixed_reference_same_cohort"] = fixed.__dict__
+            resampled[other] = res
             if res["draws"]:
-                print(f"    vs {other:<5} resampled mean {res['mean']:+.4f} "
-                      f"sd {res['sd']:.4f}  95% [{res['lo']:+.4f}, {res['hi']:+.4f}]")
+                print(f"    vs {other:<5} fixed reference on this subcohort "
+                      f"n={fixed.n:2d} mean={fixed.mean:+.4f}; "
+                      f"resampled mean {res['mean']:+.4f} sd {res['sd']:.4f} "
+                      f"95% [{res['lo']:+.4f}, {res['hi']:+.4f}]")
+
+        report[f"{task}/reference resampling"] = resampled
 
         print("\n  --- what the manuscript's fixed critical value does ---")
+        fixedcv = {}
         for other in ("mi", "dsrl", "bmd"):
             c = S.paired(kept, "closeness_tv", other, "mop", policy_of, arm_of)
             if c.n >= 2:
                 half_fixed = 2.093 * c.se
                 half_true = (c.ci_high - c.ci_low) / 2
+                fixedcv[other] = dict(n=c.n, df=c.df, half_true=half_true,
+                                      half_fixed=half_fixed,
+                                      relative=half_fixed / half_true - 1)
                 print(f"    vs {other:<5} n={c.n:2d} df={c.df:2d}: "
                       f"half-width {half_true:.4f} against {half_fixed:.4f} "
                       f"at the fixed t(19) value "
                       f"({100*(half_fixed/half_true - 1):+.1f}%)")
+
+        report[f"{task}/fixed critical value"] = fixedcv
 
     out = ROOT / "runs" / "_d3il_v2" / "reanalysis_legacy.json"
     out.write_text(json.dumps(report, indent=1, default=str))
