@@ -30,6 +30,25 @@ echo "cmd: $*"
 echo "commit: $(git rev-parse HEAD)"
 echo "branch: $(git rev-parse --abbrev-ref HEAD)"
 echo "dirty: $(git status --porcelain | wc -l) files"
+# Freeze the code this job runs. Workers are spawned, so they re-import the
+# driver from disk minutes or hours after launch; without a frozen copy, an
+# edit to the working tree reaches those workers while the parent keeps the
+# version it started with. The copy also records exactly what ran.
+SRC_FREEZE="$MOP_DSRL_ROOT/runs/_d3il_v2/_src/${SLURM_JOB_ID:-local}"
+mkdir -p "$SRC_FREEZE"
+cp -r scripts "$SRC_FREEZE/"
+echo "source frozen at: $SRC_FREEZE"
+
+# Point the command at the frozen copy; data paths stay under MOP_DSRL_ROOT.
+ARGS=()
+for a in "$@"; do
+  case "$a" in
+    scripts/*) ARGS+=("$SRC_FREEZE/$a") ;;
+    *)         ARGS+=("$a") ;;
+  esac
+done
+export PYTHONPATH="$SRC_FREEZE:$MOP_DSRL_ROOT"
+
 echo "started: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-"$@"
+"${ARGS[@]}"
 echo "finished: $(date -u +%Y-%m-%dT%H:%M:%SZ)"

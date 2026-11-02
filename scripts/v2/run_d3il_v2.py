@@ -64,9 +64,15 @@ import numpy as np  # noqa: E402
 import torch  # noqa: E402
 import torch.nn as nn  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
+# Jobs run from a frozen copy of ``scripts/`` so that editing the working tree
+# cannot change what a running job executes. A spawned worker re-imports this
+# module from disk, so a mid-run edit otherwise leaves the parent holding one
+# version and its workers another. MOP_DSRL_ROOT keeps data paths pointed at the
+# project while the code is read from wherever the copy sits.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT") or Path(__file__).resolve().parents[2])
+SRC = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import estimators as EST  # noqa: E402
@@ -622,6 +628,11 @@ def _cell(payload):
                 reference_valid_episodes=ref["valid_episodes"],
                 reference_counts=ref["counts"],
                 C_ref=ref["C_ref"])
+    # Cost is a reported quantity, not a side note: the budget for the full
+    # matrix is extrapolated from these numbers, so a failed cell records what
+    # it spent before failing too.
+    t0 = time.time()
+    import resource
     try:
         if arm == "bmd":
             res = run_bmd(lam, weighting, seed, args, ref, bb_seed)
@@ -629,14 +640,19 @@ def _cell(payload):
             res = run_arm(arm, lam, weighting, seed, args, ref, bb_seed)
         base.update(res)
         base["status"] = "completed"
-        return score(base, np.asarray(ref["C_ref"], float), args.kl_eps)
+        out = score(base, np.asarray(ref["C_ref"], float), args.kl_eps)
     except Exception as exc:                            # noqa: BLE001
         traceback.print_exc()
         base.update(status="exception",
                     exception=f"{type(exc).__name__}: {exc}",
                     exception_traceback=traceback.format_exc()[-4000:],
                     fidelity_defined=False)
-        return base
+        out = base
+    out["cell_seconds"] = round(time.time() - t0, 1)
+    # ru_maxrss is kilobytes on Linux and counts the whole worker process.
+    out["cell_peak_rss_mb"] = round(
+        resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0, 1)
+    return out
 
 
 def build_parser() -> argparse.ArgumentParser:
