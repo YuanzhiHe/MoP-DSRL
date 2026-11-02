@@ -131,6 +131,11 @@ A batch whose gradient norm is not finite is dropped and counted in
 `n_nonfinite_grad` instead of being stepped on, in both arms, because one such
 step leaves every weight NaN for the remainder of the run.
 
+Across the 216 calibration runs the bound engages on a median 0.24 per cent of
+Pushing steps, in every one of the 108 Pushing runs, against a median largest
+observation of 1.6e12; on Avoiding 103 of 108 runs never reach it. No run
+recorded a non-finite gradient.
+
 `obs_clip` is a semantic setting and enters both the configuration hash and the
 reference cache key, and `ESTIMATOR_VERSION` moves to `v2.1`. Bounded and
 unbounded results cannot be pooled or resumed into one another, and every

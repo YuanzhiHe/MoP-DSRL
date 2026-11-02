@@ -8,9 +8,12 @@ without bound, and the networks that read them saturate. The bound in
 enough to be inert on a rollout that is behaving.
 
 Rollouts are driven at z ~ N(0, I), the latent distribution the frozen decoder
-was trained under, so the range measured here is the range normal operation
-occupies. The check passes when every channel other than a runaway one stays
-well inside the bound on both tasks.
+was trained under. Each task is measured twice, once with the bound in force
+and once without it, because the runaway is a feedback loop: the saturated
+observation produces an extreme action, which drives the state further out. The
+unbounded pass shows the hazard, the bounded pass shows the range the state
+actually occupies once the loop is broken, and the check passes when the second
+sits well inside the bound.
 """
 from __future__ import annotations
 
@@ -26,7 +29,9 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 import numpy as np                                            # noqa: E402
 import torch                                                  # noqa: E402
 
-ROOT = Path(__file__).resolve().parents[2]
+# Jobs run from a frozen copy of scripts/, so the output directory has to come
+# from the environment rather than from where this file happens to sit.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT") or Path(__file__).resolve().parents[2])
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts"), str(ROOT / "scripts" / "v2")]
 
 import run_d3il_v2 as R                                       # noqa: E402
@@ -72,25 +77,24 @@ def main():
 
     report, ok = {"bound": a.bound}, True
     for task, ws in PLAN.items():
-        m = measure(task, ws, a.episodes, a.bound)
-        ch = np.asarray(m["per_channel_max"])
-        runaway = [int(i) for i in np.where(ch > a.bound)[0]]
-        behaving = ch[[i for i in range(ch.size) if i not in runaway]]
-        m["runaway_channels"] = runaway
-        m["largest_behaving_channel"] = float(behaving.max()) if behaving.size else None
-        m["headroom"] = (a.bound / m["largest_behaving_channel"]
-                         if m["largest_behaving_channel"] else None)
-        report[task] = m
-        print(f"{task:9s} {m['steps']:6d} steps  per-step max |obs|: "
-              f"median {m['median']:.2f}  p99 {m['p99']:.3g}  max {m['max']:.3g}")
-        print(f"          runaway channels {runaway or 'none'}; "
-              f"largest other channel {m['largest_behaving_channel']:.2f}; "
-              f"bound is {m['headroom']:.1f}x outside it; "
-              f"{m['steps_over_bound']}/{m['steps']} steps meet the bound")
-        if m["headroom"] is not None and m["headroom"] < 2.0:
+        free = measure(task, ws, a.episodes, float("inf"))
+        held = measure(task, ws, a.episodes, a.bound)
+        ch = np.asarray(free["per_channel_max"])
+        free["runaway_channels"] = [int(i) for i in np.where(ch > a.bound)[0]]
+        held["headroom"] = a.bound / held["max"] if held["max"] > 0 else None
+        report[task] = dict(unbounded=free, bounded=held)
+        print(f"{task}")
+        print(f"  unbounded  {free['steps']:6d} steps  max |obs| median "
+              f"{free['median']:.2f}  p99 {free['p99']:.3g}  max {free['max']:.3g}"
+              f"   runaway channels {free['runaway_channels'] or 'none'}")
+        print(f"  bounded    {held['steps']:6d} steps  max |obs| median "
+              f"{held['median']:.2f}  p99 {held['p99']:.3g}  max {held['max']:.3g}"
+              f"   bound is {held['headroom']:.1f}x outside that")
+        if held["headroom"] is not None and held["headroom"] < 2.0:
             ok = False
-            print("          FAIL: the bound is too close to normal operation")
+            print("  FAIL: the bound sits too close to the range the state occupies")
     report["verdict"] = "PASS" if ok else "FAIL"
+    a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(report, indent=1))
     print(f"\nwrote {a.out}\nVERDICT: {report['verdict']}")
     return 0 if ok else 1

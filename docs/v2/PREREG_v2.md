@@ -195,6 +195,15 @@ smoke runs that exposed this are debugging data under section III of the brief
 and do not enter any analysis; no main or calibration cell of the bounded code
 had been launched when this was fixed.
 
+The 216 calibration runs then measured how far this reaches. On Pushing the
+largest normalised observation a run meets has a median across runs of 1.6e12,
+and every one of the 108 runs spends steps against the bound, a median of 0.24
+per cent of them. The runaway is the ordinary state of a Pushing run rather
+than an edge case. On Avoiding the median is 3.0 and 103 of 108 runs never meet
+the bound at all; the five that do are runs whose success has already
+collapsed. The Avoiding calibration measured under v2.0 is therefore superseded
+on evidence rather than on principle alone.
+
 **2026-11-02, ablations, squared-error matching.** A squared-error histogram
 objective, `D = (1/2) sum_j (p_j - q_j)^2` with derivative `p - q`, joins the
 divergence comparison. It separates two explanations of any advantage the
