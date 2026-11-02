@@ -161,6 +161,8 @@ def main():
                     help="measured peak was about 890 MB per worker")
     ap.add_argument("--choice", type=Path,
                     default=ROOT / "runs" / "_d3il_v2" / "lambda_choice.json")
+    ap.add_argument("--only", default=None,
+                    help="submit only jobs whose name contains this")
     ap.add_argument("--submit", action="store_true")
     args = ap.parse_args()
 
@@ -175,6 +177,8 @@ def main():
                 else ablation(None, choice))
 
     for name, walltime, workers, cmd in jobs:
+        if args.only and args.only not in name:
+            continue
         cpus = workers + args.headroom
         mem = max(16, (workers * args.mem_per_worker_mb) // 1024 + 8)
         sbatch = ["sbatch", "--parsable", f"--job-name={name}",
