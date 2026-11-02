@@ -137,6 +137,11 @@ def reference_resample(rows, policy_of, arm_of, a, b, metric_bins="C_phi",
         if len(diffs) > 1:
             out.append(float(np.mean(diffs)))
     arr = np.asarray(out)
+    if arr.size < 2:
+        # Fewer than two policies carry both arms with recoverable counts, so
+        # there is no spread to report. Say so rather than return a shape.
+        return dict(mean=None, sd=None, lo=None, hi=None, draws=int(arr.size),
+                    policies=len(byp))
     return dict(mean=float(arr.mean()), sd=float(arr.std(ddof=1)),
                 lo=float(np.percentile(arr, 2.5)), hi=float(np.percentile(arr, 97.5)),
                 draws=int(arr.size))
