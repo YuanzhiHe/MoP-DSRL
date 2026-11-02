@@ -127,6 +127,14 @@ SEMANTIC = ("task", "objective", "standardise", "arm", "lam", "divergence",
             "s_ema", "s_floor", "ref_smooth", "coef_clip", "kl_eps")
 
 
+def lam_for(args, arm: str) -> float:
+    """Weight this arm runs at. dsrl carries no penalty, so its weight is 0."""
+    if arm == "dsrl":
+        return 0.0
+    override = getattr(args, f"lam_{arm}", None)
+    return float(args.lam if override is None else override)
+
+
 def config_hash(args, arm: str, lam: float) -> str:
     d = {k: getattr(args, k, None) for k in SEMANTIC}
     d["arm"] = arm
@@ -665,6 +673,14 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument("--seed-offset", type=int, default=0)
     ap.add_argument("--lam", type=float, default=1.0)
+    # Calibration can land on a different weight for each arm, and it must be
+    # allowed to: tuning only the proposed arm and holding the comparisons at
+    # one value would make the comparison about the tuning. An unset override
+    # falls back to --lam, and the weight that is actually used goes into the
+    # config hash, so two weights never share a cell key.
+    ap.add_argument("--lam-mop", type=float, default=None)
+    ap.add_argument("--lam-mi", type=float, default=None)
+    ap.add_argument("--lam-bmd", type=float, default=None)
     ap.add_argument("--objective", default="conditional",
                     choices=["conditional", "joint"],
                     help="conditional: P(mode | valid label), the primary "
@@ -776,7 +792,7 @@ def main() -> int:
             cells = []
             for seed in range(args.seed_offset, args.seed_offset + args.seeds):
                 for arm in args.arms:
-                    lam = 0.0 if arm == "dsrl" else args.lam
+                    lam = lam_for(args, arm)
                     probe = dict(task=args.task, weighting=weighting,
                                  backbone_seed=bb, arm=arm, rl_seed=seed,
                                  config_sha256=config_hash(args, arm, lam),

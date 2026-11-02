@@ -85,9 +85,14 @@ reward-minus-penalty objective corresponds to it.
 
 ## 5. Penalty weight
 
-Calibration runs on **two frozen policies per task that the main analysis
-excludes** - the Pushing checkpoints `bb` indices not used in the main five -
-and on RL seeds disjoint from the main block. Candidates 0.25, 0.50, 1.00.
+Calibration runs on frozen policies the main analysis excludes, and on RL
+seeds disjoint from the main block. Candidates 0.25, 0.50, 1.00.
+
+The calibration cohort is the **unnumbered checkpoint** of each weighting,
+`<task>_skew<w>.pt`, which is a separately trained policy and not one of the
+five `bb0`-`bb4` the main analysis uses; the hashes differ, so a calibration
+cell and a main cell can never share a key. Four weightings per task, one
+policy each, calibration seeds 500-502 on Avoiding and 850-852 on Pushing.
 
 Rule, fixed now: on Pushing, if any candidate holds the fraction of runs below
 the success floor at or under 0.15, take the **largest** such candidate; if
@@ -95,8 +100,16 @@ none does, take the candidate with the **lowest** such fraction. Ties at equal
 fraction go to the larger weight. Avoiding uses the weight selected by the same
 rule applied to its own calibration cohort.
 
+The quantity the rule selects on is the fraction of calibration runs whose
+geometric success falls below the task's floor - 0.10 on Pushing, 0.15 on
+Avoiding - pooled over the four weightings and all calibration seeds of that
+arm. It is a measure of how often the penalty destroys the task, and it reads
+nothing about fidelity.
+
 The same grid and the same rule are applied to `mi` and to `bmd` on their own
-weights, so the comparison methods get the tuning budget this method gets.
+weights, so the comparison methods get the tuning budget this method gets. Each
+arm may end on a different weight; the weight an arm runs at is recorded in
+every row and enters its configuration hash.
 
 Selection never reads fidelity on the main cohort.
 
@@ -131,3 +144,14 @@ Runs are not stopped, extended or repeated on the basis of their results. A
 cell that raises is recorded with its exception and retried at most once; both
 attempts are reported. If compute runs short, whole arms are dropped and said
 to be missing, and no legacy result is substituted.
+
+## 8. Amendments
+
+Changes to this document after it was fixed, with the reason and the date. No
+amendment is made after the results it would affect have been seen.
+
+**2026-11-02, section 5, calibration cohort.** The original text proposed using
+`bb` indices outside the main five. The inventory shows exactly five numbered
+checkpoints per weighting, so no such index exists. The cohort is now the
+separately trained unnumbered checkpoint of each weighting. No calibration run
+had been launched when this was changed.
