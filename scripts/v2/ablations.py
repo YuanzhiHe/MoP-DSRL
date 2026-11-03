@@ -19,6 +19,7 @@ the same arm under a uniform prior, on the same policies and seeds.
 """
 import argparse
 import collections
+import glob
 import json
 import sys
 from pathlib import Path
@@ -40,7 +41,9 @@ def policy_of(r):
 def load(patterns):
     rows = []
     for pat in patterns:
-        for f in sorted(Path().glob(str(pat))):
+        # Patterns here are absolute, which Path().glob refuses, so the
+        # module-level glob does the expansion.
+        for f in sorted(Path(g) for g in glob.glob(str(pat))):
             rows += [json.loads(l) for l in f.open() if l.strip()]
     for r in rows:
         v = r.get("tv_to_ref")
