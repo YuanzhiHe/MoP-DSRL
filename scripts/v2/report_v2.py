@@ -33,7 +33,9 @@ FLOOR = {"avoiding": 0.15, "pushing": 0.10}
 ARMS = ("mop", "mi", "dsrl", "bmd")
 ARM_NAME = {"mop": "reference matching", "mi": "geometric mode entropy",
             "dsrl": "no mode term", "bmd": "learned skills"}
-EXPECTED_VERSION = "v2.0"
+# Which version is current is read from the rows, not fixed here, so that a
+# version bump does not need an edit in two places. What is refused is a cohort
+# that spans more than one, since two estimator versions are two experiments.
 
 
 def policy_of(r):
@@ -55,10 +57,11 @@ def load(paths):
                 line = line.strip()
                 if line:
                     rows.append(json.loads(line))
-    bad = {r.get("estimator_version") for r in rows} - {EXPECTED_VERSION}
-    if bad:
-        raise SystemExit(f"refusing to pool estimator versions {sorted(bad)} "
-                         f"with {EXPECTED_VERSION}")
+    versions = {r.get("estimator_version") for r in rows}
+    if len(versions) > 1:
+        raise SystemExit(f"refusing to pool estimator versions "
+                         f"{sorted(map(str, versions))}: two estimator "
+                         f"versions are two experiments")
     # Contrasts read closeness, so a positive difference always means the arm
     # sits nearer the reference and the win counter means what it says.
     for r in rows:

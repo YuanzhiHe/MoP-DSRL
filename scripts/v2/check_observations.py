@@ -18,6 +18,7 @@ sits well inside the bound.
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import sys
@@ -37,6 +38,42 @@ sys.path[:0] = [str(ROOT), str(ROOT / "scripts"), str(ROOT / "scripts" / "v2")]
 import run_d3il_v2 as R                                       # noqa: E402
 
 PLAN = {"pushing": ("0.00", "0.50"), "avoiding": ("0.00", "0.60")}
+
+
+def from_runs(paths):
+    """What the completed runs themselves met, which is the real evidence.
+
+    A rollout driven at the latent prior samples the runaway unreliably: three
+    measurements of two dozen Pushing episodes found it twice and missed it
+    once. A fine-tuned noise policy leaves the prior, so the training runs meet
+    it far more often, and they are many more episodes. Their recorded
+    ``obs_absmax`` is therefore what this check reports on, with the rollout
+    measurement kept only to show the range the state occupies once the bound
+    breaks the feedback loop.
+    """
+    out = {}
+    for pat in paths:
+        for f in sorted(Path(g) for g in glob.glob(pat)):
+            for line in f.open():
+                line = line.strip()
+                if not line:
+                    continue
+                r = json.loads(line)
+                out.setdefault(r.get("task", "?"), []).append(r)
+    summary = {}
+    for task, rows in out.items():
+        am = np.asarray([r.get("obs_absmax", 0.0) for r in rows], float)
+        cf = np.asarray([r.get("obs_clipped_frac", 0.0) for r in rows], float)
+        summary[task] = dict(
+            runs=len(rows),
+            obs_absmax_median=float(np.median(am)),
+            obs_absmax_max=float(am.max()) if am.size else None,
+            runs_touching_bound=int((cf > 0).sum()),
+            clipped_frac_median=float(np.median(cf)),
+            clipped_frac_max=float(cf.max()) if cf.size else None,
+            nonfinite_gradients=int(sum(r.get("n_nonfinite_grad", 0)
+                                        for r in rows)))
+    return summary
 
 
 def measure(task, weightings, episodes, bound):
@@ -73,6 +110,10 @@ def main():
     ap.add_argument("--bound", type=float, default=50.0)
     ap.add_argument("--out", type=Path,
                     default=ROOT / "runs" / "_d3il_v2" / "observation_range.json")
+    ap.add_argument("--runs", nargs="*",
+                    default=[str(ROOT / "runs" / "_d3il_v2" / "calibration_*.jsonl"),
+                             str(ROOT / "runs" / "_d3il_v2" / "main_*.jsonl")],
+                    help="completed runs to read obs_absmax from")
     a = ap.parse_args()
 
     report, ok = {"bound": a.bound}, True
@@ -93,6 +134,19 @@ def main():
         if held["headroom"] is not None and held["headroom"] < 2.0:
             ok = False
             print("  FAIL: the bound sits too close to the range the state occupies")
+    seen = from_runs(a.runs)
+    report["from_completed_runs"] = seen
+    if seen:
+        print("\nwhat the completed runs met")
+        for task, m in sorted(seen.items()):
+            print(f"  {task:9s} {m['runs']:4d} runs  obs_absmax median "
+                  f"{m['obs_absmax_median']:.3g} max {m['obs_absmax_max']:.3g}; "
+                  f"{m['runs_touching_bound']}/{m['runs']} touch the bound, "
+                  f"median {m['clipped_frac_median']:.2e} of steps; "
+                  f"{m['nonfinite_gradients']} non-finite gradients")
+            if m["nonfinite_gradients"]:
+                ok = False
+                print("           FAIL: a run stepped on a non-finite gradient")
     report["verdict"] = "PASS" if ok else "FAIL"
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(report, indent=1))
