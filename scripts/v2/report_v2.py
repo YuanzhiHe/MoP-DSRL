@@ -19,6 +19,7 @@ What it produces, in the order docs/v2/PREREG_v2.md asks for:
 """
 import argparse
 import collections
+import glob
 import json
 import sys
 from pathlib import Path
@@ -50,7 +51,9 @@ def load(paths):
     """Latest attempt of each cell, plus every row for accounting."""
     rows = []
     for pat in paths:
-        for f in sorted(Path().glob(str(pat))) or [Path(pat)]:
+        # Path().glob refuses an absolute pattern, which the defaults
+        # here are, so the module-level glob does the expansion.
+        for f in sorted(Path(g) for g in glob.glob(str(pat))) or [Path(pat)]:
             if not f.exists():
                 continue
             for line in f.open():
@@ -125,7 +128,15 @@ def descriptives(cells):
                 v = np.array([r[k] for r in sel], float)
                 return dict(mean=float(v.mean()), sd=float(v.std(ddof=1))
                             if v.size > 1 else 0.0, n=int(v.size))
+            # Fidelity exists only where an episode carried a label, so its
+            # mean is taken over the runs that have one and the count of
+            # those runs travels with it.
+            scored = [r for r in sel if r.get("fidelity_defined")]
+            tv = np.array([r["tv_to_ref"] for r in scored], float)
             per[arm] = dict(
+                tv_to_ref=dict(mean=float(tv.mean()) if tv.size else None,
+                               sd=float(tv.std(ddof=1)) if tv.size > 1 else 0.0,
+                               n=int(tv.size)),
                 success=col("success_rate"),
                 rewarded_success=col("rewarded_success_rate"),
                 episode_return=col("episode_return"),
