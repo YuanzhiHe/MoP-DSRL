@@ -1,0 +1,143 @@
+{
+ "stages": {
+  "calibration": {
+   "planned": 216,
+   "rows": 216,
+   "distinct_cells": 216,
+   "completed": 216,
+   "exceptions": 0,
+   "retried": 0,
+   "undefined_fidelity": 11,
+   "nonfinite_gradients": 0,
+   "missing": 0,
+   "unplanned": 0,
+   "reused_from_the_main_matrix": 0,
+   "estimator_versions": [
+    "v2.1"
+   ],
+   "code_commits": [
+    "c690db15b336ccc5dffc31f1d4852540d7229baa"
+   ],
+   "by_task_arm": {
+    "avoiding/bmd": 36,
+    "avoiding/mi": 36,
+    "avoiding/mop": 36,
+    "pushing/bmd": 36,
+    "pushing/mi": 36,
+    "pushing/mop": 36
+   }
+  },
+  "main": {
+   "planned": 800,
+   "rows": 800,
+   "distinct_cells": 800,
+   "completed": 800,
+   "exceptions": 0,
+   "retried": 0,
+   "undefined_fidelity": 54,
+   "nonfinite_gradients": 0,
+   "missing": 0,
+   "unplanned": 0,
+   "reused_from_the_main_matrix": 0,
+   "estimator_versions": [
+    "v2.1"
+   ],
+   "code_commits": [
+    "5ba6c09fc56afc5c55187d82faa7aa56bc6d2279",
+    "f2e54ba2a184ed0bf3a796ffd67772a19ee5a282"
+   ],
+   "by_task_arm": {
+    "avoiding/bmd": 100,
+    "avoiding/dsrl": 100,
+    "avoiding/mi": 100,
+    "avoiding/mop": 100,
+    "pushing/bmd": 100,
+    "pushing/dsrl": 100,
+    "pushing/mi": 100,
+    "pushing/mop": 100
+   }
+  },
+  "ablation/divergence": {
+   "planned": 200,
+   "rows": 200,
+   "distinct_cells": 200,
+   "completed": 200,
+   "exceptions": 0,
+   "retried": 0,
+   "undefined_fidelity": 10,
+   "nonfinite_gradients": 0,
+   "missing": 0,
+   "unplanned": 0,
+   "reused_from_the_main_matrix": 0,
+   "estimator_versions": [
+    "v2.1"
+   ],
+   "code_commits": [
+    "5ba6c09fc56afc5c55187d82faa7aa56bc6d2279",
+    "d687b73c2644f3f1e2418be579702a9b878956dc"
+   ],
+   "by_task_arm": {
+    "avoiding/mop": 100,
+    "pushing/mop": 100
+   }
+  },
+  "ablation/fitted prior": {
+   "planned": 50,
+   "rows": 50,
+   "distinct_cells": 50,
+   "completed": 50,
+   "exceptions": 0,
+   "retried": 0,
+   "undefined_fidelity": 0,
+   "nonfinite_gradients": 0,
+   "missing": 0,
+   "unplanned": 0,
+   "reused_from_the_main_matrix": 0,
+   "estimator_versions": [
+    "v2.1"
+   ],
+   "code_commits": [
+    "d687b73c2644f3f1e2418be579702a9b878956dc"
+   ],
+   "by_task_arm": {
+    "avoiding/bmd": 25,
+    "pushing/bmd": 25
+   }
+  },
+  "ablation/weight": {
+   "planned": 300,
+   "rows": 300,
+   "distinct_cells": 300,
+   "completed": 300,
+   "exceptions": 0,
+   "retried": 0,
+   "undefined_fidelity": 45,
+   "nonfinite_gradients": 0,
+   "missing": 0,
+   "unplanned": 0,
+   "reused_from_the_main_matrix": 100,
+   "estimator_versions": [
+    "v2.1"
+   ],
+   "code_commits": [
+    "bc7d9ed13384e5c709ef1714aaa37d302e9f3657",
+    "f2e54ba2a184ed0bf3a796ffd67772a19ee5a282"
+   ],
+   "by_task_arm": {
+    "pushing/mi": 150,
+    "pushing/mop": 150
+   }
+  }
+ },
+ "missing": {
+  "calibration": [],
+  "main": [],
+  "ablation/divergence": [],
+  "ablation/fitted prior": [],
+  "ablation/weight": []
+ },
+ "debug_rows_excluded_from_analysis": {
+  "smoke_*.jsonl": 32,
+  "_tiny*.jsonl": 22
+ }
+}

@@ -1,0 +1,434 @@
+{
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.00.pt": {
+  "sha256_on_disk": "721ff7aa7002455d4cc414ab9ea1a88672012aa93389531bd2f744ec44a2474a",
+  "sha256_in_rows": "721ff7aa7002455d4cc414ab9ea1a88672012aa93389531bd2f744ec44a2474a",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.15.pt": {
+  "sha256_on_disk": "678bd364ba268314b4de9fa91f340e851c765fb666a073c1ee177209af5fe2c2",
+  "sha256_in_rows": "678bd364ba268314b4de9fa91f340e851c765fb666a073c1ee177209af5fe2c2",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.30.pt": {
+  "sha256_on_disk": "e346f8c1c8f0ae006571f2863d3ddabeb9acd363c0d4b2a78be8fe96cb2d55c6",
+  "sha256_in_rows": "e346f8c1c8f0ae006571f2863d3ddabeb9acd363c0d4b2a78be8fe96cb2d55c6",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.60.pt": {
+  "sha256_on_disk": "a100d42bf164032826a93324806309b6d6bb6cd4e75cfaeea44224b35477ba92",
+  "sha256_in_rows": "a100d42bf164032826a93324806309b6d6bb6cd4e75cfaeea44224b35477ba92",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.00.pt": {
+  "sha256_on_disk": "42720e25a2e627da66aaca64d92f4968b5fa15e34dbfb2a79f930691515fd4b7",
+  "sha256_in_rows": "42720e25a2e627da66aaca64d92f4968b5fa15e34dbfb2a79f930691515fd4b7",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.10.pt": {
+  "sha256_on_disk": "9a973877e504d7617eacaa7ebb4039473cf02a12c0c6b5dddf1d6d4a3146d105",
+  "sha256_in_rows": "9a973877e504d7617eacaa7ebb4039473cf02a12c0c6b5dddf1d6d4a3146d105",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.25.pt": {
+  "sha256_on_disk": "ef14a7060c564512f833729d86e31dbe0703bddbd20045298e7fb490d49659bb",
+  "sha256_in_rows": "ef14a7060c564512f833729d86e31dbe0703bddbd20045298e7fb490d49659bb",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.50.pt": {
+  "sha256_on_disk": "81b200712f8057e38404168b3a00232f9f9e7c045d0a3b41e3d3124fb7e6911e",
+  "sha256_in_rows": "81b200712f8057e38404168b3a00232f9f9e7c045d0a3b41e3d3124fb7e6911e",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": null,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.00_bb0.pt": {
+  "sha256_on_disk": "978c4ea310ba87ba33a882cede83df19625a99a4b4655542f522996aa7354a12",
+  "sha256_in_rows": "978c4ea310ba87ba33a882cede83df19625a99a4b4655542f522996aa7354a12",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.00_bb1.pt": {
+  "sha256_on_disk": "532dca03dff121b1df9a54d028cd7fc3ef230863861892985f6538c59f5e9ecc",
+  "sha256_in_rows": "532dca03dff121b1df9a54d028cd7fc3ef230863861892985f6538c59f5e9ecc",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.00_bb2.pt": {
+  "sha256_on_disk": "f3731bbe9fdf611f75e07a944d2291930468627e51042a741a5b9a1fc5cc535f",
+  "sha256_in_rows": "f3731bbe9fdf611f75e07a944d2291930468627e51042a741a5b9a1fc5cc535f",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.00_bb3.pt": {
+  "sha256_on_disk": "2726b5f4160f84444f269772d6e4e944900c7e2d28bcdf479d062f255f67c4bf",
+  "sha256_in_rows": "2726b5f4160f84444f269772d6e4e944900c7e2d28bcdf479d062f255f67c4bf",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.00_bb4.pt": {
+  "sha256_on_disk": "412b4f93ffd2589c061e3da6574239b8c4a0dcd034266144ba20d475b8d933c3",
+  "sha256_in_rows": "412b4f93ffd2589c061e3da6574239b8c4a0dcd034266144ba20d475b8d933c3",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.15_bb0.pt": {
+  "sha256_on_disk": "042ffaffc7c25716d60f81329dcf2400823784155d15c4f41e1054a09eeacfff",
+  "sha256_in_rows": "042ffaffc7c25716d60f81329dcf2400823784155d15c4f41e1054a09eeacfff",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.15_bb1.pt": {
+  "sha256_on_disk": "d4b4fffe68af0f51e567452bb5f20e751e7c4855806965fabc90c2eb03119117",
+  "sha256_in_rows": "d4b4fffe68af0f51e567452bb5f20e751e7c4855806965fabc90c2eb03119117",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.15_bb2.pt": {
+  "sha256_on_disk": "f159f6e50dd483fb9156fefb6f970f2fae51d849f1d3592281b79ad3c852194e",
+  "sha256_in_rows": "f159f6e50dd483fb9156fefb6f970f2fae51d849f1d3592281b79ad3c852194e",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.15_bb3.pt": {
+  "sha256_on_disk": "63ee6981c5c6137ebd58de4baeb366902f78847cc974d33223460f499471963f",
+  "sha256_in_rows": "63ee6981c5c6137ebd58de4baeb366902f78847cc974d33223460f499471963f",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.15_bb4.pt": {
+  "sha256_on_disk": "17f7a72fe89e16cc2eafc0e07a13f3e07d1c08c730a90ae2cd94444db57819c5",
+  "sha256_in_rows": "17f7a72fe89e16cc2eafc0e07a13f3e07d1c08c730a90ae2cd94444db57819c5",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.30_bb0.pt": {
+  "sha256_on_disk": "dcf17c829c09299a52aa3fbb07854c83a495e1b10b0d672ecd92e5782538cd2b",
+  "sha256_in_rows": "dcf17c829c09299a52aa3fbb07854c83a495e1b10b0d672ecd92e5782538cd2b",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.30_bb1.pt": {
+  "sha256_on_disk": "6c1732fb14c22f306c8b1947ffa74177dc222be90e3b2118d6ef81f6e89d4d07",
+  "sha256_in_rows": "6c1732fb14c22f306c8b1947ffa74177dc222be90e3b2118d6ef81f6e89d4d07",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.30_bb2.pt": {
+  "sha256_on_disk": "e71271b6f2bf2001172d5d36be3f4a239531fa3ce174a6285538b9021998be74",
+  "sha256_in_rows": "e71271b6f2bf2001172d5d36be3f4a239531fa3ce174a6285538b9021998be74",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.30_bb3.pt": {
+  "sha256_on_disk": "1983efd051b1dea625bcf377140b614bdcc3096a0f512d44399a047cfe6a0661",
+  "sha256_in_rows": "1983efd051b1dea625bcf377140b614bdcc3096a0f512d44399a047cfe6a0661",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.30_bb4.pt": {
+  "sha256_on_disk": "9544039e5bac92606968c173ec058611ccf4e9b090e20dfb665eb173ea0f7d2d",
+  "sha256_in_rows": "9544039e5bac92606968c173ec058611ccf4e9b090e20dfb665eb173ea0f7d2d",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.60_bb0.pt": {
+  "sha256_on_disk": "4431911d70269c0bfd2f3764566fb643f33e37b26f1c0cf1984ebfbc3b855e02",
+  "sha256_in_rows": "4431911d70269c0bfd2f3764566fb643f33e37b26f1c0cf1984ebfbc3b855e02",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.60_bb1.pt": {
+  "sha256_on_disk": "c48e1a37b75351b599b85ae67403c9f8af436de8f7bba5978e92530ae2405605",
+  "sha256_in_rows": "c48e1a37b75351b599b85ae67403c9f8af436de8f7bba5978e92530ae2405605",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.60_bb2.pt": {
+  "sha256_on_disk": "605e1a8a04e1c4e06e49ce5af7c8ddc5b7d41e1c7ca977db1babc9d9308958df",
+  "sha256_in_rows": "605e1a8a04e1c4e06e49ce5af7c8ddc5b7d41e1c7ca977db1babc9d9308958df",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.60_bb3.pt": {
+  "sha256_on_disk": "c1454b97dfcf0b203aed337957a905301706d2be3194f3d109998e2a7b1e94ac",
+  "sha256_in_rows": "c1454b97dfcf0b203aed337957a905301706d2be3194f3d109998e2a7b1e94ac",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/avoiding_skew0.60_bb4.pt": {
+  "sha256_on_disk": "57f274ec717d570c0ae4f963fb73c31e71442c6b6d5630fe668e5592f178b9fd",
+  "sha256_in_rows": "57f274ec717d570c0ae4f963fb73c31e71442c6b6d5630fe668e5592f178b9fd",
+  "exists": true,
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.00_bb0.pt": {
+  "sha256_on_disk": "3f9dcd40a95421c7ae79aa9a0186971ee94757677364280f50e58bf92db23bb8",
+  "sha256_in_rows": "3f9dcd40a95421c7ae79aa9a0186971ee94757677364280f50e58bf92db23bb8",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.00_bb1.pt": {
+  "sha256_on_disk": "6f3cae5a54ef15940d3bbe665bf3e8fceaf18abb052eb5a6f7532256677fefac",
+  "sha256_in_rows": "6f3cae5a54ef15940d3bbe665bf3e8fceaf18abb052eb5a6f7532256677fefac",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.00_bb2.pt": {
+  "sha256_on_disk": "d99d0e119c94169f4fecff557243754d08c79c2d8c387dc9225ddc2a52f56310",
+  "sha256_in_rows": "d99d0e119c94169f4fecff557243754d08c79c2d8c387dc9225ddc2a52f56310",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.00_bb3.pt": {
+  "sha256_on_disk": "3f076d88464bed582b0dcb314eebcd30ecf5bca88a04c82c2a9cec64a74eac38",
+  "sha256_in_rows": "3f076d88464bed582b0dcb314eebcd30ecf5bca88a04c82c2a9cec64a74eac38",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.00_bb4.pt": {
+  "sha256_on_disk": "46c0bcc3c239e0602eac4890652b8d83c74a5b6ecb49c0be96673f58215e7505",
+  "sha256_in_rows": "46c0bcc3c239e0602eac4890652b8d83c74a5b6ecb49c0be96673f58215e7505",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.10_bb0.pt": {
+  "sha256_on_disk": "f67ac69be0e7f0484f56d0b44f64ffd5601df7ea97c88f8b3876468d3ec68dd1",
+  "sha256_in_rows": "f67ac69be0e7f0484f56d0b44f64ffd5601df7ea97c88f8b3876468d3ec68dd1",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.10_bb1.pt": {
+  "sha256_on_disk": "daff7071419f5fbb2db8481c7f4faf9efe18d32cea996228f1c545cc8d1f085f",
+  "sha256_in_rows": "daff7071419f5fbb2db8481c7f4faf9efe18d32cea996228f1c545cc8d1f085f",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.10_bb2.pt": {
+  "sha256_on_disk": "254729940c1a32b0e70ca3045c527264bd17d7d6f880ccacc764eaa0e61bde86",
+  "sha256_in_rows": "254729940c1a32b0e70ca3045c527264bd17d7d6f880ccacc764eaa0e61bde86",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.10_bb3.pt": {
+  "sha256_on_disk": "95b8465f746c507859a8921d798ad21e98bce6ac20245da4407b4b8ccfbc1142",
+  "sha256_in_rows": "95b8465f746c507859a8921d798ad21e98bce6ac20245da4407b4b8ccfbc1142",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.10_bb4.pt": {
+  "sha256_on_disk": "0421378134819f00d74a5cd062dd6e4e8c1456b8f3013c8da5366e23f3d2eead",
+  "sha256_in_rows": "0421378134819f00d74a5cd062dd6e4e8c1456b8f3013c8da5366e23f3d2eead",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.25_bb0.pt": {
+  "sha256_on_disk": "fcaf52b460590a8178c9e752e0509d6ed2dbe8ed870c4af8f5d8d971594df6db",
+  "sha256_in_rows": "fcaf52b460590a8178c9e752e0509d6ed2dbe8ed870c4af8f5d8d971594df6db",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.25_bb1.pt": {
+  "sha256_on_disk": "c3352dd12311fc1fe873e718922ed0ec91f99c7f02812465b8367711a0237aab",
+  "sha256_in_rows": "c3352dd12311fc1fe873e718922ed0ec91f99c7f02812465b8367711a0237aab",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.25_bb2.pt": {
+  "sha256_on_disk": "be75cf65e3fd9d95d417963f331472c373abf7e5deaa1968321cd98f5c02d631",
+  "sha256_in_rows": "be75cf65e3fd9d95d417963f331472c373abf7e5deaa1968321cd98f5c02d631",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.25_bb3.pt": {
+  "sha256_on_disk": "4f4aa155b3c1266455ce9333f83422e690e018f2606ee51e60c4c8139196cbef",
+  "sha256_in_rows": "4f4aa155b3c1266455ce9333f83422e690e018f2606ee51e60c4c8139196cbef",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.25_bb4.pt": {
+  "sha256_on_disk": "205b61e8a279f3017664a7f7b8f95472c07d35075aa79a6f750636a1eb4c01be",
+  "sha256_in_rows": "205b61e8a279f3017664a7f7b8f95472c07d35075aa79a6f750636a1eb4c01be",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 4,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.50_bb0.pt": {
+  "sha256_on_disk": "2a47648ef8929462b1e2284e14277e2c633040f70d56c8b91ef0ea5edddbcabc",
+  "sha256_in_rows": "2a47648ef8929462b1e2284e14277e2c633040f70d56c8b91ef0ea5edddbcabc",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 0,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.50_bb1.pt": {
+  "sha256_on_disk": "9efa6e602c07de726ed34939ab5f7f96fb71d1931213736ddc87c3be01c05ee6",
+  "sha256_in_rows": "9efa6e602c07de726ed34939ab5f7f96fb71d1931213736ddc87c3be01c05ee6",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 1,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.50_bb2.pt": {
+  "sha256_on_disk": "3712b2a9ca364857d7fe0c5963423cb4e1323270c49717a9c64a333b3d9d6db4",
+  "sha256_in_rows": "3712b2a9ca364857d7fe0c5963423cb4e1323270c49717a9c64a333b3d9d6db4",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 2,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.50_bb3.pt": {
+  "sha256_on_disk": "d29c78149cc161e5c4ef0a87558643ce1507a627b3bc3827a140550609396ff0",
+  "sha256_in_rows": "d29c78149cc161e5c4ef0a87558643ce1507a627b3bc3827a140550609396ff0",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 3,
+  "matches": true
+ },
+ "/shared/scratch/SCWF00111/d3il_backbones/pushing/pushing_skew0.50_bb4.pt": {
+  "sha256_on_disk": "ba9626ce512d43e96481b702d747a2701950daaa8a21bb4910dbdceb719057c7",
+  "sha256_in_rows": "ba9626ce512d43e96481b702d747a2701950daaa8a21bb4910dbdceb719057c7",
+  "exists": true,
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 4,
+  "matches": true
+ }
+}

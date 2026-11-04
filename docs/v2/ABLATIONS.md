@@ -77,3 +77,32 @@ Total variation against each alternative, on geometric success, paired over the 
 | prior uniform | 25 | 0 | 2 | 0.1101 | 0.292 | 0.011 | 0.298 | 0.160 | 0 | 3.86 | 33.6 | 0 | 0 | 0.0505 | 0.000 |
 
 Fitted against uniform, paired over frozen policies: n = 5, df = 4, mean -0.0446, 95% interval [-0.1085, +0.0192], p = 0.9378.
+
+### Pushing, weight grid on the two lowest weightings
+
+| variant | runs | exceptions | undefined fidelity | TV to reference | success | rewarded success and return | completion | below floor | coefficient, raw | coefficient, used | gradient norm | non-finite | non-finite gradients | steps at the obs bound | inert batches |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mi lam=0.25 | 50 | 0 | 4 | 0.2712 | 0.209 | 0.060 | 0.215 | 0.340 | 14.7 | 14.7 | 4.97 | 0 | 0 | 0.0377 | 0.000 |
+| mi lam=0.50 | 50 | 0 | 9 | 0.2938 | 0.185 | 0.040 | 0.191 | 0.320 | 13.9 | 13.9 | 7.93 | 0 | 0 | 0.0374 | 0.000 |
+| mi lam=1.00 | 50 | 0 | 13 | 0.2782 | 0.169 | 0.033 | 0.174 | 0.480 | 12.1 | 12.1 | 7.8 | 0 | 0 | 0.0392 | 0.000 |
+| mop lam=0.25 | 50 | 0 | 3 | 0.2869 | 0.221 | 0.071 | 0.228 | 0.240 | 4.48 | 4.48 | 6.28 | 0 | 0 | 0.0351 | 0.000 |
+| mop lam=0.50 | 50 | 0 | 6 | 0.2167 | 0.224 | 0.051 | 0.232 | 0.240 | 4.32 | 4.32 | 9.18 | 0 | 0 | 0.0388 | 0.000 |
+| mop lam=1.00 | 50 | 0 | 10 | 0.2349 | 0.193 | 0.039 | 0.200 | 0.420 | 4.15 | 4.15 | 7.7 | 0 | 0 | 0.0390 | 0.000 |
+
+Reference matching against mode entropy at each weight, on fidelity, paired over the frozen policies of the two lowest demonstration weightings.
+
+| contrast | n | df | mean | 95% interval | p | policies favouring |
+|---|---|---|---|---|---|---|
+| weight 0.25 (interval contains zero) | 10 | 9 | -0.0157 | [-0.0937, +0.0623] | 0.6703 | 4/10 |
+| weight 0.50 | 10 | 9 | +0.0857 | [+0.0326, +0.1387] | 0.0079 | 9/10 |
+| weight 1.00 (interval contains zero) | 10 | 9 | +0.0235 | [-0.0728, +0.1198] | 0.5942 | 7/10 |
+
+Reference matching against mode entropy at each weight, on geometric success, paired over the frozen policies of the two lowest demonstration weightings.
+
+| contrast | n | df | mean | 95% interval | p | policies favouring |
+|---|---|---|---|---|---|---|
+| weight 0.25 (interval contains zero) | 10 | 9 | +0.0125 | [-0.0242, +0.0492] | 0.2757 | 5/10 |
+| weight 0.50 (interval contains zero) | 10 | 9 | +0.0391 | [-0.0121, +0.0904] | 0.1770 | 7/10 |
+| weight 1.00 (interval contains zero) | 10 | 9 | +0.0241 | [-0.0228, +0.0710] | 0.2757 | 6/10 |
+
+The weight the main matrix runs is 0.25, chosen before any main cell existed by a rule that reads only how often a weight drives geometric success below the task floor. That rule never reads fidelity, and this grid shows where the weight it chose sits relative to the separation between the arms. The main analysis stays at the chosen weight.

@@ -228,13 +228,47 @@ def main():
                     f"95% interval [{c.ci_low:+.4f}, {c.ci_high:+.4f}], "
                     f"p = {c.p_one_sided:.4f}.", ""]
 
-    pw = load([RUNS / "ablation_weight_pushing_*.jsonl"])
-    pw = [r for r in pw if r["weighting"] in ("0.00", "0.10")]
+    # The weight the main matrix already ran is not repeated: those cells
+    # carry the same key, so the grid job resumed them and wrote nothing. The
+    # rows live in the main files and are read from there, which is what makes
+    # the grid a comparison across weights on one set of cells rather than two
+    # cohorts that happen to share a configuration.
+    pw = load([RUNS / "ablation_weight_pushing_*.jsonl",
+               RUNS / "main_pushing_0.00.jsonl",
+               RUNS / "main_pushing_0.10.jsonl"])
+    pw = [r for r in pw if r["weighting"] in ("0.00", "0.10")
+          and r["arm"] in ("mi", "mop")]
     if pw:
         d = summarise(pw, "pushing", lambda r: f"{r['arm']} lam={r['lam']:.2f}")
         report["pushing/weight"] = d
         doc += table("Pushing, weight grid on the two lowest weightings",
                      d, COLS)
+        # The grid's point is how the separation between the two arms moves
+        # with the weight, so it is read as a contrast at each weight rather
+        # than as six independent cells.
+        scored = [r for r in pw if r.get("fidelity_defined")]
+        for metric, nm, src in (("closeness_tv", "fidelity", scored),
+                                ("success_rate", "geometric success", pw)):
+            fam = []
+            for lam in sorted({r["lam"] for r in pw}):
+                sel = [r for r in src if abs(r["lam"] - lam) < 1e-9]
+                fam.append(S.paired(sel, metric, "mi", "mop", policy_of,
+                                    lambda r: r["arm"], "greater",
+                                    name=f"weight {lam:.2f}"))
+            S.holm(fam)
+            report[f"pushing/weight contrasts/{nm}"] = [c.__dict__ for c in fam]
+            doc += contrast_lines(
+                f"Reference matching against mode entropy at each weight, on "
+                f"{nm}, paired over the frozen policies of the two lowest "
+                f"demonstration weightings.", fam)
+        doc += [f"The weight the main matrix runs is "
+                f"{json.loads((RUNS / 'lambda_choice.json').read_text())['pushing']['mop']['lam']:.2f}, "
+                f"chosen before any main cell existed by a rule that reads "
+                f"only how often a weight drives geometric success below the "
+                f"task floor. That rule never reads fidelity, and this grid "
+                f"shows where the weight it chose sits relative to the "
+                f"separation between the arms. The main analysis stays at the "
+                f"chosen weight.", ""]
 
     if not report:
         raise SystemExit("no ablation rows yet")
