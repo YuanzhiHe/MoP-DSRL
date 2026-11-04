@@ -112,8 +112,7 @@ COLS = [("runs", "completed", "d"), ("exceptions", "exception", "d"),
         ("undefined fidelity", "fidelity_undefined", "d"),
         ("TV to reference", "tv_to_ref", ".4f"),
         ("success", "success", ".3f"),
-        ("rewarded success", "rewarded_success", ".3f"),
-        ("return", "episode_return", ".3f"),
+        ("rewarded success and return", "rewarded_success", ".3f"),
         ("completion", "completion", ".3f"),
         ("below floor", "below_floor", ".3f"),
         ("coefficient, raw", "coef_absmax_raw", ".3g"),
@@ -123,6 +122,59 @@ COLS = [("runs", "completed", "d"), ("exceptions", "exception", "d"),
         ("non-finite gradients", "nonfinite_grad", "d"),
         ("steps at the obs bound", "obs_clipped_frac", ".4f"),
         ("inert batches", "frac_inert", ".3f")]
+
+
+def contrasts_against(rows, reference_key, key, task, metric, direction="greater"):
+    """Paired contrasts of every variant against one, within the task.
+
+    The variants share their checkpoints, their reference, their budget and
+    their seeds, so the comparison is paired over frozen policies and the
+    family is adjusted together. There are five policies behind each, which
+    the reported degrees of freedom carry.
+    """
+    others = sorted({key(r) for r in rows} - {reference_key})
+    fam = [S.paired(rows, metric, o, reference_key, policy_of, key, direction,
+                    name=f"{reference_key} over {o}") for o in others]
+    S.holm(fam)
+    return fam
+
+
+def contrast_lines(title, fam):
+    lines = [title, "",
+             "| contrast | n | df | mean | 95% interval | p | policies "
+             "favouring |", "|---|---|---|---|---|---|---|"]
+    for c in fam:
+        if c.n < 2:
+            continue
+        pv = c.p_adjusted if c.p_adjusted is not None else c.p_one_sided
+        note = "" if c.ci_low > 0 else " (interval contains zero)"
+        lines.append(f"| {c.name}{note} | {c.n} | {c.df} | {c.mean:+.4f} | "
+                     f"[{c.ci_low:+.4f}, {c.ci_high:+.4f}] | {pv:.4f} | "
+                     f"{c.wins}/{c.n} |")
+    lines.append("")
+    return lines
+
+
+def scale_note(d):
+    """What a common weight actually buys each divergence.
+
+    The weight was calibrated under total variation, and the five derivatives
+    do not share a scale, so the same weight is not the same penalty strength.
+    The spread is reported from the runs rather than argued from the formulas.
+    """
+    c = {k: v["coef_absmax_raw"] for k, v in d.items()
+         if v.get("coef_absmax_raw")}
+    if len(c) < 2:
+        return []
+    lo, hi = min(c, key=c.get), max(c, key=c.get)
+    return [f"At the common weight the coefficient that reaches the update "
+            f"differs by a factor of {c[hi] / c[lo]:.0f} across the variants, "
+            f"from {c[lo]:.3g} for {lo} to {c[hi]:.3g} for {hi}. The weight "
+            f"was calibrated under total variation, so this comparison holds "
+            f"the weight fixed and lets the penalty strength vary with the "
+            f"derivative's own scale. A difference between two variants is "
+            f"therefore a difference between a divergence at its own scale "
+            f"and another at its own scale.", ""]
 
 
 def main():
@@ -144,6 +196,17 @@ def main():
             report[f"{task}/divergence"] = d
             doc += table(f"{task.capitalize()}, divergence at weighting {top}",
                          d, COLS)
+            doc += scale_note(d)
+            scored = [r for r in rows if r.get("fidelity_defined")]
+            for metric, nm in (("closeness_tv", "fidelity"),
+                               ("success_rate", "geometric success")):
+                src = scored if metric == "closeness_tv" else rows
+                fam = contrasts_against(src, "tv", label, task, metric)
+                report[f"{task}/divergence contrasts/{nm}"] = \
+                    [c.__dict__ for c in fam]
+                doc += contrast_lines(
+                    f"Total variation against each alternative, on {nm}, "
+                    f"paired over the five frozen policies.", fam)
 
         fit = load([RUNS / f"ablation_fitted_prior_{task}.jsonl",
                     RUNS / f"main_{task}_{top}.jsonl"])
