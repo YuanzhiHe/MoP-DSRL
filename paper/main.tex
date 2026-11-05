@@ -388,7 +388,9 @@ no clustering step enters the measurement.
 
 The frozen policy for each task is a rectified-flow velocity field
 \citep{liu2022rectifiedflow} trained by flow matching on the benchmark's
-demonstrations. To vary the reference distribution we reweight the demonstrations
+demonstrations. It decodes one action per control step, so the latent the noise
+policy controls carries the dimension of the benchmark's action, which is two on
+both tasks. To vary the reference distribution we reweight the demonstrations
 toward a geometric profile over modes before cloning. Behaviour cloning is itself
 a source of variation, so we train five frozen policies per weighting with
 independent seeds, giving twenty per task and forty in all. Every result is
@@ -472,7 +474,9 @@ Both histograms come from evaluation rollouts: 500 episodes on \emph{Avoiding}
 and 300 on \emph{Pushing} for $C_\phi$, and 900 and 600 for $C_{\mathrm{ref}}$.
 An episode in which the arm does not complete a labelled route carries no mode
 and is excluded from the histogram, so both histograms are conditional on
-completion. A run whose evaluation produces no labelled episode has undefined
+completion. The frozen policies complete $0.801$ of their \emph{Avoiding}
+episodes and $0.393$ of their \emph{Pushing} ones, and the count behind each
+fine-tuned histogram follows that objective's own completion. A run whose evaluation produces no labelled episode has undefined
 fidelity; such runs are counted and reported as undefined, and they appear in
 every total below.
 
