@@ -112,8 +112,8 @@ evaluated only on such a benchmark leaves the question open.
 
 Pretrained policies are not uniform. Measuring twenty cloned policies over the
 six route groups used throughout this paper, their mode distributions lie between
-$0.027$ and $1.296$ nats from uniform. Five of those twenty were cloned from an
-unmodified demonstration set, and they alone span $0.027$ to $0.428$ nats, so
+$0.018$ and $1.272$ nats from uniform. Five of those twenty were cloned from an
+unmodified demonstration set, and they alone span $0.018$ to $0.433$ nats, so
 even balanced demonstrations do not produce a balanced policy. The distinction
 that Equation~\ref{eq:identity} removes is therefore present in realistic cases,
 and the objective that respects it is not the one in common use.
@@ -128,8 +128,8 @@ mode-preserving regulariser should target, and give the condition
 Second, we introduce a penalty on the total variation distance between $C_\phi$
 and $C_{\mathrm{ref}}$. The penalty has no learned components. It introduces a weight $\lambda$, a rate
 for the running histogram estimate, and the resolution $K$ at which modes are
-counted, and its per-episode coefficient is bounded by one half regardless of how
-narrow the pretrained policy's support is.
+counted, and its partial derivative with respect to any mode's probability is
+bounded by one half regardless of how narrow the pretrained policy's support is.
 
 Third, we evaluate on two manipulation tasks from the Diverse Behaviours
 Benchmark for Imitation Learning (D3IL) \citep{jia2024d3il} using behavioural
@@ -262,13 +262,20 @@ updated. Writing $\tau$ for a trajectory and $r(\tau)$ for its return, the
 unregularised objective is $\mathbb{E}_{\tau \sim \mu_\phi}[r(\tau)]$, which is
 the DSRL formulation.
 
-Each trajectory realises one of $K$ behavioural modes. We write $m(\tau) \in
-\{1, \dots, K\}$ for the mode of trajectory $\tau$, determined by task geometry
-and not by any learned model, and define the mode distribution of a policy as
+A trajectory either realises one of $K$ behavioural modes or ends without one.
+We write $v(\tau) \in \{0, 1\}$ for whether $\tau$ carries a mode label and
+$m(\tau) \in \{1, \dots, K\}$ for that label, determined by task geometry and not
+by any learned model, and define the mode distribution of a policy as the
+conditional
 \begin{equation}\label{eq:cphi}
-  C_\phi[k] \;=\; \Pr_{\tau \sim \mu_\phi}\!\left[\, m(\tau) = k \,\right],
-  \qquad k = 1, \dots, K .
+  C_\phi[k] \;=\; \Pr_{\tau \sim \mu_\phi}\!\left[\, m(\tau) = k
+  \;\middle|\; v(\tau) = 1 \,\right],
+  \qquad k = 1, \dots, K ,
 \end{equation}
+alongside the labelling probability
+$s_\phi = \Pr_{\tau \sim \mu_\phi}\!\left[v(\tau) = 1\right]$. Conditioning keeps
+the quantity a distribution over modes at every completion rate, and
+Section~\ref{sec:setup} reports completion beside every result.
 The reference distribution $C_{\mathrm{ref}}$ is the same quantity for the frozen
 policy, estimated once before fine-tuning by rolling $\pi_\theta$ out under the
 standard normal and held fixed thereafter. The problem we address is to raise
@@ -276,15 +283,18 @@ $\mathbb{E}[r]$ while keeping $C_\phi$ close to $C_{\mathrm{ref}}$.
 
 \subsection{Reference Versus Entropy}\label{sec:why}
 
-The objectives in common use do not target $C_{\mathrm{ref}}$. They maximise
-$H(C_\phi)$, or a variational lower bound on the mutual information between a
-latent skill index and the behaviour it produces, which has its optimum at a
-uniform distribution over skills. Equation~\ref{eq:identity} shows that when
+The objectives in common use do not target $C_{\mathrm{ref}}$. The direct form
+maximises $H(C_\phi)$, and Equation~\ref{eq:identity} shows that at
 $C_{\mathrm{ref}} = u$ this coincides exactly with minimising
 $D_{\mathrm{KL}}(C_\phi \,\|\, C_{\mathrm{ref}})$. The two objectives are then
 the same function of $C_\phi$ up to an additive constant, and any experiment run
 on a near-uniform pretrained policy will find them equivalent whatever their
-behaviour elsewhere.
+behaviour elsewhere. A variational lower bound on the mutual information between
+a latent skill index and the behaviour it produces places its optimum at a
+uniform distribution over that index, and reaches the measured modes only
+through the map from skills to behaviour, so the identity fixes its position at
+the uniform reference and leaves its behaviour away from there to measurement.
+Section~\ref{sec:separation} measures both.
 
 Away from that point the objectives have different optima. Entropy
 maximisation moves $C_\phi$ toward $u$ from wherever it starts; matching moves it
@@ -308,21 +318,29 @@ use the total variation distance
 \end{equation}
 
 Any divergence may be used for $D$. The property that matters here is how the
-per-episode coefficient behaves when the reference assigns a mode little or no
+partial derivative behaves when the reference assigns a mode little or no
 probability, and total variation keeps it bounded there.
 The histogram $C_\phi$ is a statistic of the sampled batch, not a differentiable
 function of $\phi$. Its gradient therefore comes from the score-function
-estimator \citep{williams1992reinforce}. Each trajectory is credited by the
-partial derivative of the penalty,
-evaluated at that trajectory's own mode,
+estimator \citep{williams1992reinforce}. Write $g[k] = \partial D / \partial
+C_\phi[k]$ for the partial derivative of the penalty at mode $k$. Differentiating
+the conditional of Equation~\ref{eq:cphi}, which is a ratio of two expectations,
+and collecting terms gives
 \begin{equation}\label{eq:grad}
   \nabla_\phi \, D\!\left(C_\phi, C_{\mathrm{ref}}\right)
   \;=\; \mathbb{E}_{\tau \sim \mu_\phi}\!\left[
-    \left. \frac{\partial D}{\partial C_\phi[k]} \right|_{k = m(\tau)}
+    \frac{v(\tau)}{s_\phi}
+    \left( g\!\left[m(\tau)\right] - \sum_{k=1}^{K} C_\phi[k]\, g[k] \right)
     \nabla_\phi \log \mu_\phi(\tau)
-  \right].
+  \right],
 \end{equation}
-For total variation that coefficient is
+so a trajectory that carries no label contributes exactly zero and a labelled one
+carries its own partial derivative measured against the $C_\phi$-weighted mean of
+all $K$ of them. The quantities $C_\phi$ and $s_\phi$ entering the coefficient are
+the running estimates described below, read before the current batch updates
+them, with $1/s_\phi$ bounded at $20$; the coefficient is therefore a plug-in
+approximation of the population one. For total variation the partial derivative
+is
 $\tfrac{1}{2}\,\mathrm{sgn}\!\left(C_\phi[k] - C_{\mathrm{ref}}[k]\right)$, whose
 magnitude is one half for every mode. The Jensen-Shannon divergence gives
 $\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right) - \tfrac{1}{2}$, where
@@ -340,12 +358,14 @@ the KL form carries a numerical guard for it. Section~\ref{sec:robust} compares
 both forms along with two divergences that flatten the ratio between the
 histograms.
 
-The mode distribution is estimated as an exponential moving average over
-iterations rather than from the current batch alone, so that every mode retains a
-stable probability even when a batch of sixteen episodes does not visit it. The
-penalty coefficient and the reward advantage are each standardised within the
-batch before being combined, so that $\lambda$ expresses the relative weight of
-the two terms rather than their relative units.
+The estimates $C_\phi$ and $s_\phi$ are exponential moving averages over
+iterations rather than batch quantities, so that every mode retains a stable
+probability even when a batch of sixteen episodes does not visit it. The return
+enters through a leave-one-out baseline, which is a control variate that needs no
+batch standard deviation, and neither the baselined return nor the penalty
+coefficient is rescaled. The update is therefore the gradient of
+Equation~\ref{eq:objective} at the plug-in estimates, and $\lambda$ carries the
+units of that objective.
 
 The complete method adds three settings to unregularised noise-space
 fine-tuning: the weight $\lambda$, the rate of the running histogram estimate,
@@ -400,9 +420,10 @@ selected on frozen policies and seeds that the analysis below excludes, by a
 rule that reads only how often a weight drives geometric success below the task
 floor and never reads fidelity. The same grid and the same rule were applied to
 every regularised objective, so each carries a weight chosen for it on equal
-terms. The full matrix is 800 fine-tuning runs, and the ablations of
-Sections~\ref{sec:robust} and \ref{sec:scope} bring the cohort to 1{,}466. Every
-planned run completed; none raised, none was retried, and no cell is missing.
+terms. The full matrix is 800 fine-tuning runs. The 216 calibration runs that
+selected the weights and the 450 further runs of Sections~\ref{sec:robust} and
+\ref{sec:scope} bring the cohort to 1{,}466. Every planned run completed; none
+raised, none was retried, and no cell is missing.
 
 \begin{table}[t]
 \caption{Settings used for every reported run. The noise policy and the
@@ -490,12 +511,13 @@ maximisation ends $0.315$ from the reference at the least skewed level and
 $0.454$ at the most: as the policy it is meant to preserve moves away from
 uniform, an objective that pulls toward uniform moves away from that policy.
 Reference matching runs the other way, from $0.245$ to $0.127$, because a
-skewed target is a target a matching term can hold. The two baselines that do
-not pull toward uniform behave like neither; their gaps against reference
-matching fall as skew rises, at $-0.271$ per unit against the unregularised
-objective and $-0.208$ against learned skills, which is what the identity says
-should happen to a comparison that turns on something other than where the
-reference sits.
+skewed target is a target a matching term can hold. Only the comparison against
+entropy maximisation tracks skew. Regressed the same way, the gap against the
+unregularised objective carries a slope of $-0.271$ with a standard error of
+$0.136$ and the gap against learned skills $-0.208$ with a standard error of
+$0.206$, neither separable from zero and neither rising with skew. The identity
+places a skew-tracking gap on the objective whose optimum over the measured modes
+is uniform and on no other, and that is where the three slopes place it.
 
 \subsection{Comparison on Avoiding}\label{sec:main}
 
@@ -518,11 +540,13 @@ procedure, and all three give $p < 0.0001$.
 
 The result holds under either counting rule. Excluding runs whose
 geometric success falls below the task floor moves the same three margins to
-$0.198$, $0.207$ and $0.182$, and every interval stays clear of zero. Reference
-matching also fails least often among the objectives that end near the
-reference: one of its hundred runs falls below the floor, against three for the
-unregularised objective and nine for entropy maximisation, and none of its runs
-produces an undefined histogram.
+$0.198$, $0.207$ and $0.182$, and every interval stays clear of zero. One of the
+hundred reference-matching runs falls below the floor, against three for the
+unregularised objective and nine for entropy maximisation, and none of the
+hundred produces an undefined histogram. Learned skills hold every run above the
+floor and end $0.203$ further from the reference, so the penalty reaches its
+fidelity while leaving the task as solvable as the objective that spends nothing
+on fidelity.
 
 Table~\ref{tab:success} reports geometric success. Reference matching reaches
 $0.729$, above the unregularised objective's $0.681$, so the distances of
@@ -536,17 +560,31 @@ reach the fidelity in the first column.
 
 \subsection{What the Result Does Not Depend On}\label{sec:robust}
 
-Two questions follow from the comparison above: whether the advantage comes from
-matching a reference or from the particular divergence used to measure the
-match, and whether a baseline would close the gap if it were handed the target.
+Three questions follow from the comparison above: whether the ordering depends on
+the distance used to score it, whether the advantage comes from matching a
+reference or from the particular divergence used to measure the match, and
+whether a baseline would close the gap if it were handed the target.
 
-Table~\ref{tab:divergence} replaces total variation with three alternatives at
+The endpoint of Equation~\ref{eq:fidelity} is the distance the penalty optimises,
+so the same twenty \emph{Avoiding} policies are scored again on four further
+distances between the two histograms, two of them registered alongside the
+primary endpoint and two carried over from the divergence comparison below.
+Against the unregularised objective, learned skills and entropy maximisation the
+margin is $0.182$, $0.176$ and $0.152$ in Hellinger distance; $0.194$, $0.191$
+and $0.165$ in largest single-bin error; $0.109$, $0.105$ and $0.099$ in
+Jensen-Shannon divergence; and $0.103$, $0.102$ and $0.104$ in squared error.
+All twelve intervals stay clear of zero at $p < 0.001$ under the same Holm
+adjustment, and the four objectives fall in the same order under each distance.
+The ordering therefore follows from where the policies end rather than from the
+distance that scores them.
+
+Table~\ref{tab:divergence} replaces total variation with four alternatives at
 the most skewed \emph{Avoiding} level, holding the checkpoints, the reference,
 the budget and the seeds fixed. Total variation and the Kullback-Leibler
 divergence reach $0.127$ and $0.111$, which the five policies place at the same
 distance. The two alternatives that flatten the ratio between the
 histograms reach $0.260$ for Jensen-Shannon and $0.248$ for squared error, both
-near the $0.243$ that the unregularised objective reaches at this level without
+near the $0.243$ the unregularised objective reaches at this level without
 matching anything at all; total variation ends closer than each of them on 5 of 5
 policies, by $0.133$ and $0.120$. So the advantage belongs to the family of
 divergences that respond to the full ratio, and it extends past total variation
@@ -640,7 +678,9 @@ $D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$, as mean with its standard error as
 a subscript. Skew is $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ and levels are
 ordered by it. Lower is closer to the behaviour the policy was cloned from.
 Each cell averages the runs of five frozen policies and five seeds that
-produced a labelled histogram, between 19 and 25 of 25. On \emph{Avoiding},
+produced a labelled histogram, between 13 and 25 of 25. The smallest count is
+mode entropy at the most skewed \emph{Pushing} reference, where 12 of its 25 runs
+complete no labelled episode. On \emph{Avoiding},
 reference matching is closest at every level and mode entropy moves away from
 the reference as the reference becomes skewed. On \emph{Pushing} the three
 values in the last row lie within $1.6$ times the $0.086$ sampling floor of
@@ -700,7 +740,7 @@ last column is the largest per-episode coefficient reaching the update,
 averaged over runs: a common weight is not a common penalty strength, and the
 weight was calibrated under total variation. Total variation and
 Kullback-Leibler reach the same distance; the two that flatten the ratio between
-the histograms land near the $0.247$ reached without matching at all.}
+the histograms land near the $0.243$ reached without matching at all.}
 \label{tab:divergence}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc@{}}
@@ -766,11 +806,14 @@ The advantage belongs to a family of divergences and not to one member of it.
 Total variation and the Kullback-Leibler form reach the same distance over the
 same five policies, while Jensen-Shannon and squared error land near the
 distance reached without matching anything. What separates the two groups is
-whether the per-episode coefficient responds to the full ratio between the two
+whether the partial derivative responds to the full ratio between the two
 histograms. Total variation is the choice we carry through the paper because its
-coefficient is bounded by one half whatever the reference's support, where the
-Kullback-Leibler coefficient grows without bound as a reference mode's
-probability approaches zero and needs a numerical guard for it.
+partial derivative is bounded by one half whatever the reference's support, where
+the Kullback-Leibler one grows without bound as a reference mode's probability
+approaches zero and needs a numerical guard for it. Scoring the \emph{Avoiding}
+comparison on four further distances between the two histograms holds every
+margin clear of zero and leaves the four objectives in the same order, so the
+result reads the same whichever of them reports it.
 
 Two measurement choices shaped what the experiments could show. Defining modes
 by task geometry keeps the measured quantity independent of a learned

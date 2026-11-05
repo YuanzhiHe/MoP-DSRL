@@ -196,7 +196,9 @@ def figure_two():
 
     ax = fig.add_subplot(gs[2])
     ys, labs, cols, half, wins, tasks = [], [], [], [], [], []
-    for task in ("pushing", "avoiding"):
+    # Avoiding is drawn first so that it occupies the top block, which is where
+    # the reader enters the panel.
+    for task in ("avoiding", "pushing"):
         scored = [r for r in data[task] if r.get("fidelity_defined")]
         fam = [S.paired(scored, "closeness_tv", arm, "mop", policy_of,
                         lambda r: r["arm"], "greater")
