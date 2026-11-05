@@ -38,25 +38,24 @@
 Reinforcement learning on the latent noise input of a frozen generative policy
 raises reward without touching the policy's weights, and it also changes which
 of several valid behaviours that policy produces. Methods that keep this
-behaviour regularise the distribution over behavioural modes, almost always by
-maximising its entropy or a mutual information bound. That choice makes an
-unstated assumption. For a reference uniform over $K$ modes, the
-Kullback-Leibler divergence to it equals $\ln K$ minus the entropy, so matching
-a policy to its pretrained behaviour and maximising behavioural entropy are one
-objective, and no benchmark with a uniform pretrained policy separates them.
-Behaviour cloning produces skewed policies, which is why the distinction matters
-and why it has gone unmeasured. We penalise the total variation between the
-fine-tuned policy's mode histogram and the frozen policy's own, with no learned
-components and one scalar weight. Across two manipulation tasks, 38
-independently trained frozen policies and 1,235 fine-tuning runs, with each
-frozen policy as the unit of analysis, the penalty ends closer to the pretrained
-behaviour than entropy maximisation on both tasks, by $0.137$ in total variation
-on \emph{Avoiding} and $0.095$ on \emph{Pushing}. That margin widens as the
-pretrained distribution departs from uniform, the trend the identity predicts,
-reaching $0.284$ at the most skewed reference. It wins on 20 of 20
-\emph{Avoiding} policies against fine-tuning with no mode term while task
-success holds, using a histogram and one weight where a learned-skill method
-carries a discriminator and a latent skill space.
+behaviour maximise the entropy of the distribution over behavioural modes, or a
+mutual information bound. That choice makes an unstated assumption. For a
+reference uniform over $K$ modes, the Kullback-Leibler divergence to it equals
+$\ln K$ minus the entropy, so matching a policy to its pretrained behaviour and
+maximising behavioural entropy are one objective, and they separate only as the
+pretrained distribution departs from uniform. Behaviour cloning produces skewed
+policies, so the distinction is present in realistic cases and has gone
+unmeasured. We penalise the total variation distance between the fine-tuned
+policy's mode histogram and the frozen policy's own, with no learned components
+and one scalar weight. Over two manipulation tasks, 40 independently trained
+frozen policies and 1,466 fine-tuning runs, the gap between the two objectives
+grows with each policy's own measured skew at $0.774$ per unit on
+\emph{Avoiding} and $0.414$ on \emph{Pushing}, and sits at zero where the
+reference approaches uniform. On \emph{Avoiding} the penalty ends $0.188$ closer
+to the pretrained behaviour than entropy maximisation and $0.205$ closer than
+unregularised fine-tuning, winning on 20 of 20 frozen policies, while task
+success holds. A learned-skill method carrying a discriminator and a latent
+skill space ends $0.203$ further away.
 \end{abstract}
 
 \begin{keyword}
@@ -134,13 +133,15 @@ narrow the pretrained policy's support is.
 
 Third, we evaluate on two manipulation tasks from the Diverse Behaviours
 Benchmark for Imitation Learning (D3IL) \citep{jia2024d3il} using behavioural
-modes defined by task geometry rather than by clustering. Over 38
-independently trained frozen policies and 1,235 fine-tuning runs, and treating
-each frozen policy as one unit, the penalty ends closer to the pretrained
-behaviour than entropy maximisation on both tasks, and the margin grows with how
-far that behaviour sits from uniform. It does so
-without any learned component, where a mutual information method of comparable
-fidelity carries both a discriminator and a latent skill space.
+modes defined by task geometry, which keeps the measured quantity independent of
+any learned vocabulary. Over 40 independently trained frozen policies and 1,466
+fine-tuning runs, and treating each frozen policy as one unit, the gap between
+reference matching and entropy maximisation grows with each policy's own
+measured skew on both tasks, and vanishes where that skew approaches zero. On
+the task whose completion rate lets the measurement resolve four objectives, the
+penalty ends closer to the pretrained behaviour than all three baselines, with no
+learned component, where a mutual information method of comparable fidelity
+carries both a discriminator and a latent skill space.
 
 \section{Related Works}\label{sec:related}
 
@@ -156,7 +157,8 @@ transformer selects among \citep{shafiullah2022bet}, and action chunking
 used to plan directly over trajectories \citep{janner2022diffuser}. Flow
 matching \citep{lipman2022flowmatching} and rectified flow
 \citep{liu2022rectifiedflow} replace the denoising chain of
-\citet{ho2020ddpm}, which deterministic samplers such as DDIM
+denoising diffusion probabilistic models \citep{ho2020ddpm}, which
+deterministic samplers such as DDIM
 \citep{song2021ddim} already shorten, with a
 deterministic transport that is cheaper to integrate, and underpin recent
 vision-language-action models such as $\pi_0$ \citep{black2024pi0}. Score-based
@@ -223,7 +225,7 @@ presence \citep{he2026detector}. Each is the same failure: a quantity assumed to
 measure one thing measures another, which is also what
 Equation~\ref{eq:identity} says about maximising behavioural entropy. Both bear on the choice made here to define modes from
 task geometry and to measure the reference by rollout rather than infer it,
-which keeps the quantity being compared independent of the evaluation harness.
+which keeps the quantity being compared independent of the evaluation code.
 
 \paragraph{Benchmarks that admit several solutions.}
 Measuring mode preservation requires tasks with more than one valid solution.
@@ -334,9 +336,9 @@ coefficient for the KL divergence is
 $\log\!\left(C_\phi[k] / C_{\mathrm{ref}}[k]\right) + 1$, which grows without
 bound as $C_{\mathrm{ref}}[k] \rightarrow 0$. A pretrained policy need not visit
 every mode, so that case arises whenever the reference has narrow support, and
-the KL form requires a smoothing parameter to remain usable where either bounded
-form does not. We report results for both bounded choices in
-Section~\ref{sec:divergence}.
+the KL form carries a numerical guard for it. Section~\ref{sec:robust} compares
+both forms along with two divergences that flatten the ratio between the
+histograms.
 
 The mode distribution is estimated as an exponential moving average over
 iterations rather than from the current batch alone, so that every mode retains a
@@ -351,7 +353,6 @@ and the resolution $K$. It also holds one histogram of length $K$ in memory and
 spends one rollout budget before training to estimate $C_{\mathrm{ref}}$. It
 introduces no learned components, and Table~\ref{tab:hyper} gives the values used
 for every reported run.
-
 \section{Experimental Results}\label{sec:results}
 
 \subsection{Setup}\label{sec:setup}
@@ -359,7 +360,7 @@ for every reported run.
 We evaluate on two manipulation tasks from D3IL \citep{jia2024d3il}. In
 \emph{Avoiding}, a manipulator must reach a goal line past three rows of
 obstacles, and the behavioural mode is the sequence of sides on which it passes
-them, giving $K = 24$ routes that we group into $K = 6$ by the first two rows. In
+them, giving 24 routes that we group into $K = 6$ by the first two rows. In
 \emph{Pushing}, two blocks must be delivered to two targets, and the mode is
 which block reaches which target in which order, giving $K = 4$. Both modes are
 read from object and end-effector geometry using the benchmark's own criteria, so
@@ -368,38 +369,48 @@ no clustering step enters the measurement.
 The frozen policy for each task is a rectified-flow velocity field
 \citep{liu2022rectifiedflow} trained by flow matching on the benchmark's
 demonstrations. To vary the reference distribution we reweight the demonstrations
-toward a geometric profile over modes before cloning. Behaviour cloning is itself a source of
-variation, so we train five frozen policies per weighting with independent seeds,
-giving twenty in total for \emph{Avoiding}. Every result is then indexed by its
-own frozen policy's measured reference skew $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$
-rather than by the weighting that frozen policy was trained under.
+toward a geometric profile over modes before cloning. Behaviour cloning is itself
+a source of variation, so we train five frozen policies per weighting with
+independent seeds, giving twenty per task and forty in all. Every result is
+indexed by its own frozen policy's measured reference skew
+$D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$, which the weighting predicts only
+loosely. The five \emph{Pushing} policies cloned from unmodified demonstrations
+span skews from $0.097$ to $0.280$, a range the next weighting overlaps
+entirely.
 
 Reward is given for task success on a subset of modes, so that a return maximiser
-has an incentive to narrow its behaviour. Table~\ref{tab:hyper} lists every
-setting. Four of the twenty-four routes are
-rewarded on \emph{Avoiding} and one of the four on \emph{Pushing}. A run whose
-final success rate falls below $0.15$ on \emph{Avoiding} or $0.10$ on
-\emph{Pushing} is treated as a failed optimisation and excluded. Because this
-threshold conditions on an outcome the treatment affects, Section~\ref{sec:stable}
-reports every result both with and without it, and the conclusions drawn below
-hold under both. Four objectives are compared, identical in
-every respect except the mode term. The first has no mode term and optimises return alone, which is the
-unregularised noise-space objective. The
+has an incentive to narrow its behaviour: four of the twenty-four routes on
+\emph{Avoiding} and one of the four modes on \emph{Pushing}.
+Table~\ref{tab:hyper} lists every setting. Four objectives are compared,
+identical in every respect except the mode term. The first has no mode term and
+optimises return alone, which is the unregularised noise-space objective. The
 second maximises the entropy of the same geometric mode histogram. The third is
 BMD, implemented as a skill-conditioned noise policy together with a
 discriminator trained to recover the skill index from the final observation,
 using the variational bound as an intrinsic reward. Its skill cardinality is set
 to the number of mode groups, and at evaluation its skills are sampled uniformly,
 matching the prior the method assumes at training time;
-Section~\ref{sec:prior} reports the same comparison with that prior fitted to
-reproduce the reference. The fourth is the reference
-matching of Equation~\ref{eq:objective}.
+Section~\ref{sec:robust} reports the same comparison with that prior fitted to
+reproduce the reference. The fourth is the reference matching of
+Equation~\ref{eq:objective}.
+
+The design, the endpoints, the unit of analysis and the penalty weight were
+fixed in a written plan before the first run of this cohort, and the weight was
+selected on frozen policies and seeds that the analysis below excludes, by a
+rule that reads only how often a weight drives geometric success below the task
+floor and never reads fidelity. The same grid and the same rule were applied to
+every regularised objective, so each carries a weight chosen for it on equal
+terms. The full matrix is 800 fine-tuning runs, and the ablations of
+Sections~\ref{sec:robust} and \ref{sec:scope} bring the cohort to 1{,}466. Every
+planned run completed; none raised, none was retried, and no cell is missing.
 
 \begin{table}[t]
 \caption{Settings used for every reported run. The noise policy and the
-discriminator are two-layer networks with 128 hidden units. The same weight
-$\lambda$ is used for all three regularised objectives, and no per-objective
-tuning was performed.}
+discriminator are two-layer networks with 128 hidden units. Each regularised
+objective carries the weight its own calibration selected under a common rule.
+The observation bound applies to every objective and both tasks, because two of
+the ten \emph{Pushing} observation channels are unwrapped orientation angles
+that grow without limit along a rollout.}
 \label{tab:hyper}
 \begin{tabular}{@{}lcc@{}}
 \toprule
@@ -407,16 +418,19 @@ tuning was performed.}
 \midrule
 Mode groups $K$ & 6 & 4 \\
 Rewarded modes & 4 of 24 & 1 of 4 \\
-Penalty weight $\lambda$ & 1.0 & 1.0 \\
+Penalty weight $\lambda$, reference matching & 1.0 & 0.25 \\
+Penalty weight $\lambda$, mode entropy & 1.0 & 0.25 \\
+Penalty weight $\lambda$, learned skills & 1.0 & 0.50 \\
 Rate of the running histogram estimate & 0.15 & 0.15 \\
 Policy updates & 60 & 60 \\
 Episodes per update & 16 & 16 \\
 Evaluation episodes & 500 & 300 \\
-Reference episodes & 888 & 600 \\
+Reference episodes & 900 & 600 \\
 Euler steps $M$ & 10 & 10 \\
 Noise dimension $d$ & 2 & 2 \\
 Learning rate & $3\times10^{-3}$ & $3\times10^{-3}$ \\
 Discriminator learning rate & $10^{-3}$ & $10^{-3}$ \\
+Observation bound & 50 & 50 \\
 Success-rate floor & 0.15 & 0.10 \\
 \bottomrule
 \end{tabular}
@@ -433,77 +447,153 @@ distributions,
 \end{equation}
 which is zero when the fine-tuned policy reproduces the pretrained behaviour
 distribution and grows as it departs from that distribution in any direction.
-Both histograms come from evaluation rollouts. For $C_\phi$ these number 500
-episodes on \emph{Avoiding} and 300 on \emph{Pushing}; for $C_{\mathrm{ref}}$,
-888 and 600. An episode in which the arm does not complete a
-labelled route carries no mode and is excluded from the histogram, so both
-histograms are conditional on completion.
+Both histograms come from evaluation rollouts: 500 episodes on \emph{Avoiding}
+and 300 on \emph{Pushing} for $C_\phi$, and 900 and 600 for $C_{\mathrm{ref}}$.
+An episode in which the arm does not complete a labelled route carries no mode
+and is excluded from the histogram, so both histograms are conditional on
+completion. A run whose evaluation produces no labelled episode has undefined
+fidelity; such runs are counted and reported as undefined, and they appear in
+every total below.
 
 Both histograms are finite samples, so the endpoint has a floor even for a policy
-that reproduces the reference exactly. Drawing two samples at the observed sizes
-from one distribution gives an expected distance of $0.055$ on \emph{Avoiding}
-and $0.079$ on \emph{Pushing}. Within a task, all four objectives are scored
-against the same reference estimate, measured once per frozen policy before any
-fine-tuning. Completion rates track the success
-rates of Table~\ref{tab:success} and are similar across the four objectives at
-each level, which is what makes the distances comparable between them.
+that reproduces the reference exactly. At the observed completion rates, drawing
+two samples from one distribution gives an expected distance of $0.040$ on
+\emph{Avoiding} and $0.086$ on \emph{Pushing}. The floors differ because
+\emph{Pushing} completes about one episode in five, leaving roughly 65 labelled
+episodes to fill four bins. Within a task, all four objectives are scored against
+the same reference estimate, measured once per frozen policy before any
+fine-tuning, so the comparison between them is conditional on that estimate;
+redrawing each reference from its own stored counts moves every contrast by less
+than $0.008$.
 
-A pre-registration committed before the replication named the normalised
-difference $[D_{\mathrm{TV}}(C_\phi, u) - D_{\mathrm{TV}}(C_\phi,
-C_{\mathrm{ref}})] / D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ as the endpoint. That
-quantity is not monotone in the distance it was meant to summarise. For $K = 2$,
-a uniform $u$, a reference of $(0.7, 0.3)$ and a policy at $(0.9, 0.1)$ it takes
-its maximum value of one, although the policy has moved twice as far from uniform
-as the reference. We therefore report the distance itself, and note the departure
-from the pre-registered endpoint here rather than leaving it to be discovered.
+\subsection{Separation Between the Two Objectives}\label{sec:separation}
 
-\subsection{Main Result}\label{sec:main}
+Equation~\ref{eq:identity} predicts where reference matching and entropy
+maximisation agree and where they part: they are one objective at a uniform
+reference, and they separate as the reference moves away from it. The prediction
+is quantitative, it was registered before these runs, and it is tested by
+regressing the gap between the two objectives on each frozen policy's own
+measured skew, one point per policy.
 
-Table~\ref{tab:main} reports the distance to the pretrained behaviour
-distribution for all four objectives. Reference matching is closest at every one
-of the four \emph{Avoiding} levels and at three of the four on \emph{Pushing}.
+The gap rises with skew on both tasks. On \emph{Avoiding} the slope is $0.774$
+per unit of skew with a standard error of $0.136$ and $r = 0.80$
+($p < 0.0001$, 20 policies); on \emph{Pushing} it is $0.414$ with a standard
+error of $0.223$ and $r = 0.40$ ($p = 0.080$, 20 policies). Grouping the
+policies by the weighting they were cloned under, the \emph{Avoiding} gap runs
+$0.071$, $0.117$, $0.248$, $0.315$ as mean skew runs $0.24$, $0.31$, $0.45$,
+$0.55$; the \emph{Pushing} gap runs $-0.017$, $-0.014$, $0.137$, $0.169$ as mean
+skew runs $0.23$, $0.24$, $0.39$, $0.57$. At the two lowest \emph{Pushing}
+skews the gap sits at zero, which is where a uniform reference places it.
 
-Runs that share a frozen policy are not independent, so the primary analysis
-treats each frozen policy as one unit. Pairing within the twenty \emph{Avoiding}
-policies, reference matching ends closer to the pretrained behaviour than
-unregularised fine-tuning by $0.201$ in total variation, with a 95\% confidence
-interval of $[0.165, 0.237]$ and a win on \textbf{20 of 20} policies. Against the
-learned-skill method the margin is $0.146$, interval $[0.100, 0.192]$, winning on
-\textbf{19 of 20}. Against entropy maximisation it is $0.137$, interval
-$[0.060, 0.215]$, winning on 15 of 20. All three one-sided paired tests give
-$p \leq 0.0013$.
+Table~\ref{tab:main} shows the mechanism directly. On \emph{Avoiding}, entropy
+maximisation ends $0.315$ from the reference at the least skewed level and
+$0.454$ at the most: as the policy it is meant to preserve moves away from
+uniform, an objective that pulls toward uniform moves away from that policy.
+Reference matching runs the other way, from $0.245$ to $0.127$, because a
+skewed target is a target a matching term can hold. The two baselines that do
+not pull toward uniform behave like neither; their gaps against reference
+matching fall as skew rises, at $-0.271$ per unit against the unregularised
+objective and $-0.208$ against learned skills, which is what the identity says
+should happen to a comparison that turns on something other than where the
+reference sits.
 
-\emph{Pushing} is analysed the same way, over the eighteen frozen policies that
-carry a full set of seeds. Reference matching ends closer to the pretrained behaviour than
-entropy maximisation by $0.095$ in total variation, with a 95\% confidence
-interval of $[0.010, 0.179]$, a win on \textbf{12 of 15} policies and
-$p = 0.017$; against fine-tuning with no mode term the margin is $0.072$,
-interval $[0.016, 0.128]$, \textbf{11 of 16} policies and $p = 0.008$. The
-comparison against the learned-skill method on this task is $0.032$ in our
-favour on 12 of 16 policies, with an interval of $[-0.008, 0.072]$ that includes
-no difference. The two methods therefore reach the same distance from the
-pretrained behaviour on \emph{Pushing}, one of them with a discriminator and a
-latent skill space and the other with a histogram of length $K$.
+\subsection{Comparison on Avoiding}\label{sec:main}
 
-So the result that holds on both tasks, and the one the identity of
-Equation~\ref{eq:identity} speaks to, is the margin over entropy maximisation.
-It is also the one that moves with the reference: regressed on measured skew it
-rises at $0.82$ per unit on \emph{Avoiding} ($r = 0.96$) and $0.42$ on
-\emph{Pushing} ($r = 0.68$), from $0.040$ at the least skewed \emph{Avoiding}
-reference to $0.284$ at the most skewed. The margins over the other two
-baselines fall over the same range, which is what the identity says should
-happen to a comparison that does not turn on where the reference sits.
+\emph{Avoiding} completes about seven episodes in ten, which puts roughly 350
+labelled episodes behind each histogram and a sampling floor of $0.040$ under
+the endpoint. The task therefore resolves differences between the four
+objectives, and we report the full comparison on it.
 
-At the most skewed \emph{Pushing} reference the unregularised objective reaches
-$0.093$ and reference matching $0.096$, both inside $1.3$ times the sampling
-floor of $0.079$ that Section~\ref{sec:measure} derives. Arms that close are at
-the resolution of the measurement, and the figure draws that band for the same
-reason.
+Runs that share a frozen policy carry that policy's idiosyncrasies, so each
+frozen policy is one unit: the five seeds of an objective are averaged within a policy, and the
+contrast is the difference between objective means inside that policy. Over the
+twenty \emph{Avoiding} policies, reference matching ends closer to the
+pretrained behaviour than the unregularised objective by $0.205$ in total
+variation, with a 95\% interval of $[0.158, 0.252]$ and a win on
+\textbf{20 of 20} policies; closer than learned skills by $0.203$, interval
+$[0.137, 0.270]$, \textbf{17 of 20}; and closer than entropy maximisation by
+$0.188$, interval $[0.116, 0.259]$, \textbf{18 of 20}. All three are
+one-sided paired tests on 19 degrees of freedom, adjusted together by the Holm
+procedure, and all three give $p < 0.0001$.
 
-Pooling runs rather than policies gives the same ordering with larger apparent
-precision, at $0.95$, $0.77$ and $0.67$ standard deviations for the three
-comparisons on \emph{Avoiding} and $0.70$, $0.35$ and $0.53$ on \emph{Pushing}.
-We report the clustered analysis above because it is the one the design supports.
+The result holds under either counting rule. Excluding runs whose
+geometric success falls below the task floor moves the same three margins to
+$0.198$, $0.207$ and $0.182$, and every interval stays clear of zero. Reference
+matching also fails least often among the objectives that end near the
+reference: one of its hundred runs falls below the floor, against three for the
+unregularised objective and nine for entropy maximisation, and none of its runs
+produces an undefined histogram.
+
+Table~\ref{tab:success} reports geometric success. Reference matching reaches
+$0.729$, above the unregularised objective's $0.681$, so the distances of
+Table~\ref{tab:main} record where it ends while it solves the task at least as
+often. Its rewarded success rate is $0.151$ against the unregularised
+objective's $0.231$. Four of the twenty-four routes carry reward, so an
+objective that chases return concentrates on those four, and a penalty that
+holds the policy near a reference spread over all twenty-four surrenders part of
+that return by construction. That is the quantity the penalty trades against to
+reach the fidelity in the first column.
+
+\subsection{What the Result Does Not Depend On}\label{sec:robust}
+
+Two questions follow from the comparison above: whether the advantage comes from
+matching a reference or from the particular divergence used to measure the
+match, and whether a baseline would close the gap if it were handed the target.
+
+Table~\ref{tab:divergence} replaces total variation with three alternatives at
+the most skewed \emph{Avoiding} level, holding the checkpoints, the reference,
+the budget and the seeds fixed. Total variation and the Kullback-Leibler
+divergence reach $0.127$ and $0.111$, which the five policies place at the same
+distance. The two alternatives that flatten the ratio between the
+histograms reach $0.260$ for Jensen-Shannon and $0.248$ for squared error, both
+near the $0.243$ that the unregularised objective reaches at this level without
+matching anything at all; total variation ends closer than each of them on 5 of 5
+policies, by $0.133$ and $0.120$. So the advantage belongs to the family of
+divergences that respond to the full ratio, and it extends past total variation
+alone. A common weight gives each variant a different penalty strength here,
+since the coefficient reaching the update spans a factor of nine across the
+four, and the weight was calibrated under total variation, so each variant is
+compared at its own scale.
+
+The learned-skill baseline deploys its skills under a uniform prior, which is
+the prior it assumes at training time. Fitting that prior on the simplex to
+reproduce the reference hands the baseline the target that reference matching is
+estimating from data. The margin survives it. Over the same five policies and
+seeds the fitted prior ends $0.234$ from the reference against $0.247$ for the
+uniform one, a paired difference of $0.014$ with an interval of $[-0.013,
+0.040]$ that includes zero, where reference matching ends $0.203$ closer than
+the uniform-prior baseline. The distance is therefore not explained by the
+baseline's ignorance of where the reference sits.
+
+\subsection{Scope of the Comparison}\label{sec:scope}
+
+\emph{Pushing} completes about one episode in five. Roughly 65 labelled
+episodes fall into four bins, which puts the sampling floor at $0.086$ and
+leaves 13 of the 100 reference-matching runs with no labelled episode at all.
+Table~\ref{tab:main} shows what that resolution permits. At the most skewed
+level the unregularised objective, learned skills and reference matching reach
+$0.114$, $0.110$ and $0.134$, all within $1.6$ times the floor and therefore
+not separable from one another or from an exact match. Over all four levels the
+three paired contrasts are $0.069$, $0.041$ and $-0.035$ against entropy
+maximisation, the unregularised objective and learned skills, and every interval
+contains zero. These comparisons do not distinguish the objectives on this task.
+No equivalence is claimed from them, because no margin for such a claim was set
+in advance. The one objective that does separate on \emph{Pushing} is entropy
+maximisation, which ends $0.353$ from the reference at the most skewed level
+while the others sit near the floor, and that separation is the one
+Section~\ref{sec:separation} predicts.
+
+The weight carried into the main comparison also sets how much of the separation
+is expressed. Table~\ref{tab:weight} reports the grid on the two lowest
+\emph{Pushing} skews, where the identity places the two objectives closest
+together. Against entropy maximisation, reference matching gains $0.086$ at
+$\lambda = 0.50$ with an interval of $[0.033, 0.139]$ and a win on 9 of 10
+policies, while at $\lambda = 0.25$ and $\lambda = 1.00$ the intervals contain
+zero. The selection rule fixed in advance chose $0.25$ for this task, reading
+only how often a weight drives success below the floor, and the main analysis
+stays at that weight. Reference matching falls below the floor on 12 of 50 runs
+at both $0.25$ and $0.50$, against 17 and 16 for entropy maximisation, so the
+weight the rule selected was not the only safe one.
 
 \begin{figure}[!t]
 \centering
@@ -513,417 +603,225 @@ We report the clustered analysis above because it is the one the design supports
 generative policy decodes into an action $a$; the rollout is labelled with its
 behavioural mode from task geometry, and the histogram $C_\phi$ of those labels
 is penalised for its distance to the frozen policy's own histogram
-$C_{\mathrm{ref}}$, measured once before fine-tuning. (b) The
-Kullback-Leibler divergence of each frozen policy's mode distribution from
-uniform, measured over 888 rollouts on the six route groups and grouped by how
-that policy's demonstrations were weighted. Each point is one of the twenty
-policies and the bar is the group mean. None lies at the uniform point in orange,
-which is the only point at which matching and entropy maximisation are the same
-objective.}
+$C_{\mathrm{ref}}$, measured once before fine-tuning. (b) The Kullback-Leibler
+divergence of each frozen policy's mode distribution from uniform, over 900
+rollouts on \emph{Avoiding} and 600 on \emph{Pushing}, grouped by task and by
+how that policy's demonstrations were weighted. Each point is one of the forty
+frozen policies and the bar is the group mean. None lies at the uniform point in
+orange, which is the only point at which matching and entropy maximisation are
+the same objective. The five policies of a group spread widely, so the weighting
+a policy was cloned under predicts its skew only loosely.}
 \label{fig:setting}
 \end{figure}
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig2_result.pdf}
-\caption{Distance to the pretrained behaviour distribution. (a, b) Mean distance
-against each group's measured reference skew, with standard errors over the run
-counts of Table~\ref{tab:main} and the success-rate floor of
-Section~\ref{sec:setup} applied. The shaded band is the distance expected
-between two samples of a single distribution at the observed sample sizes, so
-values inside it are not separable from an exact match. (c) Paired differences
-across the twenty \emph{Avoiding} frozen policies, each the mean over its six
-run seeds, with 95\% intervals from the $t$ distribution on 19 degrees of
-freedom. The right-hand figures give the mean reduction and the number of
-policies on which reference matching ends closer.}
+\caption{Distance to the pretrained behaviour distribution, over every run with
+no exclusion. (a, b) Mean distance against each group's measured reference skew,
+with standard errors over the runs that produced a labelled histogram. The
+shaded band is the distance expected between two samples of a single
+distribution at the observed labelled-episode counts, so values inside it are at
+the resolution of the measurement. Mode entropy rises with skew on both tasks,
+which is the behaviour Equation~\ref{eq:identity} predicts for an objective that
+pulls toward uniform while the reference moves away from it. (c) Paired
+differences across the twenty frozen policies of each task, each the mean over
+its five run seeds, with 95\% intervals from the $t$ distribution on that
+contrast's own degrees of freedom and the family adjusted by the Holm procedure.
+The right-hand figures give the mean reduction and the number of policies on
+which reference matching ends closer. On \emph{Pushing} all three intervals
+cross zero.}
 \label{fig:main}
 \end{figure}
 
 \begin{table}[t]
 \caption{Distance to the pretrained behaviour distribution,
-$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$, as mean with its standard error as a subscript, and Skew is $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$. Each
-\emph{Avoiding} cell averages 27 to 30 runs and each \emph{Pushing} cell 6 to 12.
-Lower is closer to the behaviour the policy was cloned from. Levels are ordered by each group's mean measured reference skew.
-Reference matching is closest at every \emph{Avoiding} level and at three of four
-on \emph{Pushing}.}
+$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$, as mean with its standard error as
+a subscript. Skew is $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$ and levels are
+ordered by it. Lower is closer to the behaviour the policy was cloned from.
+Each cell averages the runs of five frozen policies and five seeds that
+produced a labelled histogram, between 19 and 25 of 25. On \emph{Avoiding},
+reference matching is closest at every level and mode entropy moves away from
+the reference as the reference becomes skewed. On \emph{Pushing} the three
+values in the last row lie within $1.6$ times the $0.086$ sampling floor of
+Section~\ref{sec:measure}, which leaves them at the resolution of the
+measurement.}
 \label{tab:main}
 \small
-\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
 Task & Skew & No mode & Mode entropy & Learned skills & Reference \\
  &  & term &  &  & matching \\
 \midrule
-\emph{Avoiding} & 0.24 & $.475_{.046}$ & $.278_{.040}$ & $.432_{.041}$ & $\mathbf{.238}_{.032}$ \\
-\emph{Avoiding} & 0.33 & $.447_{.042}$ & $.257_{.026}$ & $.380_{.041}$ & $\mathbf{.212}_{.028}$ \\
-\emph{Avoiding} & 0.46 & $.335_{.051}$ & $.317_{.044}$ & $.275_{.044}$ & $\mathbf{.144}_{.019}$ \\
-\emph{Avoiding} & 0.55 & $.269_{.047}$ & $.409_{.067}$ & $.214_{.036}$ & $\mathbf{.125}_{.015}$ \\
+\emph{Avoiding} & 0.24 & $.498_{.049}$ & $.315_{.038}$ & $.477_{.056}$ & $\mathbf{.245}_{.034}$ \\
+\emph{Avoiding} & 0.31 & $.449_{.051}$ & $.329_{.048}$ & $.430_{.045}$ & $\mathbf{.204}_{.032}$ \\
+\emph{Avoiding} & 0.45 & $.332_{.054}$ & $.373_{.056}$ & $.361_{.052}$ & $\mathbf{.125}_{.018}$ \\
+\emph{Avoiding} & 0.55 & $.243_{.043}$ & $.454_{.074}$ & $.247_{.042}$ & $\mathbf{.127}_{.022}$ \\
 \midrule
-\emph{Pushing} & 0.22 & $.308_{.033}$ & $.234_{.035}$ & $.250_{.034}$ & $\mathbf{.159}_{.032}$ \\
-\emph{Pushing} & 0.25 & $.268_{.026}$ & $.173_{.032}$ & $\mathbf{.169}_{.023}$ & $.189_{.025}$ \\
-\emph{Pushing} & 0.36 & $.227_{.024}$ & $.315_{.073}$ & $.192_{.020}$ & $\mathbf{.139}_{.021}$ \\
-\emph{Pushing} & 0.52 & $\mathbf{.093}_{.018}$ & $.245_{.066}$ & $.134_{.025}$ & $.096_{.018}$ \\
+\emph{Pushing} & 0.23 & $.352_{.050}$ & $.259_{.038}$ & $.270_{.030}$ & $.269_{.044}$ \\
+\emph{Pushing} & 0.24 & $.278_{.038}$ & $.283_{.033}$ & $.235_{.035}$ & $.306_{.051}$ \\
+\emph{Pushing} & 0.39 & $.351_{.041}$ & $.368_{.047}$ & $.180_{.024}$ & $.241_{.052}$ \\
+\emph{Pushing} & 0.57 & $.114_{.025}$ & $.353_{.067}$ & $.110_{.017}$ & $.134_{.043}$ \\
 \bottomrule
 \end{tabular*}
 \end{table}
 
-\subsection{Task Success}
-
-Table~\ref{tab:success} reports success rates with standard errors. Reference
-matching is within one standard error of the unregularised objective at every
-level on both tasks, so the distances in Table~\ref{tab:main} reflect where it
-ends rather than how well it solves the task. The baselines differ from one
-another by more at the most skewed \emph{Avoiding} level, where entropy
-maximisation reaches $0.617$ and the learned-skill method $0.767$.
-
 \begin{table}[t]
-\caption{Task success rate as mean with its standard error
-in parentheses, and Skew is $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u)$. Reference
-matching is within one standard error of the unregularised objective at every
-level on both tasks.}
+\caption{Geometric task success rate as mean with its standard error as a
+subscript, over all 25 runs of each cell with no exclusion. Levels are ordered
+by measured reference skew as in Table~\ref{tab:main}. On \emph{Avoiding},
+reference matching is at or above the unregularised objective at every level, so
+the distances of Table~\ref{tab:main} record where it ends while it solves the
+task at least as often.}
 \label{tab:success}
 \small
-\small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
 \toprule
 Task & Skew & No mode & Mode entropy & Learned skills & Reference \\
  &  & term &  &  & matching \\
 \midrule
-\emph{Avoiding} & 0.24 & $.632_{.034}$ & $.670_{.027}$ & $.665_{.026}$ & $.626_{.029}$ \\
-\emph{Avoiding} & 0.33 & $.717_{.031}$ & $.751_{.015}$ & $.731_{.028}$ & $.694_{.030}$ \\
-\emph{Avoiding} & 0.46 & $.735_{.028}$ & $.689_{.023}$ & $.721_{.022}$ & $.707_{.020}$ \\
-\emph{Avoiding} & 0.55 & $.722_{.036}$ & $.617_{.037}$ & $.767_{.025}$ & $.688_{.032}$ \\
+\emph{Avoiding} & 0.24 & $.633_{.031}$ & $.590_{.043}$ & $.697_{.025}$ & $.662_{.022}$ \\
+\emph{Avoiding} & 0.31 & $.667_{.046}$ & $.606_{.050}$ & $.698_{.025}$ & $.739_{.032}$ \\
+\emph{Avoiding} & 0.45 & $.704_{.034}$ & $.634_{.042}$ & $.673_{.034}$ & $.756_{.014}$ \\
+\emph{Avoiding} & 0.55 & $.722_{.035}$ & $.662_{.052}$ & $.766_{.024}$ & $.760_{.025}$ \\
 \midrule
-\emph{Pushing} & 0.22 & $\mathbf{.337}_{.022}$ & $.314_{.022}$ & $.299_{.023}$ & $.312_{.027}$ \\
-\emph{Pushing} & 0.25 & $.253_{.017}$ & $\mathbf{.309}_{.024}$ & $.298_{.021}$ & $.277_{.023}$ \\
-\emph{Pushing} & 0.36 & $.240_{.025}$ & $.271_{.031}$ & $\mathbf{.280}_{.021}$ & $.246_{.018}$ \\
-\emph{Pushing} & 0.52 & $\mathbf{.340}_{.019}$ & $.320_{.045}$ & $.313_{.026}$ & $.283_{.040}$ \\
+\emph{Pushing} & 0.23 & $.194_{.028}$ & $.245_{.032}$ & $.281_{.027}$ & $.256_{.031}$ \\
+\emph{Pushing} & 0.24 & $.229_{.028}$ & $.173_{.028}$ & $.210_{.029}$ & $.186_{.029}$ \\
+\emph{Pushing} & 0.39 & $.158_{.026}$ & $.113_{.023}$ & $.226_{.025}$ & $.173_{.031}$ \\
+\emph{Pushing} & 0.57 & $.301_{.030}$ & $.081_{.024}$ & $.292_{.031}$ & $.255_{.033}$ \\
 \bottomrule
 \end{tabular*}
 \end{table}
 
-\subsection{Dependence on Reference Skew}
-
-Equation~\ref{eq:identity} predicts that matching and entropy maximisation become
-the same objective as the reference approaches uniform, so the gap between them
-should narrow in that direction. Treating each frozen policy as the unit of
-analysis, we regress the difference in distance to the reference on each policy's
-measured reference skew across the twenty \emph{Avoiding} policies. The slope is
-$0.839 \pm 0.183$ with correlation $0.734$ and $p = 0.00023$, so the gap grows
-with reference skew as predicted.
-
-The regression does not reach the point the identity describes. The least skewed
-policy we measure sits at $D_{\mathrm{TV}}(C_{\mathrm{ref}}, u) = 0.079$, and
-extrapolating the fit to a uniform reference gives an intercept of $-0.194$ with
-a 95\% interval of $[-0.346, -0.043]$. The identity's regime is outside the range
-these frozen policies cover, and a direct test of it would need a pretrained
-policy that is uniform over its behavioural modes, which behaviour cloning did
-not produce in any of the twenty.
-
-\subsection{Sensitivity to the Exclusion Rule}\label{sec:stable}
-
-The success-rate threshold of Section~\ref{sec:setup} conditions on an outcome
-the treatment affects, so its effect is reported directly. On \emph{Avoiding} it
-removes none of the unregularised runs, $0.8\%$ of reference matching's, $2.5\%$
-of the learned-skill runs and $5.0\%$ of the entropy-maximising runs; on
-\emph{Pushing}, $20.2\%$, $32.2\%$, $8.9\%$ and $26.4\%$.
-
-Without the threshold the \emph{Avoiding} result is unchanged, at $0.94$, $0.79$
-and $0.71$ standard deviations against the three baselines, each with
-$p < 10^{-4}$, so nothing there rests on the rule.
-
-On \emph{Pushing} the threshold removes a third of the reference matching runs
-against under a tenth of the learned-skill ones, and the removed runs are a
-recognisable population: they average $0.030$ in success rate, visit $1.74$ of
-the four mode groups and carry $0.463$ nats of histogram entropy against a
-reference at $1.229$. They are collapses, and the rate at which they occur is
-set by the penalty weight, which Section~\ref{sec:weight} measures directly: at
-the weight that section selects the rate falls from $0.38$ to $0.16$ and task
-success rises from $0.19$ to $0.29$. The weight used for the table above was
-carried over from \emph{Avoiding}, where behaviour splits into six groups rather
-than four and the reward is dense enough that the same weight leaves under one
-percent of runs below the threshold.
-
-\subsection{Behavioural Diversity}\label{sec:diversity}
-
-Fidelity to a reference and breadth of behaviour are distinct quantities, and
-reference matching targets the first. Table~\ref{tab:diversity} reports the second for
-completeness, as the number of distinct modes a fine-tuned policy visits and the
-entropy of its mode histogram. Entropy maximisation retains the most behaviour at the
-three most skewed levels, which its objective maximises. Reference matching retains more than both the
-unregularised objective and the learned-skill method at three of the four levels,
-so matching the reference distribution preserves breadth except where the
-reference is itself at its narrowest.
-
 \begin{table}[t]
-\caption{Behavioural diversity on \emph{Avoiding}, as the mean number of distinct
-modes visited and the mean entropy of the mode histogram in nats. Entropy
-maximisation is highest throughout, the quantity its objective maximises. The reference
-matching exceeds both the unregularised objective and the learned-skill method at
-the first three levels.}
-\label{tab:diversity}
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
-\toprule
-Skew & No mode & Mode entropy & Learned skills & Reference matching \\
-\midrule
-0.24 & 4.80 / 0.948 & 5.81 / 1.440 & 5.40 / 1.099 & 5.80 / 1.458 \\
-0.33 & 4.23 / 0.762 & 5.93 / 1.416 & 4.47 / 0.867 & 5.48 / 1.207 \\
-0.46 & 4.53 / 0.663 & 5.77 / 1.347 & 5.21 / 0.927 & 5.37 / 1.071 \\
-0.55 & 4.70 / 0.842 & 4.93 / 1.060 & 4.43 / 0.683 & 4.33 / 0.828 \\
-\bottomrule
-\end{tabular*}
-\end{table}
-
-\subsection{Endpoints the Objectives Do Not Optimise}\label{sec:indep}
-
-Reference matching descends the distance that Table~\ref{tab:main} reports, so
-that table scores it on its own objective. The stored histograms allow other
-distances to be computed afterwards, and none of the four objectives descends any
-of the three in Table~\ref{tab:indep}. The ordering is unchanged under all
-three on both tasks, and every one of the eighteen comparisons favours reference
-matching at $p < 0.03$.
-
-\begin{table}[t]
-\caption{Distances to the pretrained behaviour distribution that no objective
-optimises, as means over the runs of Table~\ref{tab:main}. Lower is closer. Largest error is
-$\max_k |C_\phi[k] - C_{\mathrm{ref}}[k]|$, and the column headings abbreviate the
-four objectives named in Table~\ref{tab:main}.}
-\label{tab:indep}
-\small
-\small
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
-\toprule
-Task & Distance & No mode & Entropy & Skills & Matching \\
-\midrule
-\emph{Avoiding} & Chi-square & 4.764 & 10.251 & 2.996 & $\mathbf{0.439}$ \\
-\emph{Avoiding} & Largest error & 0.348 & 0.267 & 0.292 & $\mathbf{0.151}$ \\
-\emph{Avoiding} & Hellinger & 0.373 & 0.288 & 0.319 & $\mathbf{0.185}$ \\
-\midrule
-\emph{Pushing} & Chi-square & 0.736 & 0.818 & 0.394 & $\mathbf{0.187}$ \\
-\emph{Pushing} & Largest error & 0.238 & 0.202 & 0.169 & $\mathbf{0.113}$ \\
-\emph{Pushing} & Hellinger & 0.220 & 0.201 & 0.166 & $\mathbf{0.125}$ \\
-\bottomrule
-\end{tabular*}
-\end{table}
-
-\subsection{Penalty Weight}\label{sec:weight}
-
-The weight $\lambda$ was set on \emph{Avoiding} and carried over. What the two
-tasks do not share is how often the reward fires: success averages $0.67$ on
-\emph{Avoiding} and $0.24$ on \emph{Pushing}, so a batch of sixteen episodes
-carries about eleven successes on one task and about four on the other. Both the
-advantage and the mode coefficient are standardised to unit deviation before
-Equation~\ref{eq:grad} combines them, and standardisation rescales a sparse
-reward as readily as a dense one. The same nominal weight therefore gives the
-penalty more of the update where success is rarer, which is a reason to measure
-the weight on each task.
-
-Three weights were compared, $0.25$, $0.5$ and the $1.0$ already run, on the two
-\emph{Pushing} weightings whose sweep covers all five frozen policies, for both
-arms that carry this weight, fifty runs per arm per weight. The selection rule
-was fixed and committed before any of these runs existed: the largest weight
-whose collapse rate stays at or below $0.15$, with the lowest rate as the
-fallback, read from the reference matching arm alone and applied unchanged to
-mode entropy. Distance to the reference plays no part in the choice.
-
-\begin{table}[t]
-\caption{Collapse rate on \emph{Pushing} at three penalty weights, over the two
-weightings whose sweep is complete, fifty runs per arm per weight. A run counts
-as collapsed when its success rate ends below the $0.10$ threshold of
-Section~\ref{sec:setup}. The rule of Section~\ref{sec:weight} reads this column
-and nothing else.}
-\label{tab:weight}
+\caption{Divergence between the two histograms replaced, at the most skewed
+\emph{Avoiding} level, over the same five frozen policies and five seeds. The
+last column is the largest per-episode coefficient reaching the update,
+averaged over runs: a common weight is not a common penalty strength, and the
+weight was calibrated under total variation. Total variation and
+Kullback-Leibler reach the same distance; the two that flatten the ratio between
+the histograms land near the $0.247$ reached without matching at all.}
+\label{tab:divergence}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc@{}}
 \toprule
-Weight & Reference matching & Mode entropy & Task success, reference matching \\
+Divergence & Distance to & Success & Coefficient \\
+ & reference &  &  \\
 \midrule
-0.25 & 0.38 & 0.12 & 0.195 \\
-\textbf{0.50} & $\mathbf{0.16}$ & 0.14 & $\mathbf{0.289}$ \\
-1.00 & 0.38 & 0.12 & 0.192 \\
+Kullback-Leibler & $\mathbf{.111}$ & $.817$ & $4.48$ \\
+Total variation & $.127$ & $.760$ & $1.18$ \\
+Kullback-Leibler, smoothed & $.132$ & $.792$ & $5.46$ \\
+Squared error & $.248$ & $.737$ & $0.62$ \\
+Jensen-Shannon & $.260$ & $.696$ & $1.46$ \\
 \bottomrule
 \end{tabular*}
 \end{table}
-
-Table~\ref{tab:weight} gives the rates the rule reads. No weight meets the
-ceiling, so the rule takes the lowest rate and selects $0.5$. Halving the weight
-from the value carried over more than halves the collapse rate, $0.38$ to
-$0.16$, and raises task success from $0.192$ to $0.289$. The weight, not the
-objective, is what the stability of this arm on \emph{Pushing} turned on.
-
-At the selected weight the margin over fine-tuning with no mode term is $0.078$
-in total variation clustered by frozen policy, interval $[0.036, 0.121]$,
-$p = 0.0012$, on \textbf{9 of 10} policies. Against entropy maximisation it is
-$0.017$ and against the learned-skill method $0.002$, both with intervals
-containing no difference: at this weight and on these two weightings the three
-regularised objectives reach the same distance, and reference matching reaches
-it without a learned component.
-
-\subsection{Skill Prior of the Learned-Skill Method}\label{sec:prior}
-
-The skill prior used at evaluation is a free choice at deployment, so the
-learned-skill method was also run under the prior that suits it best. A held-out
-calibration pass estimates the distribution over mode groups that each skill
-produces, and least squares over those estimates gives the mixture of skills
-whose expected mode histogram reproduces the reference. Evaluation then samples
-skills from that fitted mixture in place of the uniform prior the method assumes
-during training. All four \emph{Avoiding} skew levels were rerun this way, 120
-runs in total, against the same measured references.
-
-Fitting the prior moves the learned-skill method from $0.327$ to $0.321$ in mean
-total variation from the reference, and leaves task success at $0.713$ against
-$0.720$. Per level it gives $0.420$, $0.383$, $0.253$ and $0.221$, against
-$0.432$, $0.380$, $0.275$ and $0.214$ under the uniform prior. Pairing within the
-twenty frozen policies, reference matching stays ahead by $0.139$ in total
-variation, with a 95\% confidence interval of $[0.087, 0.190]$, a win on
-\textbf{19 of 20} policies and $p < 10^{-4}$. The margin under the uniform prior
-is $0.146$ on the same twenty policies, so the advantage of reference matching
-survives the change of protocol almost intact.
-
-Moving the pooled distance by $0.006$ places the gap somewhere other than the
-skill prior, and the training objective is where it sits. The discriminator
-bound of Section~\ref{sec:related} scores how separable the skills are under the
-prior assumed during training, and its optimum lies at a uniform distribution
-over skills; the reference enters nowhere in it. Reweighting the skills at evaluation changes how often each one is drawn,
-and the mode distribution each skill produces is fixed by the training
-objective. Reference matching puts the reference inside the objective instead,
-which is where the remaining $0.139$ comes from.
-
-The same substitution on \emph{Pushing} leaves the two methods level, the
-clustered difference moving from $0.032$ under the uniform prior to $0.004$
-under the fitted one. On both tasks, then, the prior is not the quantity that
-separates them.
-
-\subsection{Resolution of the Mode Partition}\label{sec:kres}
-
-\emph{Avoiding}'s twenty-four routes are grouped into six throughout, because a
-batch of sixteen episodes cannot estimate a twenty-four bin histogram. Repeating
-the two middle levels at the full resolution leaves the ordering intact.
-Reference matching reaches $0.312$ and $0.434$ against entropy maximisation's
-$0.556$ and $0.497$ and the unregularised objective's $0.855$ and $0.763$,
-pooling to margins of $0.66$ ($p = 0.003$) and $1.96$ ($p < 10^{-5}$) standard
-deviations. Every distance roughly doubles at the finer resolution, which follows
-from spreading the same mass over four times as many bins, and the comparison
-between objectives is unaffected.
-
-\subsection{Choice of Divergence}\label{sec:divergence}
-
-Table~\ref{tab:divergence} compares four divergences on the most skewed
-\emph{Avoiding} reference, holding everything else fixed. The two bounded forms
-reach the reference distribution; the Kullback-Leibler forms do not. Raw
-Kullback-Leibler collapses a third of its runs onto a single route and solves the
-task in 18\% of episodes. Mixing a uniform floor into the reference recovers part
-of the task performance and leaves the distance to the reference unchanged, since
-the smoothed target is no longer the distribution being matched.
-
-Between the two bounded forms, total variation ends closer to the reference on
-both tasks, at $0.180$ against $0.210$ on \emph{Avoiding} and $0.124$ against
-$0.169$ on \emph{Pushing}. Jensen-Shannon reaches a higher success rate at this
-level. We use total variation throughout because the distance to the reference is
-the quantity this paper is about.
 
 \begin{table}[t]
-\caption{Divergences compared at the most skewed \emph{Avoiding} reference, 24
-runs each, with everything but the divergence held fixed. The largest
-coefficient is the per-episode weight of Equation~\ref{eq:grad} before batch
-standardisation, and a run is counted as collapsed when its policy visits one
-route group.}
-\label{tab:divergence}
+\caption{Penalty weight on the two lowest \emph{Pushing} skews, where
+Equation~\ref{eq:identity} places the two objectives closest together. The
+contrast is paired over the ten frozen policies of those two levels, on 9
+degrees of freedom, and the three weights are adjusted together by the Holm
+procedure. The rule fixed in advance selected $0.25$ for this task by reading
+only the failure column, and the main analysis stays there.}
+\label{tab:weight}
 \small
-\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lcccc@{}}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc@{}}
 \toprule
-Divergence & $D_{\mathrm{TV}}$ to ref. & Collapsed &
-Largest coefficient & Success \\
+$\lambda$ & Reference & Mode & Gain, 95\% interval & $p$ & Runs below the \\
+ & matching & entropy &  &  & floor, of 50 \\
 \midrule
-$D_{\mathrm{KL}}$, raw reference & 0.399 & 8 / 24 & 7.27 & 0.184 \\
-$D_{\mathrm{KL}}$, smoothed reference & 0.437 & 4 / 24 & 4.33 & 0.311 \\
-Jensen-Shannon & 0.215 & 5 / 24 & 1.76 & \textbf{0.875} \\
-Total variation & \textbf{0.179} & \textbf{2 / 24} & \textbf{0.50} & 0.622 \\
+0.25 & $.287$ & $.271$ & $-.016\ [-.094, .062]$ & $.670$ & 12 against 17 \\
+0.50 & $.217$ & $.294$ & $\mathbf{.086}\ [.033, .139]$ & $.008$ & 12 against 16 \\
+1.00 & $.235$ & $.278$ & $.024\ [-.073, .120]$ & $.594$ & 21 against 24 \\
 \bottomrule
 \end{tabular*}
 \end{table}
-
-\subsection{Skew of Cloned Reference Distributions}
-
-The argument above matters only if pretrained policies depart from uniform in
-practice. For the twenty \emph{Avoiding} frozen policies we measure
-$D_{\mathrm{KL}}(C_{\mathrm{ref}} \,\|\, u)$ over the six route groups by rolling
-each frozen policy out for 900 episodes. Values range from $0.027$ to $1.296$
-nats. The five frozen policies cloned from the unmodified demonstration set span
-$0.027$ to $0.428$ nats on their own, a sixteen-fold range produced by nothing
-but the random seed. A balanced demonstration set does not produce a balanced policy, so the regime in which the two objectives coincide is not
-the regime in which policies are used.
-
-Between-frozen policy variation of this size also constrains how such experiments
-should be read. The spread of $D_{\mathrm{KL}}(C_{\mathrm{ref}} \,\|\, u)$ among
-frozen policies trained under one weighting reaches seventy-one percent of the spread
-between weightings. A design with one frozen policy per condition therefore
-measures mostly that policy, which is why we train five per weighting and index
-every result by its own measured reference skew.
 
 \section{Discussion}\label{sec:discussion}
 
-Among the four objectives, the one that takes the pretrained distribution as its
-target ends closest to it, and the margin grows with how far that distribution
-sits from uniform. Entropy maximisation performs comparably when the pretrained
-policy is close to uniform, which Equation~\ref{eq:identity} explains, and worse
-elsewhere.
+The quantity a mode-preserving regulariser should target is the pretrained
+distribution, and the objective in common use targets uniformity instead. The
+two coincide at exactly one point, and Section~\ref{sec:separation} measures how
+they come apart away from it. Entropy maximisation ends $0.315$ from the
+reference where the reference is least skewed and $0.454$ where it is most
+skewed on \emph{Avoiding}, so the objective meant to preserve a policy moves
+away from that policy as the policy becomes more distinctive. The gap between
+the two objectives rises with skew on both tasks and sits at zero where the
+reference approaches uniform. That pattern was predicted from the identity
+before the runs, it appears on both tasks, and it tells a practitioner when the
+distinction is worth acting on.
 
-Reference matching ends closer to the reference than a learned-skill mutual
-information method, by $0.146$ on \emph{Avoiding} with a 95\% interval of
-$[0.100, 0.192]$, and it differs from that method in machinery. That method maintains a
-latent skill space, conditions the policy on a skill index, and trains a
-discriminator alongside the policy. Reference matching maintains a histogram of
-length $K$ and one scalar weight. Reaching this distance without a learned component
-shows that none is needed for it. The margin holds at $0.139$ when the skill
-prior is fitted to reproduce the reference at evaluation, the protocol most
-favourable to that method, which places the difference in the training objective
-and the skills it shapes.
+Reference matching ends $0.203$ closer to the reference than a learned-skill
+mutual information method on \emph{Avoiding}, with a 95\% interval of
+$[0.137, 0.270]$, and it differs from that method in machinery. That method
+maintains a latent skill space, conditions the policy on a skill index, and
+trains a discriminator alongside the policy. Reference matching maintains a
+histogram of length $K$ and one scalar weight. Fitting the skill prior on the
+simplex to reproduce the reference hands that method the target, and the margin
+survives it, which places the difference in the training objective and the
+skills it shapes.
 
-Two measurement choices shaped what the experiments could show. Defining modes by
-task geometry keeps the measured quantity independent of a learned vocabulary, so
-the mode of a trajectory is determined by the same criteria D3IL uses to describe
-its demonstrations. Treating each frozen policy as a unit of analysis matters more
-here than in a typical ablation, because variation between policies cloned under
-identical conditions reaches seventy-one percent of the variation between
-conditions. An experiment with one frozen policy per condition measures mostly
-that policy.
+The advantage belongs to a family of divergences and not to one member of it.
+Total variation and the Kullback-Leibler form reach the same distance over the
+same five policies, while Jensen-Shannon and squared error land near the
+distance reached without matching anything. What separates the two groups is
+whether the per-episode coefficient responds to the full ratio between the two
+histograms. Total variation is the choice we carry through the paper because its
+coefficient is bounded by one half whatever the reference's support, where the
+Kullback-Leibler coefficient grows without bound as a reference mode's
+probability approaches zero and needs a numerical guard for it.
 
-Table~\ref{tab:divergence} separates the divergence from the rest of the method.
-The Kullback-Leibler form fails at this reference because its per-episode
-coefficient grows without bound as a reference mode's probability approaches
-zero, and the frozen policy reaches only part of the mode space. Mixing a uniform
-floor into the reference restores task performance without restoring the
-distance, since the smoothed target is no longer the distribution being matched.
-Both bounded forms avoid this, and total variation ends closest.
+Two measurement choices shaped what the experiments could show. Defining modes
+by task geometry keeps the measured quantity independent of a learned
+vocabulary, so the mode of a trajectory is determined by the same criteria D3IL
+uses to describe its demonstrations. Treating each frozen policy as the unit of
+analysis matters more here than in a typical ablation, because frozen policies
+cloned under identical conditions differ from one another substantially: five
+\emph{Pushing} policies cloned from unmodified demonstrations span reference
+skews from $0.097$ to $0.280$. An experiment with one frozen policy per
+condition measures mostly that policy.
+
+Completion rate sets what any such comparison can resolve. \emph{Avoiding}
+completes about seven episodes in ten and separates all four objectives;
+\emph{Pushing} completes about one in five, which leaves roughly 65 labelled
+episodes for four bins and a sampling floor of $0.086$ under the endpoint. Three
+of the four objectives sit inside $1.6$ times that floor at the most skewed
+\emph{Pushing} reference, and the paired intervals there contain zero. A
+benchmark intended to separate mode-preserving objectives needs a completion
+rate high enough to fill its histograms.
 
 \section{Conclusion and Future Works}\label{sec:conclusion}
 
 Preserving the behaviour of a pretrained generative policy under noise-space
-reinforcement learning is a question about a reference distribution, not about
-diversity. The two coincide only when the pretrained policy is uniform over its
-behavioural modes, and we show by direct measurement that cloned policies are
-not. We introduce a reference-matching penalty built on total variation distance,
-with no learned components. Across two manipulation tasks, 38
-independently trained frozen policies and 1,235 fine-tuning runs, and with each
-frozen policy as one unit, it ends closer to the pretrained behaviour than
-entropy maximisation on both tasks, by a margin that widens as that behaviour
-departs further from uniform, and on \emph{Avoiding} it wins on 20 of 20
-policies against fine-tuning with no mode term. A histogram of length $K$
-and one scalar weight reach the fidelity that a discriminator and a latent skill
-space reach, which places the result in the objective rather than in machinery.
+reinforcement learning is a question about a reference distribution. Diversity
+answers it only when the pretrained policy is uniform over its behavioural
+modes, and we show by direct measurement that cloned policies depart from
+uniform by up to $1.27$ nats. We introduce a reference-matching penalty built on
+total variation distance, with no learned components and one scalar weight.
+Across two manipulation tasks, 40 independently trained frozen policies and
+1,466 fine-tuning runs, with each frozen policy as one unit and the design fixed
+in advance, the gap between reference matching and entropy maximisation grows
+with each policy's own measured skew at $0.774$ per unit on \emph{Avoiding} and
+$0.414$ on \emph{Pushing}, and vanishes where the reference approaches uniform.
+On \emph{Avoiding} the penalty ends closer to the pretrained behaviour than
+every baseline, winning on 20 of 20 frozen policies against fine-tuning with no
+mode term, while task success holds. A histogram of length $K$ and one scalar
+weight reach a fidelity beyond what a discriminator and a latent skill space
+reach, which places the result in the objective.
 
-Three directions follow. The first is scale: our frozen policies are compact
-rectified-flow fields trained for two simulated manipulation tasks, and applying
-reference matching to a large vision-language-action model on hardware would test whether
-the same reference estimate remains informative when behaviour is higher
-dimensional. The second is the mode definition: geometric labels make the
-measurement checkable but require a task designer to supply them, and learning a
-labelling that agrees with geometry would extend the method to tasks where no
-such criterion exists. The third is the reference itself: we estimate
-$C_{\mathrm{ref}}$ once and hold it fixed, which suits a frozen decoder, and
-allowing it to adapt when the pretrained policy is also updated would connect
-this objective to full fine-tuning.
+Three directions follow. The first is resolution: a task completing one episode
+in five leaves too few labelled episodes to separate objectives that end close
+together, so a benchmark for this question wants tasks whose completion rate
+fills the histograms, and finer mode partitions than the six and four used here.
+The second is scale: our frozen policies are compact rectified-flow fields
+trained for two simulated manipulation tasks, and applying reference matching to
+a large vision-language-action model on hardware would test whether the same
+reference estimate remains informative when behaviour is higher dimensional. The
+third is the reference itself: we estimate $C_{\mathrm{ref}}$ once and hold it
+fixed, which suits a frozen decoder, and allowing it to adapt when the
+pretrained policy is also updated would connect this objective to full
+fine-tuning.
 
 \section*{CRediT authorship contribution statement}
 

@@ -104,8 +104,8 @@ Y.~He, C.~D. Wallbridge, J.~D. Hern{\'a}ndez, G.~B. Colombo, Few-shot transfer
   learning for deep reinforcement learning on robotic manipulation tasks, in:
   Towards Autonomous Robotic Systems (TAROS), Lecture Notes in Computer
   Science, Springer Nature Switzerland, 2024, pp. 85--92.
-\newblock \href {https://doi.org/10.1007/978-3-031-72062-8_8}
-  {\path{doi:10.1007/978-3-031-72062-8_8}}.
+\newblock \href {https://doi.org/10.1007/978-3-031-72062-8\_8}
+  {\path{doi:10.1007/978-3-031-72062-8\_8}}.
 
 \bibitem{he2026zeroshot}
 Y.~He, V.~Romero-Cano, J.~J. Pati{\~n}o, J.~D. Hern{\'a}ndez, W.~Sawtell,
@@ -114,8 +114,8 @@ Y.~He, V.~Romero-Cano, J.~J. Pati{\~n}o, J.~D. Hern{\'a}ndez, W.~Sawtell,
   Networks and Machine Learning (ICANN), Lecture Notes in Computer Science,
   Springer Nature Switzerland, 2026, pp. 179--190.
 \newblock \href {http://arxiv.org/abs/2606.06041} {\path{arXiv:2606.06041}},
-  \href {https://doi.org/10.1007/978-3-032-38404-1_15}
-  {\path{doi:10.1007/978-3-032-38404-1_15}}.
+  \href {https://doi.org/10.1007/978-3-032-38404-1\_15}
+  {\path{doi:10.1007/978-3-032-38404-1\_15}}.
 
 \bibitem{he2026decomposition}
 Y.~He, V.~Romero-Cano, J.~Xu, J.~D. Hern{\'a}ndez, G.~Colombo, Enhancing deep
