@@ -36,7 +36,11 @@ NAME = {"dsrl": "No mode term", "mi": "Mode entropy",
         "bmd": "Learned skills", "mop": "Reference matching"}
 # Expected distance between two samples of one distribution at the observed
 # labelled-episode counts, measured in scripts/v2/report_v2.py's cohort.
-FLOOR = {"avoiding": 0.040, "pushing": 0.086}
+# Read from sampling_floor.py's output so the band and the text cannot drift
+# apart. The band is the task-level offset; the per-level offsets it averages
+# are in the same file.
+FLOOR = {k: v["floor"] for k, v in json.loads(
+    (ROOT / "runs" / "_d3il_v2" / "sampling_floor.json").read_text()).items()}
 
 plt.rcParams.update({
     "font.size": 7.4, "axes.labelsize": 7.4, "axes.titlesize": 8,

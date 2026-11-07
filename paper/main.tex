@@ -480,11 +480,15 @@ fidelity; such runs are counted and reported as undefined, and they appear in
 every total below.
 
 Both histograms are finite samples, so the endpoint has a floor even for a policy
-that reproduces the reference exactly. At the observed completion rates, drawing
-two samples from one distribution gives an expected distance of $0.040$ on
-\emph{Avoiding} and $0.086$ on \emph{Pushing}. The floors differ because
-\emph{Pushing} completes about one episode in five, leaving roughly 65 labelled
-episodes to fill four bins. Within a task, all four objectives are scored against
+that reproduces the reference exactly. Drawing both histograms from one
+distribution at the counts the runs produced gives an expected distance of
+$0.046$ on \emph{Avoiding} and $0.071$ on \emph{Pushing}, averaged over the
+forty frozen policies. The floors differ because \emph{Pushing} completes about
+one episode in five, leaving a median of 81 labelled episodes to fill four bins
+against \emph{Avoiding}'s 367 for six. Within each task the floor follows the
+labelled count of the level, running from $0.036$ to $0.055$ across the
+\emph{Avoiding} levels and from $0.044$ to $0.086$ across the \emph{Pushing}
+ones. Within a task, all four objectives are scored against
 the same reference estimate, measured once per frozen policy before any
 fine-tuning, so the comparison between them is conditional on that estimate.
 Redrawing each reference 200 times from its own stored counts holds the 95\%
@@ -525,9 +529,9 @@ is uniform and on no other, and that is where the three slopes place it.
 
 \subsection{Comparison on Avoiding}\label{sec:main}
 
-\emph{Avoiding} completes about seven episodes in ten, which puts roughly 350
-labelled episodes behind each histogram and a sampling floor of $0.040$ under
-the endpoint. The task therefore resolves differences between the four
+\emph{Avoiding} completes about seven episodes in ten, which puts a median of
+367 labelled episodes behind each histogram and a sampling floor of $0.046$
+under the endpoint. The task therefore resolves differences between the four
 objectives, and we report the full comparison on it.
 
 Runs that share a frozen policy carry that policy's idiosyncrasies, so each
@@ -612,16 +616,16 @@ baseline's ignorance of where the reference sits.
 
 \subsection{Scope of the Comparison}\label{sec:scope}
 
-\emph{Pushing} completes about one episode in five. Roughly 65 labelled
-episodes fall into four bins, which puts the sampling floor at $0.086$ and
-leaves 13 of the 100 reference-matching runs with no labelled episode at all.
-Table~\ref{tab:main} shows what that resolution permits. At the most skewed
-level the unregularised objective, learned skills and reference matching reach
-$0.114$, $0.110$ and $0.134$, all within $1.6$ times the floor and therefore
-not separable from one another or from an exact match. Over all four levels the
-three paired contrasts are $0.069$, $0.041$ and $-0.035$ against entropy
-maximisation, the unregularised objective and learned skills, and every interval
-contains zero. These comparisons do not distinguish the objectives on this task.
+\emph{Pushing} completes about one episode in five. A median of 81 labelled
+episodes falls into four bins, which carries a sampling floor between $0.044$
+and $0.086$ depending on the level and leaves 13 of the 100 reference-matching
+runs with no labelled episode at all. Over the four levels the three paired
+contrasts are $0.069$, $0.041$ and $-0.035$ against entropy maximisation, the
+unregularised objective and learned skills, and every interval contains zero.
+At the most skewed level the unregularised objective, learned skills and
+reference matching reach $0.114$, $0.110$ and $0.134$, spread by more than the
+$0.044$ floor of that level and by less than the variation between the five
+frozen policies behind each value. These comparisons do not distinguish the objectives on this task.
 No equivalence is claimed from them, because no margin for such a claim was set
 in advance. The one objective that does separate on \emph{Pushing} is entropy
 maximisation, which ends $0.353$ from the reference at the most skewed level
@@ -666,10 +670,11 @@ a policy was cloned under predicts its skew only loosely.}
 no exclusion. (a, b) Mean distance against each group's measured reference skew,
 with standard errors over the runs that produced a labelled histogram. The
 shaded band is the distance expected between two samples of a single
-distribution at the observed labelled-episode counts, so values inside it are at
-the resolution of the measurement. Mode entropy rises with skew on both tasks,
-which is the behaviour Equation~\ref{eq:identity} predicts for an objective that
-pulls toward uniform while the reference moves away from it. (c) Paired
+distribution at the labelled-episode counts the runs produced, averaged over the
+task's twenty frozen policies; per level it runs from $0.036$ to $0.055$ on
+\emph{Avoiding} and $0.044$ to $0.086$ on \emph{Pushing}. Mode entropy rises
+with skew on both tasks, which is what Equation~\ref{eq:identity} predicts for
+an objective pulling toward uniform while the reference moves away. (c) Paired
 differences across the twenty frozen policies of each task, each the mean over
 its five run seeds, with 95\% intervals from the $t$ distribution on that
 contrast's own degrees of freedom and the family adjusted by the Holm procedure.
@@ -690,9 +695,9 @@ mode entropy at the most skewed \emph{Pushing} reference, where 12 of its 25 run
 complete no labelled episode. On \emph{Avoiding},
 reference matching is closest at every level and mode entropy moves away from
 the reference as the reference becomes skewed. On \emph{Pushing} the three
-values in the last row lie within $1.6$ times the $0.086$ sampling floor of
-Section~\ref{sec:measure}, which leaves them at the resolution of the
-measurement.}
+values in the last row are spread by less than the variation between the five
+frozen policies behind each of them, and the paired contrasts over all four
+levels contain zero.}
 \label{tab:main}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
@@ -838,10 +843,12 @@ condition measures mostly that policy.
 
 Completion rate sets what any such comparison can resolve. \emph{Avoiding}
 completes about seven episodes in ten and separates all four objectives;
-\emph{Pushing} completes about one in five, which leaves roughly 65 labelled
-episodes for four bins and a sampling floor of $0.086$ under the endpoint. Three
-of the four objectives sit inside $1.6$ times that floor at the most skewed
-\emph{Pushing} reference, and the paired intervals there contain zero. A
+\emph{Pushing} completes about one in five, which leaves a median of 81
+labelled episodes for four bins and a sampling floor that runs as high as
+$0.086$ across its levels, against $0.055$ at worst on \emph{Avoiding}. Three
+of the four objectives land within $0.025$ of one another at the most skewed
+\emph{Pushing} reference, and every paired interval on that task contains
+zero. A
 benchmark intended to separate mode-preserving objectives needs a completion
 rate high enough to fill its histograms.
 
