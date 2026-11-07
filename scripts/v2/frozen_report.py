@@ -19,8 +19,13 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 
-FLOOR_COMPUTED = {"avoiding": 0.040, "pushing": 0.086}
+# The computed floor comes from sampling_floor.py, so the two scripts
+# quote one number and cannot drift apart.
+FLOOR_COMPUTED = {k: v["floor"] for k, v in json.loads(
+    (ROOT / "runs" / "_d3il_v2" / "sampling_floor.json").read_text()).items()}
+
 ARMS = ("dsrl", "mi", "bmd", "mop")
+
 NAME = {"dsrl": "no mode term", "mi": "mode entropy",
         "bmd": "learned skills", "mop": "reference matching",
         "frozen": "frozen policy"}
