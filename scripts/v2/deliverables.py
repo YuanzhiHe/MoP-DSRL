@@ -34,6 +34,9 @@ STAGE_FILES = {
     "ablation/divergence": "ablation_divergence_*.jsonl",
     "ablation/fitted prior": "ablation_fitted_prior_*.jsonl",
     "ablation/weight": "ablation_weight_*.jsonl",
+    # Evaluation only: each frozen policy is rolled out under its own latent
+    # prior with no training, which is where the fine-tuned runs start from.
+    "frozen policy": "frozen_*.jsonl",
 }
 # Cells whose results are debugging evidence under section III of the brief and
 # never enter an analysis. They are listed so that the package accounts for
@@ -72,6 +75,12 @@ def planned():
             for s in range(5):
                 out["ablation/fitted prior"].add(
                     (task, top, bb, "bmd", t["main_seed"] + s, "fitted"))
+    for task, t in LP.TASK.items():
+        for w in t["weightings"]:
+            for bb in range(5):
+                for s in range(5):
+                    out["frozen policy"].add(
+                        (task, w, bb, "frozen", t["main_seed"] + s, 0.0))
     t = LP.TASK["pushing"]
     for lam in LP.CANDIDATES:
         for w in ("0.00", "0.10"):
