@@ -12,8 +12,8 @@
 \renewcommand{\bottomfraction}{0.8}
 \renewcommand{\textfraction}{0.06}
 \renewcommand{\floatpagefraction}{0.75}
-% Let a page end short rather than stretch to the full height: with the float
-% fractions above, a stretched page overruns by a few points.
+% Let a page end short where it would otherwise stretch to full height: with
+% the float fractions above, a stretched page overruns by a few points.
 \raggedbottom
 \usepackage{url}
 \usepackage{lineno}
@@ -77,15 +77,15 @@ whoever deployed it, and remains a faithful starting point for any later
 adjustment.
 
 Reinforcement learning (RL) can raise the reward of such a policy without
-retraining it. Rather than updating the policy's weights, noise-space
-methods such as Diffusion Steering Reinforcement Learning (DSRL)
+retraining it. Noise-space methods such as Diffusion Steering Reinforcement
+Learning (DSRL)
 \citep{wagenmaker2025dsrl} freeze the generative policy and train a small
 policy over its latent noise input, so the pretrained model is used only as a
 decoder. Fine-tuning then requires far less computation and leaves the
-pretrained weights intact. It does not, however,
-keep behaviour fixed. The noise policy is free to concentrate on whichever region
-of the latent space decodes to the highest-reward behaviour, and the behaviour
-distribution the demonstrations encoded shifts as a result.
+pretrained weights intact. Behaviour moves all the same. The noise policy
+concentrates on whichever region of the latent space decodes to the
+highest-reward behaviour, and the behaviour distribution the demonstrations
+encoded shifts with it.
 
 Work that addresses this adds a term rewarding behavioural diversity. Behavioral
 Mode Discovery (BMD) \citep{longhini2026bmd} learns a latent skill variable and
@@ -110,13 +110,13 @@ differ once $C_{\mathrm{ref}}$ itself departs from uniform. A benchmark whose
 pretrained policies are near-uniform cannot separate the two, and a method
 evaluated only on such a benchmark leaves the question open.
 
-Pretrained policies are not uniform. Measuring twenty cloned policies over the
+Pretrained policies depart from uniform. Measuring twenty cloned policies over the
 six route groups used throughout this paper, their mode distributions lie between
 $0.018$ and $1.272$ nats from uniform. Five of those twenty were cloned from an
 unmodified demonstration set, and they alone span $0.018$ to $0.433$ nats, so
-even balanced demonstrations do not produce a balanced policy. The distinction
-that Equation~\ref{eq:identity} removes is therefore present in realistic cases,
-and the objective that respects it is not the one in common use.
+even balanced demonstrations produce a skewed policy. The distinction that
+Equation~\ref{eq:identity} removes is therefore present in realistic cases, and
+an objective that respects it departs from the one in common use.
 
 This paper specifies that objective and measures its effect. Our
 contributions are as follows.
@@ -160,7 +160,7 @@ matching \citep{lipman2022flowmatching} and rectified flow
 denoising diffusion probabilistic models \citep{ho2020ddpm}, which
 deterministic samplers such as DDIM
 \citep{song2021ddim} already shorten, with a
-deterministic transport that is cheaper to integrate, and underpin recent
+deterministic transport that is faster to integrate, and underpin recent
 vision-language-action models such as $\pi_0$ \citep{black2024pi0}. Score-based
 policies have also been trained specifically for goal-conditioned manipulation
 \citep{reuss2023beso}. Retraining these models requires substantial computation, which motivates
@@ -206,13 +206,12 @@ one it started from \citep{ziegler2019finetune,stiennon2020summarize}, and in
 offline reinforcement learning, where a conservative value estimate
 \citep{kumar2020cql} or a behaviour-cloning term added to the actor loss
 \citep{fujimoto2021td3bc} keeps a policy near the behaviour that generated its
-data. Matching a distribution rather than a policy also underlies adversarial
-imitation \citep{ho2016gail}. Those penalties act on
-the action or trajectory distribution directly. The penalty studied here acts on a
-histogram over externally labelled behavioural modes, which is a far smaller
-object. That difference is what makes the estimator, the reference measurement and
-the choice of divergence the substance of the method rather than implementation
-detail.
+data. Adversarial imitation \citep{ho2016gail} matches a distribution at the
+level of trajectories. Those penalties act on the action or trajectory
+distribution directly. The penalty studied here acts on a histogram over
+externally labelled behavioural modes, which is a far smaller object. That
+difference places the estimator, the reference measurement and the choice of
+divergence at the centre of the method.
 
 \paragraph{What a manipulation benchmark measures.}
 A benchmark score reports behaviour only to the extent that the evaluation
@@ -224,8 +223,8 @@ and a confidence signal read as evidence of occlusion turns out to track mere
 presence \citep{he2026detector}. Each is the same failure: a quantity assumed to
 measure one thing measures another, which is also what
 Equation~\ref{eq:identity} says about maximising behavioural entropy. Both bear on the choice made here to define modes from
-task geometry and to measure the reference by rollout rather than infer it,
-which keeps the quantity being compared independent of the evaluation code.
+task geometry and to measure the reference by rollout, which keeps the quantity
+being compared independent of the evaluation code.
 
 \paragraph{Benchmarks that admit several solutions.}
 Measuring mode preservation requires tasks with more than one valid solution.
@@ -235,8 +234,8 @@ from geometry. Benchmarks assembled for other purposes do not share this
 property. LIBERO \citep{liu2023libero}, for instance, is organised around
 knowledge transfer, and its tasks largely admit a single solution, which gives a
 mode-preservation term no variation to measure. We use D3IL for this reason and
-define modes by its geometric criteria rather than by clustering actions, so that
-the measured quantity does not depend on a learned vocabulary.
+define modes by its geometric criteria, so that the measured quantity stays
+independent of a learned vocabulary.
 
 \section{Proposed Approach}\label{sec:approach}
 
@@ -283,7 +282,7 @@ $\mathbb{E}[r]$ while keeping $C_\phi$ close to $C_{\mathrm{ref}}$.
 
 \subsection{Reference Versus Entropy}\label{sec:why}
 
-The objectives in common use do not target $C_{\mathrm{ref}}$. The direct form
+The objectives in common use target uniformity. The direct form
 maximises $H(C_\phi)$, and Equation~\ref{eq:identity} shows that at
 $C_{\mathrm{ref}} = u$ this coincides exactly with minimising
 $D_{\mathrm{KL}}(C_\phi \,\|\, C_{\mathrm{ref}})$. The two objectives are then
@@ -359,8 +358,8 @@ both forms along with two divergences that flatten the ratio between the
 histograms.
 
 The estimates $C_\phi$ and $s_\phi$ are exponential moving averages over
-iterations rather than batch quantities, so that every mode retains a stable
-probability even when a batch of sixteen episodes does not visit it. The return
+iterations, so that every mode retains a stable probability even when a batch of
+sixteen episodes misses it. The return
 enters through a leave-one-out baseline, which is a control variate that needs no
 batch standard deviation, and neither the baselined return nor the penalty
 coefficient is rescaled. The update is therefore the gradient of
@@ -370,7 +369,7 @@ units of that objective.
 The complete method adds three settings to unregularised noise-space
 fine-tuning: the weight $\lambda$, the rate of the running histogram estimate,
 and the resolution $K$. It also holds one histogram of length $K$ in memory and
-spends one rollout budget before training to estimate $C_{\mathrm{ref}}$. It
+uses one rollout budget before training to estimate $C_{\mathrm{ref}}$. It
 introduces no learned components, and Table~\ref{tab:hyper} gives the values used
 for every reported run.
 \section{Experimental Results}\label{sec:results}
@@ -472,7 +471,7 @@ which is zero when the fine-tuned policy reproduces the pretrained behaviour
 distribution and grows as it departs from that distribution in any direction.
 Both histograms come from evaluation rollouts: 500 episodes on \emph{Avoiding}
 and 300 on \emph{Pushing} for $C_\phi$, and 900 and 600 for $C_{\mathrm{ref}}$.
-An episode in which the arm does not complete a labelled route carries no mode
+An episode that ends without a labelled route carries no mode
 and is excluded from the histogram, so both histograms are conditional on
 completion. The frozen policies complete $0.801$ of their \emph{Avoiding}
 episodes and $0.393$ of their \emph{Pushing} ones, and the count behind each
@@ -548,19 +547,17 @@ $0.198$, $0.207$ and $0.182$, and every interval stays clear of zero. One of the
 hundred reference-matching runs falls below the floor, against three for the
 unregularised objective and nine for entropy maximisation, and none of the
 hundred produces an undefined histogram. Learned skills hold every run above the
-floor and end $0.203$ further from the reference, so the penalty reaches its
-fidelity while leaving the task as solvable as the objective that spends nothing
-on fidelity.
+floor and end $0.203$ further from the reference.
 
 Table~\ref{tab:success} reports geometric success. Reference matching reaches
-$0.729$, above the unregularised objective's $0.681$, so the distances of
-Table~\ref{tab:main} record where it ends while it solves the task at least as
-often. Its rewarded success rate is $0.151$ against the unregularised
-objective's $0.231$. Four of the twenty-four routes carry reward, so an
-objective that chases return concentrates on those four, and a penalty that
-holds the policy near a reference spread over all twenty-four surrenders part of
-that return by construction. That is the quantity the penalty trades against to
-reach the fidelity in the first column.
+$0.729$, above the unregularised objective's $0.681$ and above it at every
+skew level, so the distances of Table~\ref{tab:main} record where it ends while
+it solves the task more often. Its rewarded success rate is $0.151$ against the
+unregularised objective's $0.231$. Four of the twenty-four routes carry reward,
+so a return maximiser concentrates on those four, while a penalty that holds the
+policy near a reference spread over all twenty-four keeps probability on the
+other twenty by construction. The difference in rewarded success follows from
+that.
 
 \subsection{What the Result Does Not Depend On}\label{sec:robust}
 
@@ -579,8 +576,8 @@ and $0.165$ in largest single-bin error; $0.109$, $0.105$ and $0.099$ in
 Jensen-Shannon divergence; and $0.103$, $0.102$ and $0.104$ in squared error.
 All twelve intervals stay clear of zero at $p < 0.001$ under the same Holm
 adjustment, and the four objectives fall in the same order under each distance.
-The ordering therefore follows from where the policies end rather than from the
-distance that scores them.
+The ordering therefore follows from where the policies end, and holds under
+every distance that scores it.
 
 Table~\ref{tab:divergence} replaces total variation with four alternatives at
 the most skewed \emph{Avoiding} level, holding the checkpoints, the reference,
@@ -592,10 +589,15 @@ near the $0.243$ the unregularised objective reaches at this level without
 matching anything at all; total variation ends closer than each of them on 5 of 5
 policies, by $0.133$ and $0.120$. So the advantage belongs to the family of
 divergences that respond to the full ratio, and it extends past total variation
-alone. A common weight gives each variant a different penalty strength here,
-since the coefficient reaching the update spans a factor of nine across the
-four, and the weight was calibrated under total variation, so each variant is
-compared at its own scale.
+alone. A common weight gives each variant its own penalty strength, since the
+coefficient reaching the update spans a factor of nine across the five and the
+weight was calibrated under total variation. The Kullback-Leibler form applies a
+coefficient four times the size at that weight, and it ends at the same distance
+with a success rate of $0.817$ against $0.760$, which is the direction both
+columns move at this level as the pull toward the reference strengthens.
+Separating the two members of the family would take a calibration run for each,
+and total variation is the form carried through the paper because its partial
+derivative stays bounded at any reference support.
 
 The learned-skill baseline deploys its skills under a uniform prior, which is
 the prior it assumes at training time. Fitting that prior on the simplex to
@@ -714,9 +716,9 @@ Task & Skew & No mode & Mode entropy & Learned skills & Reference \\
 \caption{Geometric task success rate as mean with its standard error as a
 subscript, over all 25 runs of each cell with no exclusion. Levels are ordered
 by measured reference skew as in Table~\ref{tab:main}. On \emph{Avoiding},
-reference matching is at or above the unregularised objective at every level, so
-the distances of Table~\ref{tab:main} record where it ends while it solves the
-task at least as often.}
+reference matching is above the unregularised objective at every level, so the
+distances of Table~\ref{tab:main} record where it ends while it solves the task
+more often.}
 \label{tab:success}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
@@ -741,7 +743,8 @@ Task & Skew & No mode & Mode entropy & Learned skills & Reference \\
 \caption{Divergence between the two histograms replaced, at the most skewed
 \emph{Avoiding} level, over the same five frozen policies and five seeds. The
 last column is the largest per-episode coefficient reaching the update,
-averaged over runs: a common weight is not a common penalty strength, and the
+averaged over runs: a common weight gives each variant its own penalty
+strength, and the
 weight was calibrated under total variation. Total variation and
 Kullback-Leibler reach the same distance; the two that flatten the ratio between
 the histograms land near the $0.243$ reached without matching at all.}
