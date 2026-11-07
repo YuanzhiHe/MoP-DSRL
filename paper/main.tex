@@ -346,10 +346,10 @@ $\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right) - \tfrac{1}{2}$, where
 $\bar{C} = (C_\phi + C_{\mathrm{ref}})/2$ is the mixture of the two histograms.
 Since $\bar{C}[k] \geq C_{\mathrm{ref}}[k]/2$, this stays finite as
 $C_{\mathrm{ref}}[k] \rightarrow 0$, which is the direction in which the
-Kullback-Leibler form diverges. It grows as $C_\phi[k] \rightarrow 0$, and the running estimate
-introduced below bounds it away from that limit; the largest
-magnitude observed over all runs is $1.71$. The corresponding
-coefficient for the KL divergence is
+Kullback-Leibler form diverges. It grows as $C_\phi[k] \rightarrow 0$, and the
+running estimate introduced below bounds it away from that limit;
+Table~\ref{tab:divergence} reports the largest coefficient each form reaches
+in practice. The corresponding partial derivative for the KL divergence is
 $\log\!\left(C_\phi[k] / C_{\mathrm{ref}}[k]\right) + 1$, which grows without
 bound as $C_{\mathrm{ref}}[k] \rightarrow 0$. A pretrained policy need not visit
 every mode, so that case arises whenever the reference has narrow support, and
@@ -486,9 +486,10 @@ two samples from one distribution gives an expected distance of $0.040$ on
 \emph{Pushing} completes about one episode in five, leaving roughly 65 labelled
 episodes to fill four bins. Within a task, all four objectives are scored against
 the same reference estimate, measured once per frozen policy before any
-fine-tuning, so the comparison between them is conditional on that estimate;
-redrawing each reference from its own stored counts moves every contrast by less
-than $0.008$.
+fine-tuning, so the comparison between them is conditional on that estimate.
+Redrawing each reference 200 times from its own stored counts holds the 95\%
+range of every contrast within $0.006$ of its point estimate on \emph{Avoiding}
+and within $0.010$ on \emph{Pushing}.
 
 \subsection{Separation Between the Two Objectives}\label{sec:separation}
 
@@ -794,8 +795,10 @@ they come apart away from it. Entropy maximisation ends $0.315$ from the
 reference where the reference is least skewed and $0.454$ where it is most
 skewed on \emph{Avoiding}, so the objective meant to preserve a policy moves
 away from that policy as the policy becomes more distinctive. The gap between
-the two objectives rises with skew on both tasks and sits at zero where the
-reference approaches uniform. That pattern was predicted from the identity
+the two objectives rises with skew on both tasks, at $0.774$ per unit on
+\emph{Avoiding} and $0.414$ on \emph{Pushing} with standard errors of $0.136$
+and $0.223$, and sits at zero where the reference approaches uniform. That
+pattern was predicted from the identity
 before the runs, it appears on both tasks, and it tells a practitioner when the
 distinction is worth acting on.
 
@@ -809,7 +812,8 @@ simplex to reproduce the reference hands that method the target, and the margin
 survives it, which places the difference in the training objective and the
 skills it shapes.
 
-The advantage belongs to a family of divergences and not to one member of it.
+The advantage belongs to a family of divergences wider than the one member
+carried through the paper.
 Total variation and the Kullback-Leibler form reach the same distance over the
 same five policies, while Jensen-Shannon and squared error land near the
 distance reached without matching anything. What separates the two groups is
@@ -856,7 +860,8 @@ with each policy's own measured skew at $0.774$ per unit on \emph{Avoiding} and
 $0.414$ on \emph{Pushing}, and vanishes where the reference approaches uniform.
 On \emph{Avoiding} the penalty ends closer to the pretrained behaviour than
 every baseline, winning on 20 of 20 frozen policies against fine-tuning with no
-mode term, while task success holds. A histogram of length $K$ and one scalar
+mode term, while solving the task more often than that objective at every skew
+level. A histogram of length $K$ and one scalar
 weight reach a fidelity beyond what a discriminator and a latent skill space
 reach, which places the result in the objective.
 
