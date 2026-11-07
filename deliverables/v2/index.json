@@ -21,6 +21,8 @@
   "calibration_pushing_0.25.jsonl",
   "calibration_pushing_0.50.jsonl",
   "calibration_pushing_1.00.jsonl",
+  "frozen2_avoiding.jsonl",
+  "frozen2_pushing.jsonl",
   "main_avoiding_0.00.jsonl",
   "main_avoiding_0.15.jsonl",
   "main_avoiding_0.30.jsonl",
@@ -46,7 +48,7 @@
   "runs/_d3il_v2/reanalysis_legacy.json",
   "runs/_d3il_v2/observation_range.json"
  ],
- "manifest_rows": 1566,
+ "manifest_rows": 1766,
  "checkpoints": 48,
  "references": 48,
  "launch_commands": 27

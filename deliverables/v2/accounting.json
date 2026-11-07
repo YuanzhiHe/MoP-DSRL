@@ -127,6 +127,29 @@
     "pushing/mi": 150,
     "pushing/mop": 150
    }
+  },
+  "frozen policy": {
+   "planned": 200,
+   "rows": 200,
+   "distinct_cells": 200,
+   "completed": 200,
+   "exceptions": 0,
+   "retried": 0,
+   "undefined_fidelity": 0,
+   "nonfinite_gradients": 0,
+   "missing": 0,
+   "unplanned": 0,
+   "reused_from_the_main_matrix": 0,
+   "estimator_versions": [
+    "v2.1"
+   ],
+   "code_commits": [
+    "feb70b714482fbfd35bb1bc91cabd067c82167d6"
+   ],
+   "by_task_arm": {
+    "avoiding/frozen": 100,
+    "pushing/frozen": 100
+   }
   }
  },
  "missing": {
@@ -134,7 +157,8 @@
   "main": [],
   "ablation/divergence": [],
   "ablation/fitted prior": [],
-  "ablation/weight": []
+  "ablation/weight": [],
+  "frozen policy": []
  },
  "debug_rows_excluded_from_analysis": {
   "smoke_*.jsonl": 32,

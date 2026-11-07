@@ -27,15 +27,23 @@ ROOT = D.ROOT
 CREF = ROOT / "runs" / "_d3il_v2" / "_cref"
 
 
-def stored(task, weighting, bb, min_episodes=800):
-    """The cache entry the analysis actually used for this policy."""
+def stored(task, weighting, bb):
+    """The cache entry the analysis actually used for this policy.
+
+    Several entries can exist for one policy, from calibration runs that asked
+    for a handful of episodes as well as from the main measurement. The
+    analysis reads the longest, and the episode count differs by task, so the
+    choice is made by taking the longest rather than by a fixed threshold.
+    """
+    best = (None, None)
     for f in sorted(CREF.glob("*.json")):
         r = json.loads(f.read_text())
         if (r.get("task") == task and r.get("weighting") == weighting
                 and r.get("backbone_seed") == bb
-                and r.get("episodes", 0) >= min_episodes):
-            return f.name, r
-    return None, None
+                and (best[1] is None
+                     or r.get("episodes", 0) > best[1].get("episodes", 0))):
+            best = (f.name, r)
+    return best
 
 
 def remeasure(task, weighting, bb, key, workers):

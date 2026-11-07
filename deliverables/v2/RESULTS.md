@@ -11,6 +11,7 @@ Generated from the run files and the analysis outputs. No number in this documen
 | ablation/divergence | 200 | 200 | 0 | 0 | 0 | 10 | 0 |
 | ablation/fitted prior | 50 | 50 | 0 | 0 | 0 | 0 | 0 |
 | ablation/weight | 300 | 300 | 0 | 0 | 0 | 45 | 0 |
+| frozen policy | 200 | 200 | 0 | 0 | 0 | 0 | 0 |
 
 ## Avoiding
 
@@ -103,5 +104,5 @@ The tables are in ABLATIONS.md, written by the same run files. Sections present:
 
 ## What is settled and what is not
 
-Complete, every planned cell present with no exception: calibration, main, ablation/divergence, ablation/fitted prior, ablation/weight.
+Complete, every planned cell present with no exception: calibration, main, ablation/divergence, ablation/fitted prior, ablation/weight, frozen policy.
 On pushing the primary interval contains zero for: mop closer than mi, TV; mop closer than dsrl, TV; mop closer than bmd, TV. These comparisons do not distinguish the arms, and no equivalence is claimed, because no margin was set in advance.

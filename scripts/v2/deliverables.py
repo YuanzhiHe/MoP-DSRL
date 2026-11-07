@@ -36,7 +36,10 @@ STAGE_FILES = {
     "ablation/weight": "ablation_weight_*.jsonl",
     # Evaluation only: each frozen policy is rolled out under its own latent
     # prior with no training, which is where the fine-tuned runs start from.
-    "frozen policy": "frozen_*.jsonl",
+    # The superseded first stage, which measured every cell on the environment
+    # its worker built first, stays on disk under frozen_*.jsonl and enters no
+    # analysis.
+    "frozen policy": "frozen2_*.jsonl",
 }
 # Cells whose results are debugging evidence under section III of the brief and
 # never enter an analysis. They are listed so that the package accounts for

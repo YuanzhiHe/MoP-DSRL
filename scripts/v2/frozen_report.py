@@ -54,10 +54,16 @@ def cell(rows, key):
 
 
 def main():
-    frozen = [r for r in read("frozen_*.jsonl") if r.get("status") == "completed"]
+    # Two frozen-policy stages exist: the first measured every cell on the
+    # environment its worker built first, which cost Avoiding about two tenths
+    # of its completion rate, and the second builds a throwaway environment
+    # ahead of the measured one. Naming the pattern keeps a report from
+    # averaging the two together.
+    pattern = sys.argv[1] if len(sys.argv) > 1 else "frozen2_*.jsonl"
+    frozen = [r for r in read(pattern) if r.get("status") == "completed"]
     main_rows = [r for r in read("main_*.jsonl") if r.get("status") == "completed"]
     if not frozen:
-        raise SystemExit("no frozen-policy rows found")
+        raise SystemExit(f"no frozen-policy rows under {pattern}")
     versions = {r.get("estimator_version") for r in frozen + main_rows}
     if len(versions) > 1:
         raise SystemExit(f"refusing to pool estimator versions {sorted(versions)}")
@@ -118,7 +124,8 @@ def main():
                 {k: v for k, v in c.__dict__.items()
                  if k not in ("p_one_sided", "p_adjusted", "t")} for c in fam]
 
-    dest = ROOT / "runs" / "_d3il_v2" / "frozen_report.json"
+    tag = pattern.split("_")[0]
+    dest = ROOT / "runs" / "_d3il_v2" / f"{tag}_report.json"
     dest.write_text(json.dumps(out, indent=1, default=str))
     print(f"\nwrote {dest}")
 

@@ -34,13 +34,13 @@ C = {"dsrl": "#999999", "mi": "#D55E00", "bmd": "#009E73", "mop": "#0072B2"}
 MK = {"dsrl": "s", "mi": "^", "bmd": "D", "mop": "o"}
 NAME = {"dsrl": "No mode term", "mi": "Mode entropy",
         "bmd": "Learned skills", "mop": "Reference matching"}
-# Expected distance between two samples of one distribution at the observed
-# labelled-episode counts, measured in scripts/v2/report_v2.py's cohort.
-# Read from sampling_floor.py's output so the band and the text cannot drift
-# apart. The band is the task-level offset; the per-level offsets it averages
-# are in the same file.
-FLOOR = {k: v["floor"] for k, v in json.loads(
-    (ROOT / "runs" / "_d3il_v2" / "sampling_floor.json").read_text()).items()}
+# Read the floor the frozen policies measured, so the band and the text cannot
+# drift apart. Each frozen policy is evaluated under its own latent prior and
+# scored against its own reference, which puts both histograms under one
+# distribution and carries whatever the two measurement paths differ by.
+FLOOR = {k: v["overall"]["tv_to_ref"]["mean"] for k, v in json.loads(
+    (ROOT / "runs" / "_d3il_v2" / "frozen2_report.json").read_text()).items()
+    if "/" not in k}
 
 plt.rcParams.update({
     "font.size": 7.4, "axes.labelsize": 7.4, "axes.titlesize": 8,
