@@ -36,10 +36,10 @@
 
 \begin{abstract}
 Reinforcement learning on the latent noise input of a frozen generative policy
-raises reward without touching the policy's weights, and it also changes which
-of several valid behaviours that policy produces. Methods that keep this
-behaviour maximise the entropy of the distribution over behavioural modes, or a
-mutual information bound. That choice makes an unstated assumption. For a
+raises reward without touching its weights, and changes which of several valid
+behaviours it produces. Methods that keep this
+behaviour maximise the entropy over behavioural modes, or a mutual information
+bound, on an assumption they leave unstated. For a
 reference uniform over $K$ modes, the Kullback-Leibler divergence to it equals
 $\ln K$ minus the entropy, so matching a policy to its pretrained behaviour and
 maximising behavioural entropy are one objective, and they separate only as the
@@ -50,12 +50,13 @@ policy's mode histogram and the frozen policy's own, with no learned components
 and one scalar weight. Over two manipulation tasks, 40 independently trained
 frozen policies and 1,466 fine-tuning runs, the gap between the two objectives
 grows with each policy's own measured skew at $0.774$ per unit on
-\emph{Avoiding} and $0.414$ on \emph{Pushing}, and sits at zero where the
-reference approaches uniform. On \emph{Avoiding} the penalty ends $0.188$ closer
+\emph{Avoiding} and $0.414$ on \emph{Pushing}, and vanishes at a uniform
+reference. On \emph{Avoiding} the penalty ends $0.188$ closer
 to the pretrained behaviour than entropy maximisation and $0.205$ closer than
-unregularised fine-tuning, winning on 20 of 20 frozen policies, while task
-success holds. A learned-skill method carrying a discriminator and a latent
-skill space ends $0.203$ further away.
+unregularised fine-tuning, winning on 20 of 20 frozen policies, while solving
+the task more often than any of them and staying nearest the policy it started
+from. A learned-skill method with a discriminator and a latent skill space ends
+$0.203$ further away.
 \end{abstract}
 
 \begin{keyword}
@@ -139,9 +140,10 @@ fine-tuning runs, and treating each frozen policy as one unit, the gap between
 reference matching and entropy maximisation grows with each policy's own
 measured skew on both tasks, and vanishes where that skew approaches zero. On
 the task whose completion rate lets the measurement resolve four objectives, the
-penalty ends closer to the pretrained behaviour than all three baselines, with no
-learned component, where a mutual information method of comparable fidelity
-carries both a discriminator and a latent skill space.
+penalty ends closer to the pretrained behaviour than all three baselines and
+stays nearest the policy it started from in both behaviour and task success,
+with no learned component, where the mutual information method it passes carries
+both a discriminator and a latent skill space.
 
 \section{Related Works}\label{sec:related}
 
@@ -487,7 +489,9 @@ that reproduces the reference exactly. The floor is available by measurement.
 Each frozen policy is evaluated under its own latent prior on the same budget
 as a fine-tuned run and scored against its own reference, which places both
 histograms under one distribution by construction, and the forty policies give
-$0.062$ on \emph{Avoiding} and $0.068$ on \emph{Pushing}. These evaluations
+$0.062$ on \emph{Avoiding} and $0.068$ on \emph{Pushing}. The same measurement
+scores the frozen policy itself on the endpoint, so the floor of this section
+and the origin of Section~\ref{sec:main} are one number. These evaluations
 build one environment and discard it before the one they roll out on, because
 the first environment a process builds completes fewer \emph{Avoiding}
 episodes than any later one, for that environment's whole life; a fine-tuned
@@ -577,24 +581,40 @@ policy near a reference spread over all twenty-four keeps probability on the
 other twenty by construction. The difference in rewarded success follows from
 that.
 
-The frozen policies place these columns on a scale. Evaluated under their own
-latent prior they reach $0.924$ geometric success on \emph{Avoiding} and
-$0.379$ on \emph{Pushing}, with rewarded success rates of $0.132$ and $0.043$.
+All four objectives start from the frozen policy. The noise policy is
+initialised so that $\mu_\phi(\cdot \mid o)$ is the standard normal the decoder
+was trained under, which makes the composed policy identical to $\pi_\theta$ at
+iteration zero, so the frozen column of Table~\ref{tab:success} gives the common
+origin of the four arms. Evaluated under that prior the frozen policies reach
+$0.924$ geometric success on \emph{Avoiding} and $0.379$ on \emph{Pushing}, with
+rewarded success rates of $0.132$ and $0.043$, and on the fidelity endpoint they
+sit at the $0.062$ and $0.068$ floors of Section~\ref{sec:measure}. Training
+displaces a policy from that origin, and the four objectives differ in how far.
 Pairing each objective against the frozen policy it started from, one point per
-policy, reference matching gives up $0.195$ of geometric success on
-\emph{Avoiding}, the smallest of the four, against $0.216$ for learned skills,
-$0.243$ for the unregularised objective and $0.301$ for entropy maximisation,
-and every one of those intervals excludes zero. Reward reaches four of the
-twenty-four routes, so each objective moves probability toward those four and
-away from the rest, and the size of that move is what the geometric column
-records. On rewarded success the unregularised objective gains $0.099$ over the
-frozen policy and learned skills $0.096$, while the intervals for reference
-matching, at $0.019$, and for entropy maximisation, at $-0.018$, contain zero.
-On \emph{Pushing} the four give up between $0.127$ and $0.226$ of geometric
-success, learned skills lowest and entropy maximisation highest. These
-comparisons were measured after the analysis above, so they carry intervals
-without $p$ values: no direction for them was declared before the runs they
-compare.
+policy, reference matching moves $0.114$ in total variation on \emph{Avoiding},
+little more than a third of the $0.302$ for entropy maximisation, the $0.317$
+for learned skills and the $0.319$ for the unregularised objective, and it gives
+up the least geometric success of the four, $0.195$ against $0.216$, $0.243$
+and $0.301$.
+Every one of those intervals excludes zero. Reference matching therefore stays
+nearest the pretrained policy on both axes at once.
+
+Rewarded success reads the same displacement from the other side. Four of the
+twenty-four routes carry reward, so probability placed on those four is
+probability taken off the other twenty, and raising this column is one
+description of the movement the fidelity column measures. Over the twenty
+policies of the unregularised objective, the arm that pursues reward alone,
+displacement in total variation rises with the gain in rewarded success at
+$0.88$ per unit with a standard error of $0.31$ and $r = 0.55$. That objective
+raises rewarded success by $0.099$ and learned skills by $0.096$, the two
+largest displacements of the four; the intervals for reference matching, at
+$0.019$, and for entropy maximisation, at $-0.018$, contain zero. On
+\emph{Pushing} the four give up between $0.127$ and $0.226$ of geometric
+success, learned skills lowest and entropy maximisation highest. What these
+columns settle is which mode term to carry while fine-tuning in noise space,
+read at a common origin and a common budget. They were measured after the
+analysis above, so they carry intervals without $p$ values: no direction for
+them was declared before the runs they compare.
 
 \subsection{What the Result Does Not Depend On}\label{sec:robust}
 
@@ -648,12 +668,30 @@ baseline's ignorance of where the reference sits.
 
 \subsection{Scope of the Comparison}\label{sec:scope}
 
-\emph{Pushing} completes about one episode in five. A median of 81 labelled
-episodes falls into four bins, which carries a measured sampling floor between
-$0.036$ and $0.082$ depending on the level and leaves 13 of the 100
-reference-matching runs with no labelled episode at all. Over the four levels the three paired
-contrasts are $0.069$, $0.041$ and $-0.035$ against entropy maximisation, the
-unregularised objective and learned skills, and every interval contains zero.
+\emph{Pushing} completes about one episode in five, and that rate governs both
+sides of the comparison on this task. A median of 81 labelled episodes falls
+into four bins, which carries a measured sampling floor between $0.036$ and
+$0.082$ depending on the level and leaves 13 of the 100 reference-matching runs
+with no labelled episode at all.
+
+The same rate empties the reward signal. A batch of sixteen episodes completes
+about three of them, one of the four modes carries reward, and a batch
+therefore delivers about one rewarded episode; in the median run 38 of the 60
+updates read a batch where every episode returns zero, against 9 on
+\emph{Avoiding}. Rewarded success accordingly stays where it started for every
+objective. Paired against the frozen policies, the unregularised objective
+moves it by $0.002$ with an interval of $[-0.009, 0.013]$, learned skills by
+$0.007$ with $[-0.003, 0.018]$ and reference matching by $-0.001$ with
+$[-0.010, 0.008]$, while entropy maximisation moves it by $-0.010$. The mode
+terms keep their own gradient, and entropy maximisation moves $C_\phi$ on this
+task exactly as Section~\ref{sec:separation} predicts; the reward term is the
+one this completion rate silences. A task that delivers no reward gradient
+separates no objective by how it holds behaviour against reward, and the
+contrasts that follow are read on that footing.
+
+Over the four levels the three paired contrasts are $0.069$, $0.041$ and
+$-0.035$ against entropy maximisation, the unregularised objective and learned
+skills, and every interval contains zero.
 At the most skewed level the unregularised objective, learned skills and
 reference matching reach $0.114$, $0.111$ and $0.134$. Those three sit within
 $0.023$ of one another, under the $0.036$ floor of that level and under the
@@ -886,9 +924,13 @@ leaves 13 of its 100 reference-matching runs with no labelled episode to place.
 Three of the four objectives land within $0.023$ of one another at the most
 skewed \emph{Pushing} reference, closer than the spread between the frozen
 policies behind each of them, and every paired interval on that task contains
-zero. A
-benchmark intended to separate mode-preserving objectives needs a completion
-rate high enough to fill its histograms.
+zero. The same rate reaches the other side of the objective: a sixteen-episode
+batch on \emph{Pushing} delivers about one rewarded episode, 38 of the median
+run's 60 updates read a batch that returns zero throughout, and
+rewarded success ends where it started for all four objectives. A benchmark
+intended to separate mode-preserving objectives needs a completion rate high
+enough to fill its histograms and to carry reward into its batches, and
+\emph{Avoiding} supplies both at seven episodes in ten.
 
 \section{Conclusion and Future Works}\label{sec:conclusion}
 
@@ -912,8 +954,10 @@ reach, which places the result in the objective.
 
 Three directions follow. The first is resolution: a task completing one episode
 in five leaves too few labelled episodes to separate objectives that end close
-together, so a benchmark for this question wants tasks whose completion rate
-fills the histograms, and finer mode partitions than the six and four used here.
+together and too few rewarded episodes to move reward at all, so a benchmark for
+this question wants tasks whose completion rate fills the histograms and carries
+reward into the batches, and finer mode partitions than the six and four used
+here.
 The second is scale: our frozen policies are compact rectified-flow fields
 trained for two simulated manipulation tasks, and applying reference matching to
 a large vision-language-action model on hardware would test whether the same
