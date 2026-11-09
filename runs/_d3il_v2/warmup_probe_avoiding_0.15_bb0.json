@@ -1,0 +1,6 @@
+{
+ "plain": 0.7775,
+ "discard_first_50": 0.7925,
+ "throwaway_env_used": 0.965,
+ "throwaway_env_unused": 0.965
+}

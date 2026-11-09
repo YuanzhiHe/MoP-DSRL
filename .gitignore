@@ -39,10 +39,20 @@ logs/
 .pytest_cache/
 
 # Local experiment artifacts (kept out of git)
-runs/
+runs/*
 submissions/
 setup_logs/
 vocabs/
+
+# The v2 run records are what the paper's tables and figures are read from, so
+# they are tracked. The per-job source snapshots under _src are the repository
+# at the commit each row already names, and stay out at 61 MB.
+!runs/_d3il_v2/
+runs/_d3il_v2/*
+!runs/_d3il_v2/*.json
+!runs/_d3il_v2/*.jsonl
+!runs/_d3il_v2/_cref/
+!runs/_d3il_v2/_superseded_v2.0/
 
 # Jupyter
 .ipynb_checkpoints/

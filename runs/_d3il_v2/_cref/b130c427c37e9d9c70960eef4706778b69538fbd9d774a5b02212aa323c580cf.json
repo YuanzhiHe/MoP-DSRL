@@ -1,0 +1,44 @@
+{
+ "task": "pushing",
+ "weighting": "0.50",
+ "backbone_seed": 0,
+ "checkpoint_sha256": "2a47648ef8929462b1e2284e14277e2c633040f70d56c8b91ef0ea5edddbcabc",
+ "key": {
+  "checkpoint_sha256": "2a47648ef8929462b1e2284e14277e2c633040f70d56c8b91ef0ea5edddbcabc",
+  "task": "pushing",
+  "K": 4,
+  "M": 10,
+  "ref_episodes": 600,
+  "chunk": 8,
+  "seed_base": 12345,
+  "estimator_version": "v2.0",
+  "objective": "conditional"
+ },
+ "cache_key_sha256": "b130c427c37e9d9c70960eef4706778b69538fbd9d774a5b02212aa323c580cf",
+ "counts_raw": [
+  186,
+  48,
+  11,
+  1
+ ],
+ "counts": [
+  186,
+  48,
+  11,
+  1
+ ],
+ "episodes": 600,
+ "valid_episodes": 246,
+ "requested_episodes": 600,
+ "chunks_lost": 0,
+ "chunks_total": 75,
+ "complete": true,
+ "C_ref": [
+  0.7560975609756098,
+  0.1951219512195122,
+  0.044715447154471545,
+  0.0040650406504065045
+ ],
+ "seconds": 257.72938346862793,
+ "reference_sha256": "7a7eb75642382bba90e25700d2322cfc54a67ff9a2a4b68fc85ba38db6f9bae5"
+}
