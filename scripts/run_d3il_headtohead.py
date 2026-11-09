@@ -78,11 +78,18 @@ from scripts.envs_d3il import (D3ILAvoidingEnv, D3ILPushingEnv,  # noqa: E402
 from scripts.eval_backbone_modes import load_backbone  # noqa: E402
 
 BACKBONE_ROOT = Path("/shared/scratch/SCWF00111/d3il_backbones")
+# obs_version names how a task's observation is built. It enters the
+# configuration hash, so a backbone cloned on one build can never be served to
+# a run that presents another: Pushing moved from the benchmark's tan(yaw),
+# whose pole at a quarter turn carried the normalised observation past 1e12, to
+# the sine and cosine of the same angle.
 TASKS = {
     "avoiding": dict(dir=BACKBONE_ROOT, prefix="avoiding_skew",
-                     env=lambda **kw: D3ILAvoidingEnv(**kw), n_modes=N_MODES_AVOIDING),
+                     env=lambda **kw: D3ILAvoidingEnv(**kw),
+                     n_modes=N_MODES_AVOIDING, obs_version="avoiding-obs-v1"),
     "pushing": dict(dir=BACKBONE_ROOT / "pushing", prefix="pushing_skew",
-                    env=lambda **kw: D3ILPushingEnv(**kw), n_modes=N_MODES_PUSHING),
+                    env=lambda **kw: D3ILPushingEnv(**kw),
+                    n_modes=N_MODES_PUSHING, obs_version="pushing-obs-v2-sincos"),
 }
 
 

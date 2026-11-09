@@ -1,0 +1,39 @@
+{
+  "_comment": "Which run files each reported quantity is read from. The coverage gate fails when a file on disk appears in no list, so a half of a two-task comparison cannot sit unreported the way the Pushing divergence ablation did. A file that is deliberately out of the analysis goes under superseded, which is a statement rather than a silence.",
+  "tab:main, tab:success, fig:main, sec:separation": [
+    "main_avoiding_0.00.jsonl", "main_avoiding_0.15.jsonl",
+    "main_avoiding_0.30.jsonl", "main_avoiding_0.60.jsonl",
+    "main_pushing_0.00.jsonl", "main_pushing_0.10.jsonl",
+    "main_pushing_0.25.jsonl", "main_pushing_0.50.jsonl"
+  ],
+  "weight selection, sec:setup": [
+    "calibration_avoiding_0.25.jsonl", "calibration_avoiding_0.50.jsonl",
+    "calibration_avoiding_1.00.jsonl", "calibration_pushing_0.25.jsonl",
+    "calibration_pushing_0.50.jsonl", "calibration_pushing_1.00.jsonl"
+  ],
+  "tab:divergence, both tasks": [
+    "ablation_divergence_avoiding_js.jsonl",
+    "ablation_divergence_avoiding_kl.jsonl",
+    "ablation_divergence_avoiding_kl-smooth.jsonl",
+    "ablation_divergence_avoiding_l2.jsonl",
+    "ablation_divergence_pushing_js.jsonl",
+    "ablation_divergence_pushing_kl.jsonl",
+    "ablation_divergence_pushing_kl-smooth.jsonl",
+    "ablation_divergence_pushing_l2.jsonl"
+  ],
+  "fitted prior, both tasks": [
+    "ablation_fitted_prior_avoiding.jsonl",
+    "ablation_fitted_prior_pushing.jsonl"
+  ],
+  "tab:weight": [
+    "ablation_weight_pushing_0.50.jsonl", "ablation_weight_pushing_1.00.jsonl"
+  ],
+  "frozen policy, tab:success and the floor": [
+    "frozen2_avoiding.jsonl", "frozen2_pushing.jsonl"
+  ],
+  "superseded, measured under the v1 environment rule and read by nothing": [
+    "frozen_avoiding.jsonl", "frozen_pushing.jsonl",
+    "smoke_avoiding.jsonl", "smoke_pushing.jsonl",
+    "manifest_legacy.jsonl"
+  ]
+}

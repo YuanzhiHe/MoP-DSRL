@@ -66,12 +66,16 @@ def _frame_avoiding(d: dict) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _frame_pushing(d: dict) -> tuple[np.ndarray, np.ndarray]:
-    """Pushing: desired xy, robot xy, and each box's xy plus its yaw tangent.
+    """Pushing: desired xy, robot xy, and each box's xy with sin and cos of yaw.
 
-    Mirrors PushingEnv.get_observation, which is what the env adapter presents,
-    so the backbone is trained on exactly the observation it will be rolled out
-    with. The boxes enter because this task's mode is a property of where the
-    OBJECTS end up, not of the arm's own path.
+    Mirrors D3ILPushingEnv._obs channel for channel, so the backbone is cloned
+    on exactly the observation it will be rolled out with. The benchmark's own
+    report gives tan(yaw), whose pole at a quarter turn carried the normalised
+    observation past 1e12 in every run of the earlier matrix; the sine and
+    cosine of the same angle are continuous and carry what the task uses.
+
+    The boxes enter because this task's mode is a property of where the OBJECTS
+    end up, not of the arm's own path.
     """
     des = np.asarray(d["robot"]["des_c_pos"])[:, :2]
     pos = np.asarray(d["robot"]["c_pos"])[:, :2]
@@ -79,10 +83,10 @@ def _frame_pushing(d: dict) -> tuple[np.ndarray, np.ndarray]:
     for box in ("red-box", "green-box"):
         bp = np.asarray(d[box]["pos"])[:, :2]
         bq = np.asarray(d[box]["quat"])
-        # yaw from the quaternion, then the tangent the env reports
         yaw = np.arctan2(2 * (bq[:, 0] * bq[:, 3] + bq[:, 1] * bq[:, 2]),
                          1 - 2 * (bq[:, 2] ** 2 + bq[:, 3] ** 2))
-        parts += [bp[:-1], np.tan(yaw[:-1])[:, None]]
+        parts += [bp[:-1], np.sin(yaw[:-1])[:, None],
+                  np.cos(yaw[:-1])[:, None]]
     return np.concatenate(parts, axis=1), des[1:] - des[:-1]
 
 

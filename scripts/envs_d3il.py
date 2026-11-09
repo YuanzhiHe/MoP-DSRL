@@ -326,10 +326,37 @@ class D3ILPushingEnv:
             "mode_id": self._mode,
         }
 
-    def _obs(self, raw) -> np.ndarray:
-        frame = np.concatenate(
-            [self._desired_xy, np.asarray(raw, dtype=np.float64).reshape(-1)]
+    def _box_yaw(self):
+        """Yaw of each box, read from the simulator's quaternions."""
+        from environments.d3il.d3il_sim.utils.geometric_transformation import (
+            quat2euler,
         )
+        return [float(quat2euler(self._env.scene.get_obj_quat(b))[-1])
+                for b in (self._env.push_box1, self._env.push_box2)]
+
+    def _obs(self, raw) -> np.ndarray:
+        """Observation with each box's orientation as a sine and a cosine.
+
+        The benchmark reports ``tan(yaw)`` for each box, which has a pole
+        wherever a box turns through a right angle: all 400 runs of the earlier
+        Pushing matrix drove this channel past 1e12 in normalised units, the
+        frozen policy among them, and the bound on the observation engaged in
+        95 of its 100 evaluations. Yaw itself is bounded and the pole is an
+        artefact of the report, so the two channels are replaced here by the
+        sine and cosine of the same angle, which are continuous everywhere and
+        carry the same information up to the turn the task never distinguishes.
+
+        ``train_d3il_backbone._frame_pushing`` builds the same layout from the
+        demonstrations' stored quaternions, and the two have to agree channel
+        for channel or the frozen decoder sees something it was not cloned on.
+        """
+        v = np.asarray(raw, dtype=np.float64).reshape(-1)
+        yaws = self._box_yaw()
+        frame = np.concatenate([
+            self._desired_xy, v[0:2],
+            v[2:4], [np.sin(yaws[0]), np.cos(yaws[0])],
+            v[5:7], [np.sin(yaws[1]), np.cos(yaws[1])],
+        ])
         if not self._frames:
             self._frames = [frame] * self.history
         else:

@@ -76,12 +76,13 @@ sys.path.insert(0, str(SRC))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import estimators as EST  # noqa: E402
+import envfactory as EF  # noqa: E402
 from run_d3il_headtohead import (  # noqa: E402
     TASKS, NoisePolicy, SkillPolicy, SkillDiscriminator, backbone_path,
     coarsen, decode, load_backbone,
 )
 
-ESTIMATOR_VERSION = "v2.1"
+ESTIMATOR_VERSION = "v2.2"
 _MP = mp.get_context("spawn")
 OUT_ROOT = ROOT / "runs" / "_d3il_v2"
 
@@ -141,6 +142,8 @@ def config_hash(args, arm: str, lam: float) -> str:
     d["arm"] = arm
     d["lam"] = lam
     d["estimator_version"] = ESTIMATOR_VERSION
+    d["env_protocol"] = EF.ENV_PROTOCOL
+    d["obs_version"] = TASKS[args.task].get("obs_version", "obs-v1")
     return hashlib.sha256(json.dumps(d, sort_keys=True, default=str).encode()).hexdigest()
 
 
@@ -275,7 +278,7 @@ def run_arm(arm, lam, weighting, seed, args, ref, bb_seed=None):
     n_raw = TASKS[args.task]["n_modes"]
     rewarded = set(rng.choice(n_raw, size=min(args.n_rewarded, n_raw),
                               replace=False).tolist())
-    env = TASKS[args.task]["env"](seed=seed, history=blob.get("history", 1))
+    env = EF.build(args.task, TASKS, seed, blob.get("history", 1))
     policy = NoisePolicy(blob["obs_dim"], blob["act_dim"]).to(device)
     opt = torch.optim.Adam(policy.parameters(), lr=args.lr)
 
@@ -382,7 +385,36 @@ def run_arm(arm, lam, weighting, seed, args, ref, bb_seed=None):
     row.update(diag)
     row["obs_clipped_frac"] = diag["obs_clipped_steps"] / max(diag["obs_steps"], 1)
     row["frac_inert"] = diag["n_inert"] / max(args.iters, 1)
+    row["_policy"] = policy
     return row
+
+
+def save_policy(policy, row: dict, args, tag: str) -> str | None:
+    """Write the trained policy beside its row and return the file's hash.
+
+    A run that is not saved can only be corrected by training it again. The
+    v2.1 cohort saved nothing, so an error found on the evaluation side cost
+    the whole matrix rather than a rescore; these weights are tens of kilobytes
+    against cell-hours, and they make that difference recoverable.
+    """
+    if not getattr(args, "save_policies", True):
+        return None
+    d = OUT_ROOT / "_policies" / args.task
+    d.mkdir(parents=True, exist_ok=True)
+    name = (f"{tag}_{row['weighting']}_bb{row['backbone_seed']}_"
+            f"{row['arm']}_s{row['rl_seed']}_{row['config_sha256'][:12]}.pt")
+    f = d / name
+    torch.save({"state_dict": {k: v.cpu() for k, v in
+                               policy.state_dict().items()},
+                "arm": row["arm"], "task": args.task,
+                "weighting": row["weighting"],
+                "backbone_seed": row["backbone_seed"],
+                "rl_seed": row["rl_seed"],
+                "config_sha256": row["config_sha256"],
+                "checkpoint_sha256": row.get("checkpoint_sha256"),
+                "estimator_version": ESTIMATOR_VERSION,
+                "env_protocol": EF.ENV_PROTOCOL}, f)
+    return sha256_file(f)
 
 
 def fit_skill_prior(A: np.ndarray, C_ref: np.ndarray):
@@ -438,7 +470,7 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
     n_raw = TASKS[args.task]["n_modes"]
     rewarded = set(rng.choice(n_raw, size=min(args.n_rewarded, n_raw),
                               replace=False).tolist())
-    env = TASKS[args.task]["env"](seed=seed, history=blob.get("history", 1))
+    env = EF.build(args.task, TASKS, seed, blob.get("history", 1))
     K = args.mode_groups
     B = n_bins(args)
     policy = SkillPolicy(blob["obs_dim"], blob["act_dim"], K).to(device)
@@ -544,6 +576,7 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
     row["skill_prior"] = [float(x) for x in prior]
     row["bmd_calibration"] = calib
     row["frac_inert"] = 0.0
+    row["_policy"] = policy
     return row
 
 
@@ -552,7 +585,7 @@ def _ref_chunk(payload):
     _single_threaded()
     weighting, n, seed, M, device, task, bb_seed, clip = payload
     model, blob = load_backbone(backbone_path(task, weighting, bb_seed), device)
-    env = TASKS[task]["env"](seed=seed, history=blob.get("history", 1))
+    env = EF.build(task, TASKS, seed, blob.get("history", 1))
     rng = np.random.default_rng(seed)
     counts = np.zeros(TASKS[task]["n_modes"], dtype=np.int64)
     n_valid = 0
@@ -585,7 +618,9 @@ def reference_record(weighting, args, bb_seed=None) -> dict:
     key = dict(checkpoint_sha256=ck_hash, task=args.task, K=args.mode_groups,
                M=args.M, ref_episodes=args.ref_episodes, chunk=args.ref_chunk,
                seed_base=args.ref_seed_base, estimator_version=ESTIMATOR_VERSION,
-               objective=args.objective, obs_clip=args.obs_clip)
+               objective=args.objective, obs_clip=args.obs_clip,
+               env_protocol=EF.ENV_PROTOCOL,
+               obs_version=TASKS[args.task].get("obs_version", "obs-v1"))
     kh = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()
     cache = OUT_ROOT / "_cref" / f"{kh}.json"
     if cache.exists():
@@ -611,7 +646,8 @@ def reference_record(weighting, args, bb_seed=None) -> dict:
                 print(f"  reference {n_ep}/{args.ref_episodes} episodes, "
                       f"{time.time() - t0:.0f}s", flush=True)
     else:
-        with ProcessPoolExecutor(max_workers=n_w, mp_context=_MP) as ex:
+        with ProcessPoolExecutor(max_workers=n_w, mp_context=_MP,
+                                 max_tasks_per_child=1) as ex:
             for fu in [ex.submit(_ref_chunk, pl) for pl in payloads]:
                 try:
                     c, ne, nv = fu.result()
@@ -666,6 +702,7 @@ def _cell(payload):
                 ref_smooth=args.ref_smooth, coef_clip=args.coef_clip,
                 kl_eps=args.kl_eps, optimiser="Adam",
                 estimator_version=ESTIMATOR_VERSION,
+                env_protocol=EF.ENV_PROTOCOL, device=args.device,
                 code_commit=args.code_commit,
                 config_sha256=config_hash(args, arm, lam),
                 checkpoint_sha256=ref["checkpoint_sha256"],
@@ -685,8 +722,11 @@ def _cell(payload):
             res = run_bmd(lam, weighting, seed, args, ref, bb_seed)
         else:
             res = run_arm(arm, lam, weighting, seed, args, ref, bb_seed)
+        policy = res.pop("_policy", None)
         base.update(res)
         base["status"] = "completed"
+        if policy is not None:
+            base["policy_sha256"] = save_policy(policy, base, args, "main")
         out = score(base, np.asarray(ref["C_ref"], float), args.kl_eps)
     except Exception as exc:                            # noqa: BLE001
         traceback.print_exc()
@@ -743,6 +783,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--ref-seed-base", type=int, default=12345)
     ap.add_argument("--ref-workers", type=int, default=0)
     ap.add_argument("--allow-incomplete-reference", action="store_true")
+    ap.add_argument("--no-save-policies", dest="save_policies",
+                    action="store_false",
+                    help="skip writing the trained policy of each cell")
     ap.add_argument("--n-rewarded", type=int, default=4)
     ap.add_argument("--M", type=int, default=10)
     ap.add_argument("--lr", type=float, default=3e-3)
@@ -868,7 +911,8 @@ def main() -> int:
           f"{args.workers} workers", flush=True)
 
     fh = args.out.open("a")
-    with ProcessPoolExecutor(max_workers=args.workers, mp_context=_MP) as ex:
+    with ProcessPoolExecutor(max_workers=args.workers, mp_context=_MP,
+                             max_tasks_per_child=1) as ex:
         for res in ex.map(_cell, cells):
             fh.write(json.dumps(res) + "\n")
             fh.flush()

@@ -31,20 +31,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_d3il_v2 as D  # noqa: E402
-
-
-def _discard_first_env(task, history):
-    """Build and drop one environment before the one a cell measures on.
-
-    The first ``ObstacleAvoidanceEnv`` a worker process builds completes about
-    two tenths fewer episodes than any later one, for its whole life rather
-    than for a warm-up: discarding an environment's first fifty episodes
-    recovers nothing, while building a throwaway first recovers all of it, and
-    the throwaway needs no steps taken on it. Evaluation cells feel this most,
-    because they begin rolling out on a newly built environment, so every cell
-    pays the same construction here and measures on a second environment.
-    """
-    D.TASKS[task]["env"](seed=0, history=history)
+import envfactory as EF  # noqa: E402
 
 
 def _cell(payload):
@@ -85,9 +72,7 @@ def _cell(payload):
         # against the same subset the arms were rewarded on.
         rewarded = set(rng.choice(n_raw, size=min(args.n_rewarded, n_raw),
                                   replace=False).tolist())
-        _discard_first_env(args.task, blob.get("history", 1))
-        env = D.TASKS[args.task]["env"](seed=seed,
-                                        history=blob.get("history", 1))
+        env = EF.build(args.task, D.TASKS, seed, blob.get("history", 1))
         policy = D.NoisePolicy(blob["obs_dim"], blob["act_dim"]).to(args.device)
         diag = {}
 
@@ -164,7 +149,8 @@ def main() -> int:
 
     fh = args.out.open("a")
     with ProcessPoolExecutor(max_workers=args.workers,
-                             mp_context=D._MP) as ex:
+                             mp_context=D._MP,
+                             max_tasks_per_child=1) as ex:
         for res in ex.map(_cell, cells):
             fh.write(json.dumps(res) + "\n")
             fh.flush()
