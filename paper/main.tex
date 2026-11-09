@@ -28,7 +28,7 @@
 \title{Reference Matching for Noise-Space Policy Fine-Tuning}
 
 \author{Yuanzhi He}
-\ead{heyuanzhi0728@163.com}
+\ead{HeY65@cardiff.ac.uk}
 \affiliation{organization={School of Computational and Mathematical Sciences,
     Cardiff University},
   city={Cardiff},
@@ -952,20 +952,15 @@ level. A histogram of length $K$ and one scalar
 weight reach a fidelity beyond what a discriminator and a latent skill space
 reach, which places the result in the objective.
 
-Three directions follow. The first is resolution: a task completing one episode
-in five leaves too few labelled episodes to separate objectives that end close
-together and too few rewarded episodes to move reward at all, so a benchmark for
-this question wants tasks whose completion rate fills the histograms and carries
-reward into the batches, and finer mode partitions than the six and four used
-here.
-The second is scale: our frozen policies are compact rectified-flow fields
-trained for two simulated manipulation tasks, and applying reference matching to
-a large vision-language-action model on hardware would test whether the same
-reference estimate remains informative when behaviour is higher dimensional. The
-third is the reference itself: we estimate $C_{\mathrm{ref}}$ once and hold it
-fixed, which suits a frozen decoder, and allowing it to adapt when the
-pretrained policy is also updated would connect this objective to full
-fine-tuning.
+Two directions follow. The first is scale. The penalty reads a histogram of
+length $K$ and one rollout budget, so it attaches to any frozen decoder whose
+behaviour carries a label, and a large vision-language-action model on hardware
+would extend it to behaviour of higher dimension and to modes read from richer
+geometry than two simulated tasks supply. The second is the reference. We
+estimate $C_{\mathrm{ref}}$ once and hold it fixed, which is what a frozen
+decoder calls for; letting it track a decoder that is itself being updated
+would carry the same objective into full fine-tuning, where the quantity to
+preserve moves with the policy that defines it.
 
 \section*{CRediT authorship contribution statement}
 

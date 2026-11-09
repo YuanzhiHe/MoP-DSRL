@@ -3,7 +3,7 @@
 \usepackage{parskip}
 \signature{Yuanzhi He}
 \address{School of Computational and Mathematical Sciences\\Cardiff University\\
-Cardiff, United Kingdom\\heyuanzhi0728@163.com}
+Cardiff, United Kingdom\\HeY65@cardiff.ac.uk}
 \begin{document}
 \begin{letter}{The Editors\\\textit{Neurocomputing}}
 \opening{Dear Editors,}
@@ -18,9 +18,9 @@ the entropy of a distribution over behavioural modes. The manuscript shows that
 this rests on an assumption no one states: under a uniform reference, matching
 the pretrained distribution and maximising entropy are the same objective, since
 the Kullback-Leibler divergence to a uniform reference is $\ln K$ minus the
-entropy. Behaviour cloning does not give uniform policies, so the two objectives
-come apart in exactly the regime where these methods are used, and the
-difference has gone unmeasured.
+entropy. Behaviour cloning produces skewed policies, so the two objectives come
+apart in exactly the regime where these methods are used, and the difference has
+gone unmeasured.
 
 The paper replaces the entropy term with a total-variation penalty toward the
 frozen policy's own mode histogram. It carries no learned component and one
@@ -32,7 +32,15 @@ both tasks and sits at zero where that departure vanishes, which is the trend
 the identity predicts. On the task whose completion rate fills its histograms,
 the penalty ends closer to the pretrained behaviour than every comparison
 method, on all twenty frozen policies against fine-tuning with no mode term,
-while task success holds.
+while solving the task more often than any of them.
+
+A further 200 evaluations measure the forty frozen policies themselves under
+their own latent prior, on the budget a fine-tuned run is evaluated on. Since
+the noise policy is initialised to the prior the decoder was trained under,
+those evaluations give the common starting point of every objective compared,
+and they place the sampling floor of the fidelity endpoint by direct
+measurement. Read against that starting point, reference matching
+is the objective that stays nearest it in both behaviour and task success.
 
 The work is original, is not under consideration elsewhere, and has no competing
 interests to declare. The code, the run records behind every table and figure,
