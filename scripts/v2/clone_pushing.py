@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 ROOT = Path(os.environ.get("MOP_DSRL_ROOT",
@@ -30,9 +31,8 @@ SKEW = Path("/shared/scratch/SCWF00111/d3il_data/data/pushing/skew")
 OUT = Path("/shared/scratch/SCWF00111/d3il_backbones/pushing")
 
 
-def main() -> int:
-    i = int(os.environ.get("SLURM_ARRAY_TASK_ID",
-                           sys.argv[1] if len(sys.argv) > 1 else 0))
+def one(i: int) -> int:
+    """Clone the backbone the plan's ``i``-th entry names."""
     plan = json.loads(PLAN.read_text())
     weighting, bb = plan[i]
     out = OUT / f"pushing_skew{weighting}_bb{bb}.pt"
@@ -40,19 +40,36 @@ def main() -> int:
     if not weights.exists():
         print(f"missing {weights}", flush=True)
         return 1
-
-    # The seed names the cloning run, exactly as it did for the cohort being
-    # replaced, so a backbone keeps its identity across the observation change
-    # and only the observation it was cloned on differs.
     cmd = [sys.executable, str(ROOT / "scripts" / "train_d3il_backbone.py"),
            "--task", "pushing", "--weights", str(weights),
            "--out", str(out), "--seed", str(bb), "--device", "cpu"]
-    print(f"array {i}: weighting {weighting} bb{bb} -> {out.name}", flush=True)
-    print("  " + " ".join(cmd), flush=True)
-    r = subprocess.run(cmd, cwd=ROOT)
-    if r.returncode == 0:
-        print(f"  wrote {out} ({out.stat().st_size} bytes)", flush=True)
-    return r.returncode
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    ok = r.returncode == 0 and out.exists()
+    print(f"  [{'ok' if ok else 'FAIL'}] {out.name}"
+          + (f" {out.stat().st_size}B" if out.exists() else "")
+          + ("" if ok else "\n" + r.stdout[-800:] + r.stderr[-800:]),
+          flush=True)
+    return 0 if ok else 1
+
+
+def main() -> int:
+    """Clone every Pushing backbone, in parallel inside one job.
+
+    The queue allows ten submitted jobs, so twenty array tasks are not
+    available; each clone is a separate process here instead, which gets the
+    same parallelism out of one allocation.
+    """
+    plan = json.loads(PLAN.read_text())
+    if "SLURM_ARRAY_TASK_ID" in os.environ:
+        return one(int(os.environ["SLURM_ARRAY_TASK_ID"]))
+    n = int(os.environ.get("SLURM_CPUS_PER_TASK", 8))
+    print(f"cloning {len(plan)} Pushing backbones, {min(n, len(plan))} at once",
+          flush=True)
+    OUT.mkdir(parents=True, exist_ok=True)
+    with ProcessPoolExecutor(max_workers=min(n, len(plan))) as ex:
+        bad = sum(ex.map(one, range(len(plan))))
+    print(f"{len(plan) - bad} of {len(plan)} cloned", flush=True)
+    return 0 if bad == 0 else 1
 
 
 if __name__ == "__main__":
