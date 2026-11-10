@@ -77,6 +77,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import estimators as EST  # noqa: E402
 import envfactory as EF  # noqa: E402
+import conditional_prior as CPRIOR  # noqa: E402
 from run_d3il_headtohead import (  # noqa: E402
     TASKS, NoisePolicy, SkillPolicy, SkillDiscriminator, backbone_path,
     coarsen, decode, load_backbone,
@@ -556,10 +557,22 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
                 if b >= 0:
                     A[k, b] += 1
         A = A / tot[:, None]                      # P(valid and mode=j | skill=k)
-        prior, resid = fit_skill_prior(A, np.asarray(ref["C_ref"], float))
-        calib = dict(skill_mode_joint=A.tolist(), calib_episodes_per_skill=int(n_per),
-                     fit_residual=float(resid), fitted_on_independent_episodes=True,
-                     calib_episodes_total=int(tot.sum()))
+        # The old objective minimised the residual of the deployed JOINT,
+        # whose column for a skill that never finishes is identically zero:
+        # weight 1 there scored a perfect fit and deployed a policy that
+        # finished nothing. Two recorded cells did exactly that. The fit is now
+        # over the completion-conditional mixture, which has no such direction.
+        _fit = CPRIOR.fit_conditional_prior(A, np.asarray(ref["C_ref"], float))
+        prior, resid = np.asarray(_fit["prior"], float), _fit["residual"]
+        calib = dict(skill_mode_joint=A.tolist(),
+                     calib_episodes_per_skill=int(n_per),
+                     fit_residual=float(resid),
+                     fitted_on_independent_episodes=True,
+                     calib_episodes_total=int(tot.sum()),
+                     # What the fit expected to deploy, beside what it did:
+                     # a prior whose predicted completion collapses is the
+                     # degeneracy, and it is now on the record either way.
+                     prior_fit={k: v for k, v in _fit.items() if k != "prior"})
     else:
         prior = np.full(K, 1.0 / K)
 
@@ -757,6 +770,10 @@ def build_parser() -> argparse.ArgumentParser:
     # one value would make the comparison about the tuning. An unset override
     # falls back to --lam, and the weight that is actually used goes into the
     # config hash, so two weights never share a cell key.
+    ap.add_argument("--lam-from", type=Path, default=None,
+                    help="read each arm's weight from a select_lambda report, "
+                         "so the selection is consumed by the run rather than "
+                         "copied into a command line by hand")
     ap.add_argument("--lam-mop", type=float, default=None)
     ap.add_argument("--lam-mi", type=float, default=None)
     ap.add_argument("--lam-bmd", type=float, default=None)
@@ -818,6 +835,29 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
+def apply_lambda_choice(args) -> dict | None:
+    """Set each arm's weight from the selection report, and say so.
+
+    The weight is chosen by a rule fixed before calibration ran. Passing its
+    output through a file keeps the number the main runs use identical to the
+    number the rule produced; a weight retyped into a submission line is a
+    weight nothing checks.
+    """
+    if not args.lam_from:
+        return None
+    rep = json.loads(Path(args.lam_from).read_text())
+    if args.task not in rep:
+        raise SystemExit(f"{args.lam_from} carries no selection for {args.task}")
+    chosen = rep[args.task]
+    for arm in ("mop", "mi", "bmd"):
+        if arm in chosen:
+            setattr(args, f"lam_{arm}", float(chosen[arm]["lam"]))
+    print(f"  weights from {args.lam_from.name}: "
+          + ", ".join(f"{a}={getattr(args, f'lam_{a}')}"
+                      for a in ("mop", "mi", "bmd")), flush=True)
+    return chosen
+
+
 def load_done(paths):
     """Completed cells, and how many times each cell has already been attempted.
 
@@ -845,6 +885,7 @@ def load_done(paths):
 def main() -> int:
     import subprocess
     args = build_parser().parse_args()
+    apply_lambda_choice(args)
     args.code_commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
         text=True).stdout.strip()
