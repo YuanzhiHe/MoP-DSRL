@@ -716,6 +716,7 @@ def _cell(payload):
                 kl_eps=args.kl_eps, optimiser="Adam",
                 estimator_version=ESTIMATOR_VERSION,
                 env_protocol=EF.ENV_PROTOCOL, device=args.device,
+                obs_version=TASKS[args.task].get("obs_version", "obs-v1"),
                 code_commit=args.code_commit,
                 config_sha256=config_hash(args, arm, lam),
                 checkpoint_sha256=ref["checkpoint_sha256"],

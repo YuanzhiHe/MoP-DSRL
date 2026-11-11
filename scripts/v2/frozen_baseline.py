@@ -50,6 +50,11 @@ def _cell(payload):
                 ref_smooth=args.ref_smooth, coef_clip=args.coef_clip,
                 kl_eps=args.kl_eps, optimiser=None,
                 estimator_version=D.ESTIMATOR_VERSION,
+                # The frozen column is the common origin every arm is read
+                # against, so it has to carry the same protocol stamp the arms
+                # carry; a contrast across two protocols is not a contrast.
+                env_protocol=EF.ENV_PROTOCOL, device=args.device,
+                obs_version=D.TASKS[args.task].get("obs_version", "obs-v1"),
                 code_commit=args.code_commit,
                 config_sha256=D.config_hash(args, "frozen", 0.0),
                 checkpoint_sha256=ref["checkpoint_sha256"],

@@ -290,7 +290,10 @@ $C_{\mathrm{ref}} = u$ this coincides exactly with minimising
 $D_{\mathrm{KL}}(C_\phi \,\|\, C_{\mathrm{ref}})$. The two objectives are then
 the same function of $C_\phi$ up to an additive constant, and any experiment run
 on a near-uniform pretrained policy will find them equivalent whatever their
-behaviour elsewhere. A variational lower bound on the mutual information between
+behaviour elsewhere. The penalty carried through this paper is the total
+variation distance, which shares that optimum at $C_{\mathrm{ref}} = u$ and is
+a different function of $C_\phi$ away from it, so where the two agree is a
+matter for measurement. A variational lower bound on the mutual information between
 a latent skill index and the behaviour it produces places its optimum at a
 uniform distribution over that index, and reaches the measured modes only
 through the map from skills to behaviour, so the identity fixes its position at
@@ -344,7 +347,7 @@ approximation of the population one. For total variation the partial derivative
 is
 $\tfrac{1}{2}\,\mathrm{sgn}\!\left(C_\phi[k] - C_{\mathrm{ref}}[k]\right)$, whose
 magnitude is one half for every mode. The Jensen-Shannon divergence gives
-$\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right) - \tfrac{1}{2}$, where
+$\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right)$, where
 $\bar{C} = (C_\phi + C_{\mathrm{ref}})/2$ is the mixture of the two histograms.
 Since $\bar{C}[k] \geq C_{\mathrm{ref}}[k]/2$, this stays finite as
 $C_{\mathrm{ref}}[k] \rightarrow 0$, which is the direction in which the
@@ -407,10 +410,13 @@ has an incentive to narrow its behaviour: four of the twenty-four routes on
 Table~\ref{tab:hyper} lists every setting. Four objectives are compared,
 identical in every respect except the mode term. The first has no mode term and
 optimises return alone, which is the unregularised noise-space objective. The
-second maximises the entropy of the same geometric mode histogram. The third is
-BMD, implemented as a skill-conditioned noise policy together with a
+second maximises the entropy of the same geometric mode histogram. The third follows
+BMD, adapted to this setting as a skill-conditioned noise policy together with a
 discriminator trained to recover the skill index from the final observation,
-using the variational bound as an intrinsic reward. Its skill cardinality is set
+using the variational bound as an intrinsic reward. It is written from the
+published description rather than run from the authors' own code, so it carries
+their objective into noise-space fine-tuning without reproducing their
+implementation. Its skill cardinality is set
 to the number of mode groups, and at evaluation its skills are sampled uniformly,
 matching the prior the method assumes at training time;
 Section~\ref{sec:robust} reports the same comparison with that prior fitted to

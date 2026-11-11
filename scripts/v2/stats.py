@@ -15,6 +15,21 @@ import numpy as np
 from scipy import stats
 
 
+def fmt_p(p: float, floor: float = 1e-4) -> str:
+    """A p value a reader can act on, never rounded to zero.
+
+    A one-sided t test on nineteen degrees of freedom reaches values far below
+    four decimal places, and printing those as 0.0000 states an exact zero that
+    no finite sample supports.
+    """
+    import math
+    if p is None or (isinstance(p, float) and math.isnan(p)):
+        return "n/a"
+    if p < floor:
+        return f"<{floor:g}"
+    return f"{p:.4f}"
+
+
 @dataclass
 class Contrast:
     name: str
@@ -33,12 +48,14 @@ class Contrast:
     runs_undefined: int = 0
     detail: dict = field(default_factory=dict)
 
-    def line(self) -> str:
+
+
+def line(self) -> str:
         p = self.p_adjusted if self.p_adjusted is not None else self.p_one_sided
         return (f"{self.name:<34} n={self.n:3d} df={self.df:3d} "
                 f"mean={self.mean:+.4f} sd={self.sd:.4f} se={self.se:.4f} "
                 f"95% CI [{self.ci_low:+.4f}, {self.ci_high:+.4f}] "
-                f"p={p:.4f} wins {self.wins}/{self.n}")
+                f"p={fmt_p(p)} wins {self.wins}/{self.n}")
 
 
 def policy_means(rows, metric, policy_of, arm_of, require_defined=True):

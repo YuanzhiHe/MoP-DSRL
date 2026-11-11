@@ -226,7 +226,7 @@ def main():
             doc += [f"Fitted against uniform, paired over frozen policies: "
                     f"n = {c.n}, df = {c.df}, mean {c.mean:+.4f}, "
                     f"95% interval [{c.ci_low:+.4f}, {c.ci_high:+.4f}], "
-                    f"p = {c.p_one_sided:.4f}.", ""]
+                    f"p = {S.fmt_p(c.p_one_sided)}.", ""]
 
     # The weight the main matrix already ran is not repeated: those cells
     # carry the same key, so the grid job resumed them and wrote nothing. The
