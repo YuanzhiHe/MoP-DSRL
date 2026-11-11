@@ -172,10 +172,20 @@ def norm_obs(obs, blob, clip, stat=None):
     v = (np.asarray(obs, dtype=np.float64) - blob["obs_mean"]) / blob["obs_std"]
     v = np.nan_to_num(v, nan=0.0, posinf=clip, neginf=-clip)
     if stat is not None:
+        a = np.abs(v)
         stat["obs_steps"] = stat.get("obs_steps", 0) + 1
-        stat["obs_absmax"] = max(stat.get("obs_absmax", 0.0),
-                                 float(np.abs(v).max()))
-        if np.abs(v).max() > clip:
+        stat["obs_absmax"] = max(stat.get("obs_absmax", 0.0), float(a.max()))
+        # Per channel, folded over the history stack. Which channel is large
+        # decides what a large observation means: the orientation channels are
+        # bounded by their own construction, so an excursion there is an
+        # encoding fault, while the commanded pose is an accumulator the task
+        # has always had and is bounded only by the clip declared here.
+        d = int(np.asarray(blob["obs_mean"]).size)
+        per = a.reshape(-1, d).max(axis=0) if a.size % d == 0 else a[:d]
+        prev = stat.get("obs_absmax_channels")
+        stat["obs_absmax_channels"] = (per if prev is None
+                                       else np.maximum(prev, per))
+        if a.max() > clip:
             stat["obs_clipped_steps"] = stat.get("obs_clipped_steps", 0) + 1
     return np.clip(v, -clip, clip)
 
@@ -385,6 +395,9 @@ def run_arm(arm, lam, weighting, seed, args, ref, bb_seed=None):
     row = evaluate(ep, args.eval_episodes, args, rewarded, n_raw)
     row.update(diag)
     row["obs_clipped_frac"] = diag["obs_clipped_steps"] / max(diag["obs_steps"], 1)
+    _ch = diag.get("obs_absmax_channels")
+    row["obs_absmax_channels"] = (None if _ch is None
+                                  else [float(x) for x in _ch])
     row["frac_inert"] = diag["n_inert"] / max(args.iters, 1)
     row["_policy"] = policy
     return row
@@ -586,6 +599,9 @@ def run_bmd(lam, weighting, seed, args, ref, bb_seed=None):
     row = evaluate(ep, args.eval_episodes, args, rewarded, n_raw)
     row.update(diag)
     row["obs_clipped_frac"] = diag["obs_clipped_steps"] / max(diag["obs_steps"], 1)
+    _ch = diag.get("obs_absmax_channels")
+    row["obs_absmax_channels"] = (None if _ch is None
+                                  else [float(x) for x in _ch])
     row["skill_prior"] = [float(x) for x in prior]
     row["bmd_calibration"] = calib
     row["frac_inert"] = 0.0

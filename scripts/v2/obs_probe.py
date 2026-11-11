@@ -43,12 +43,18 @@ def main() -> int:
     task = sys.argv[1] if len(sys.argv) > 1 else "pushing"
     weighting = sys.argv[2] if len(sys.argv) > 2 else "0.50"
     episodes = int(sys.argv[3]) if len(sys.argv) > 3 else 20
+    # "prior" is the frozen arm exactly: NoisePolicy initialises to N(0, I),
+    # so a sample from it is the backbone's own latent. "zero" takes the mean
+    # instead, which is a single path through the task and not the arm.
+    latent = sys.argv[4] if len(sys.argv) > 4 else "prior"
     device = "cpu"
     ck = backbone_path(task, weighting, 0)
     model, blob = load_backbone(ck, device)
     mu = np.asarray(blob["obs_mean"], float).ravel()
     sd = np.asarray(blob["obs_std"], float).ravel()
-    print(f"task={task} w={weighting} dim={mu.size} episodes={episodes}")
+    print(f"task={task} w={weighting} dim={mu.size} episodes={episodes} "
+          f"latent={latent}")
+    torch.manual_seed(900)
     env = EF.build(task, TASKS, 900, blob.get("history", 1))
 
     worst = np.zeros(mu.size)
@@ -76,9 +82,10 @@ def main() -> int:
             t += 1
             o = torch.tensor(np.clip(np.nan_to_num(v), -50, 50),
                              dtype=torch.float32, device=device)[None]
-            z = torch.zeros(1, blob["act_dim"], device=device)
+            z = (torch.zeros(1, blob["act_dim"], device=device) if latent == "zero"
+                 else torch.randn(1, blob["act_dim"], device=device))
             obs, r, done, info = env.step(decode(model, blob, o, z, 10)[0])
-        per_ep.append((ep, t, ep_max, bool(info.get("success")),
+        per_ep.append((ep, t, round(ep_max, 2), bool(info.get("success")),
                        int(info.get("mode_id", -1))))
 
     print(f"\n{steps} steps over {episodes} episodes")

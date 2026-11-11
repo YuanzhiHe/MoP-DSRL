@@ -270,7 +270,12 @@ class D3ILPushingEnv:
         self._fixed_z = np.zeros(1)
         self._frames: list[np.ndarray] = []
         probe = self._env.reset()
-        self.obs_dim = (2 + np.asarray(probe).reshape(-1).size) * self.history
+        # Ask the encoder rather than recount it. The raw report carries one
+        # orientation channel per box and the encoder emits two, so arithmetic
+        # over the raw size understates the observation by one channel a box
+        # and leaves this attribute disagreeing with what step returns.
+        self.obs_dim = int(self._obs(probe).size)
+        self._frames = []
 
     def reset(self) -> np.ndarray:
         raw = self._env.reset()

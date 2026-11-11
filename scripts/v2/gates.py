@@ -216,12 +216,37 @@ def gate_coverage() -> None:
         check("stage map present", False,
               "scripts/v2/stage_map.json lists which files each table reads")
         return
-    claimed = {f for pats in stages.values() for f in pats}
+    claimed = {f for k, pats in stages.items() if k != "_comment"
+               for f in pats}
     on_disk = {p.name for p in runs.glob("*.jsonl")
                if not p.name.startswith("_")}
     unread = sorted(on_disk - claimed)
     check("every run file on disk is read by something",
           not unread, ", ".join(unread) if unread else "")
+
+    # The map names files; the stages write them. Nothing made the two agree,
+    # and a stage that writes a name the map does not carry produces a file
+    # the analysis never reads -- which is the failure this map exists to
+    # prevent, arriving at the end of the cohort instead of before it.
+    import os
+    os.environ.setdefault("SLURM_CPUS_PER_TASK", "8")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import run_stage as RS
+    planned = set()
+    for fn in RS.STAGES.values():
+        for cmd in fn():
+            if "--out" in cmd:
+                planned.add(Path(cmd[cmd.index("--out") + 1]).name)
+    reported = {f for k, v in stages.items()
+                if k != "_comment"
+                and not k.startswith(("superseded", "validation"))
+                for f in v}
+    missing = sorted(f for f in planned - reported if f.endswith(".jsonl"))
+    stale = sorted(f for f in reported - planned)
+    check("every file a stage writes is claimed by the map", not missing,
+          ", ".join(missing))
+    check("every file the map claims is written by a stage", not stale,
+          ", ".join(stale))
 
 
 def gate_policies() -> None:

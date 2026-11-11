@@ -37,6 +37,8 @@ sys.path[:0] = [str(ROOT), str(ROOT / "scripts"), str(ROOT / "scripts" / "v2")]
 
 import run_d3il_v2 as R                                       # noqa: E402
 
+import envfactory as EF  # noqa: E402
+
 PLAN = {"pushing": ("0.00", "0.50"), "avoiding": ("0.00", "0.60")}
 
 
@@ -61,6 +63,20 @@ def from_runs(paths):
                 r = json.loads(line)
                 out.setdefault(r.get("task", "?"), []).append(r)
     summary = {}
+    by_arm = {}
+    for task, rows in out.items():
+        # By arm as well as by task. Symmetric clipping leaves a paired
+        # contrast alone, because it moves both members of the pair; clipping
+        # that falls on one arm and not the other is the case that would put
+        # a difference in the table that the bound had made.
+        per = {}
+        for arm in sorted({r.get("arm") for r in rows}):
+            sel = [r for r in rows if r.get("arm") == arm]
+            c = np.asarray([r.get("obs_clipped_frac", 0.0) for r in sel], float)
+            a = np.asarray([r.get("obs_absmax", 0.0) for r in sel], float)
+            per[arm] = dict(runs=len(sel), clipped_frac_mean=float(c.mean()),
+                            obs_absmax_median=float(np.median(a)))
+        by_arm[task] = per
     for task, rows in out.items():
         am = np.asarray([r.get("obs_absmax", 0.0) for r in rows], float)
         cf = np.asarray([r.get("obs_clipped_frac", 0.0) for r in rows], float)
@@ -72,7 +88,8 @@ def from_runs(paths):
             clipped_frac_median=float(np.median(cf)),
             clipped_frac_max=float(cf.max()) if cf.size else None,
             nonfinite_gradients=int(sum(r.get("n_nonfinite_grad", 0)
-                                        for r in rows)))
+                                        for r in rows)),
+            by_arm=by_arm[task])
     return summary
 
 
@@ -82,7 +99,11 @@ def measure(task, weightings, episodes, bound):
     per_channel, per_step = None, []
     for w in weightings:
         model, blob = R.load_backbone(R.backbone_path(task, w, 0), "cpu")
-        env = R.TASKS[task]["env"](seed=0, history=blob.get("history", 1))
+        # One environment per process, like every other path. Looping over
+        # weightings here built several in one process, so every weighting
+        # after the first was measured on a reused environment: the probe
+        # refuses that now rather than reporting it.
+        env = EF.build(task, R.TASKS, 0, blob.get("history", 1))
         rng = np.random.default_rng(0)
         if per_channel is None:
             per_channel = np.zeros(len(blob["obs_std"]))

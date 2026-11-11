@@ -92,6 +92,9 @@ def _cell(payload):
         row["obs_absmax"] = float(diag.get("obs_absmax", 0.0))
         row["obs_clipped_frac"] = (diag.get("obs_clipped_steps", 0)
                                    / max(diag.get("obs_steps", 0), 1))
+        _ch = diag.get("obs_absmax_channels")
+        row["obs_absmax_channels"] = (None if _ch is None
+                                      else [float(x) for x in _ch])
         row["n_nonfinite"] = 0
         row["n_nonfinite_grad"] = 0
         row["frac_inert"] = 0.0
