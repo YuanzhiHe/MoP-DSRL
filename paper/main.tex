@@ -440,9 +440,9 @@ completed; none raised, none was retried, and no cell is missing.
 \caption{Settings used for every reported run. The noise policy and the
 discriminator are two-layer networks with 128 hidden units. Each regularised
 objective carries the weight its own calibration selected under a common rule.
-The observation bound applies to every objective and both tasks, because two of
-the ten \emph{Pushing} observation channels are unwrapped orientation angles
-that grow without limit along a rollout.}
+The observation bound applies to every objective and both tasks, because the
+commanded pose a policy acts on accumulates its own deltas along a rollout and
+so leaves the range the demonstrations cover.}
 \label{tab:hyper}
 \begin{tabular}{@{}lcc@{}}
 \toprule
