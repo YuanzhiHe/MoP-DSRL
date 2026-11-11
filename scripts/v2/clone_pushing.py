@@ -21,6 +21,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -43,9 +44,16 @@ def one(i: int) -> int:
     cmd = [sys.executable, str(ROOT / "scripts" / "train_d3il_backbone.py"),
            "--task", "pushing", "--weights", str(weights),
            "--out", str(out), "--seed", str(bb), "--device", "cpu"]
-    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    # One thread per clone. Twenty of these run at once, and torch otherwise
+    # sizes its pool to the whole allocation.
+    env = dict(os.environ, OMP_NUM_THREADS="1", MKL_NUM_THREADS="1",
+               OPENBLAS_NUM_THREADS="1", NUMEXPR_NUM_THREADS="1")
+    t0 = time.time()
+    print(f"  start {out.name}", flush=True)
+    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, env=env)
     ok = r.returncode == 0 and out.exists()
-    print(f"  [{'ok' if ok else 'FAIL'}] {out.name}"
+    print(f"  [{'ok' if ok else 'FAIL'}] {out.name} "
+          f"{(time.time() - t0) / 60:.1f} min"
           + (f" {out.stat().st_size}B" if out.exists() else "")
           + ("" if ok else "\n" + r.stdout[-800:] + r.stderr[-800:]),
           flush=True)

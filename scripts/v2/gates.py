@@ -80,6 +80,24 @@ def gate_environment() -> None:
     check("every pool hands each task a fresh process",
           pools == per_task, f"{per_task} of {pools} pools")
 
+    # A stage runs many processes at once and each one otherwise sizes its
+    # thread pool to the whole allocation. Twenty concurrent clones asked for
+    # 480 threads on 24 cores and finished none of twenty in six hours; with
+    # one thread each they finished in five minutes.
+    wrapper = (Path(__file__).resolve().parent / "cpu_job_v2.sh").read_text()
+    pinned = [v for v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+                          "OPENBLAS_NUM_THREADS")
+              if f"export {v}=1" in wrapper]
+    check("the job wrapper pins the per-process thread count",
+          len(pinned) == 3, ", ".join(pinned) or "none")
+    import os as _os
+    live = [v for v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS")
+            if _os.environ.get(v) == "1"]
+    check("this job is running with threads pinned",
+          len(live) == 2, ", ".join(f"{v}={_os.environ.get(v)}"
+                                    for v in ("OMP_NUM_THREADS",
+                                              "MKL_NUM_THREADS")))
+
 
 def gate_hash() -> None:
     print("hash")

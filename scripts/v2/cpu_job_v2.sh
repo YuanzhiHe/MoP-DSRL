@@ -23,6 +23,14 @@ conda activate /shared/home1/c.c23089110/.conda/envs/mop_dsrl
 export MOP_DSRL_ROOT=/shared/home1/c.c23089110/MoP-DSRL
 cd "$MOP_DSRL_ROOT"
 export PYTHONPATH="$MOP_DSRL_ROOT"
+# Every stage here runs many single-cell processes at once. Left to
+# itself each one opens a thread pool the size of the allocation, so
+# twenty concurrent clones asked for 480 threads on 24 cores and
+# finished none in six hours.
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 mkdir -p logs/cpu_v2
 
 echo "host=$(hostname) cpus=${SLURM_CPUS_PER_TASK:-?} job=${SLURM_JOB_ID:-local}"

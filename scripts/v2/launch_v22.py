@@ -54,7 +54,7 @@ def sbatch(name, cmd, cpus, mem, time, dep=None, array=None, dry=False):
 # and run their calls in series. run_stage.py holds the grouping.
 STAGES = [
     # name,            cpus, walltime,     depends on
-    ("prep",            24, "6:00:00",     None),
+    ("prep",            24, "12:00:00",    None),
     ("calib-avoiding",  96, "12:00:00",    "prep"),
     ("calib-pushing",  192, "1-00:00:00",  "prep"),
     ("main-avoiding",  192, "12:00:00",    "calib-avoiding,calib-pushing"),

@@ -38,6 +38,11 @@ def check(name: str, ok: bool, detail: str = "") -> None:
           + (f"  {detail}" if detail else ""), flush=True)
 
 
+def workers(n=8) -> int:
+    """Workers for a slice, bounded by the allocation and by the cells."""
+    return min(n, max(1, int(os.environ.get("SLURM_CPUS_PER_TASK", 8)) - 1))
+
+
 def run(cmd) -> int:
     print("  $ " + " ".join(str(c) for c in cmd), flush=True)
     return subprocess.run([str(c) for c in cmd], cwd=ROOT).returncode
@@ -64,7 +69,7 @@ def main() -> int:
         if out.exists():
             out.unlink()
         print(f"\nslice: {task} w{w}")
-        if slice_for(task, w, out, 8) != 0:
+        if slice_for(task, w, out, workers()) != 0:
             check(f"{task} slice ran", False)
             return 1
         outs[task] = out
