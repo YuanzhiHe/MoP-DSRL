@@ -39,6 +39,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import envfactory as EF  # noqa: E402
 
+# Channels each task presents; the clone and the rollout must agree.
+EXPECTED_OBS_DIM = {"avoiding": 4, "pushing": 12}
+
 RESULTS: list[tuple[str, bool, str]] = []
 
 
@@ -249,6 +252,64 @@ def gate_coverage() -> None:
           ", ".join(stale))
 
 
+
+def gate_checkpoints() -> None:
+    """Every checkpoint a stage will open, before any stage opens one.
+
+    The calibration stage passes no backbone seed, which resolves to a
+    different file from the matrix's, and that file was left at the ten
+    channel observation while the environment moved to twelve. Nothing read
+    the two together until a stage had been queued for a day and then died in
+    twenty seconds. This reads them together.
+    """
+    print("\ncheckpoints")
+    import os
+    os.environ.setdefault("SLURM_CPUS_PER_TASK", "8")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import torch
+    import run_stage as RS
+    from scripts.run_d3il_headtohead import backbone_path
+
+    want = set()
+    for fn in RS.STAGES.values():
+        for cmd in fn():
+            c = [str(x) for x in cmd]
+            if "--task" not in c:
+                continue
+
+            def grab(flag):
+                if flag not in c:
+                    return None
+                i, out = c.index(flag) + 1, []
+                while i < len(c) and not c[i].startswith("--"):
+                    out.append(c[i])
+                    i += 1
+                return out
+
+            task = c[c.index("--task") + 1]
+            seeds = grab("--backbone-seeds")
+            for w in grab("--weightings") or []:
+                for bb in (seeds or [None]):
+                    want.add((task, w, None if bb is None else int(bb)))
+
+    missing, wrong = [], []
+    for task, w, bb in sorted(want, key=str):
+        path = backbone_path(task, w, bb)
+        if not path.exists():
+            missing.append(path.name)
+            continue
+        blob = torch.load(path, map_location="cpu", weights_only=False)
+        got = int(np.asarray(blob["obs_mean"]).size)
+        exp = EXPECTED_OBS_DIM[task]
+        if got != exp:
+            wrong.append(f"{path.name} has {got}, environment presents {exp}")
+    check("every checkpoint a stage opens is on disk", not missing,
+          f"{len(want)} wanted; missing " + ", ".join(missing) if missing
+          else f"{len(want)} checkpoints")
+    check("every checkpoint matches the observation the environment presents",
+          not wrong, "; ".join(wrong))
+
+
 def gate_policies() -> None:
     print("policies")
     src = (Path(__file__).resolve().parent / "run_d3il_v2.py").read_text()
@@ -261,10 +322,12 @@ def gate_policies() -> None:
 
 def main() -> int:
     only = sys.argv[1:] or ["environment", "hash", "observation",
-                            "estimators", "coverage", "policies"]
+                            "estimators", "coverage", "checkpoints",
+                            "policies"]
     fns = dict(environment=gate_environment, hash=gate_hash,
                observation=gate_observation, estimators=gate_estimators,
-               coverage=gate_coverage, policies=gate_policies)
+               coverage=gate_coverage, checkpoints=gate_checkpoints,
+               policies=gate_policies)
     for name in only:
         try:
             fns[name]()

@@ -30,20 +30,26 @@ ROOT = Path(os.environ.get("MOP_DSRL_ROOT",
 PLAN = ROOT / "runs" / "_d3il_v2" / "_clone_plan.json"
 SKEW = Path("/shared/scratch/SCWF00111/d3il_data/data/pushing/skew")
 OUT = Path("/shared/scratch/SCWF00111/d3il_backbones/pushing")
+# Outside range(5), so the weight is never chosen on a matrix policy.
+CALIBRATION_SEED = 5
 
 
 def one(i: int) -> int:
     """Clone the backbone the plan's ``i``-th entry names."""
     plan = json.loads(PLAN.read_text())
     weighting, bb = plan[i]
-    out = OUT / f"pushing_skew{weighting}_bb{bb}.pt"
+    # bb None is the calibration checkpoint, which carries no seed suffix and
+    # is trained at a seed outside the matrix's own range.
+    out = (OUT / f"pushing_skew{weighting}.pt" if bb is None
+           else OUT / f"pushing_skew{weighting}_bb{bb}.pt")
+    seed = CALIBRATION_SEED if bb is None else bb
     weights = SKEW / f"demo_weights_skew{weighting}.pkl"
     if not weights.exists():
         print(f"missing {weights}", flush=True)
         return 1
     cmd = [sys.executable, str(ROOT / "scripts" / "train_d3il_backbone.py"),
            "--task", "pushing", "--weights", str(weights),
-           "--out", str(out), "--seed", str(bb), "--device", "cpu"]
+           "--out", str(out), "--seed", str(seed), "--device", "cpu"]
     # One thread per clone. Twenty of these run at once, and torch otherwise
     # sizes its pool to the whole allocation.
     env = dict(os.environ, OMP_NUM_THREADS="1", MKL_NUM_THREADS="1",

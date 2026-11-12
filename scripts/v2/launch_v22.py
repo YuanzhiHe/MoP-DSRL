@@ -74,7 +74,14 @@ STAGES = [
 def write_clone_plan():
     """The twenty Pushing backbones the prep stage re-clones."""
     import json
+    # The matrix reads bb0..bb4. The calibration stage passes no backbone
+    # seed, which resolves to the unsuffixed checkpoint, so that one has to be
+    # re-cloned as well or the calibration opens a ten-channel file against a
+    # twelve-channel environment. It is trained at a seed the matrix never
+    # uses, which is what keeps the weight from being chosen on a policy the
+    # matrix then reports.
     jobs = [(w, bb) for w in PUSHING_W for bb in range(5)]
+    jobs += [(w, None) for w in PUSHING_W]
     (ROOT / "runs" / "_d3il_v2" / "_clone_plan.json").write_text(
         json.dumps(jobs))
     return jobs

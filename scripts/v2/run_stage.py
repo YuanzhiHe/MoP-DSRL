@@ -112,11 +112,12 @@ STAGES = {
     "calib-pushing": lambda: calibration("pushing", PUSHING_W),
     # The rule runs here, so the matrix in this stage reads a file that was
     # just written from the calibration both stages above produced.
-    "main-avoiding": lambda: [
+    "lambda": lambda: [
         [PY, str(SRC / "select_lambda.py"),
          "--calibration", f"{RUNS}/v22_calibration_*.jsonl",
          "--out", f"{RUNS}/v22_lambda_choice.json"],
-    ] + main_matrix("avoiding", AVOIDING_W),
+    ],
+    "main-avoiding": lambda: main_matrix("avoiding", AVOIDING_W),
     "main-pushing": lambda: main_matrix("pushing", PUSHING_W),
     "frozen": frozen,
     "abl-avoiding": lambda: ablations("avoiding"),
@@ -125,23 +126,43 @@ STAGES = {
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] not in STAGES:
+    argv = [a for a in sys.argv if a != "--dry"]
+    dry = "--dry" in sys.argv
+    sys.argv = argv
+    if not 2 <= len(sys.argv) <= 3 or sys.argv[1] not in STAGES:
         print("stages: " + ", ".join(STAGES))
+        print("usage: run_stage.py <stage> [first:last]")
         return 2
     name = sys.argv[1]
     cmds = STAGES[name]()
-    print(f"stage {name}: {len(cmds)} calls, {workers()} workers each",
+    # A stage runs its calls in series, so a long one is a long job however
+    # many cores it holds. A slice lets the calls of one stage run as separate
+    # jobs side by side; the calls are independent and each writes its own
+    # file, so the union of the slices is the stage.
+    span = ""
+    if len(sys.argv) == 3:
+        a, _, b = sys.argv[2].partition(":")
+        lo = int(a) if a else 0
+        hi = int(b) if b else len(cmds)
+        if not 0 <= lo < hi <= len(cmds):
+            print(f"slice {sys.argv[2]} is outside the {len(cmds)} calls"
+                  f" of {name}")
+            return 2
+        cmds, span = cmds[lo:hi], f" [{lo}:{hi}] of {len(cmds)}"
+    print(f"stage {name}{span}: {len(cmds)} calls, {workers()} workers each",
           flush=True)
     for i, c in enumerate(cmds, 1):
         print(f"\n[{i}/{len(cmds)}] " + " ".join(c), flush=True)
+        if dry:
+            continue
         t0 = time.time()
         rc = subprocess.run(c, cwd=ROOT).returncode
         print(f"[{i}/{len(cmds)}] exit {rc} after {(time.time() - t0) / 60:.1f}"
               f" min", flush=True)
         if rc != 0:
-            print(f"STAGE {name}: FAIL at call {i}", flush=True)
+            print(f"STAGE {name}{span}: FAIL at call {i}", flush=True)
             return rc
-    print(f"\nSTAGE {name}: PASS", flush=True)
+    print(f"\nSTAGE {name}{span}: PASS", flush=True)
     return 0
 
 
