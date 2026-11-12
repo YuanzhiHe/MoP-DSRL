@@ -52,16 +52,22 @@ def sbatch(name, cmd, cpus, mem, time, dep=None, array=None, dry=False):
 # The queue allows ten submitted jobs and four running, so the cohort's
 # thirty-two driver calls are grouped into eight stages that each take a node
 # and run their calls in series. run_stage.py holds the grouping.
+# A stage runs its calls one after another and each call fans out over its own
+# cells, so the cores a stage can use are bounded by the widest call it makes,
+# not by the node. Asking for all 192 made every stage wait for a whole node to
+# drain: the scheduler put calib-pushing, which never has more than 36 cells in
+# flight, a day out. Each stage now asks for its widest call plus a core for the
+# parent, which is doing the writing.
 STAGES = [
-    # name,            cpus, walltime,     depends on
-    ("prep",            24, "12:00:00",    None),
-    ("calib-avoiding",  96, "12:00:00",    "prep"),
-    ("calib-pushing",  192, "1-00:00:00",  "prep"),
-    ("main-avoiding",  192, "12:00:00",    "calib-avoiding,calib-pushing"),
-    ("main-pushing",   192, "2-00:00:00",  "main-avoiding"),
+    # name,            cpus, walltime,     depends on      widest call
+    ("prep",            24, "12:00:00",    None),          # 8 cells
+    ("calib-avoiding",  48, "12:00:00",    "prep"),        # 36
+    ("calib-pushing",   48, "1-00:00:00",  "prep"),        # 36
+    ("main-avoiding",  104, "12:00:00",    "calib-avoiding,calib-pushing"),
+    ("main-pushing",   104, "2-00:00:00",  "main-avoiding"),      # 100
     ("frozen",          96, "8:00:00",     "prep"),
-    ("abl-avoiding",   192, "12:00:00",    "main-avoiding"),
-    ("abl-pushing",    192, "2-00:00:00",  "main-avoiding"),
+    ("abl-avoiding",    32, "12:00:00",    "main-avoiding"),      # 25
+    ("abl-pushing",    104, "2-00:00:00",  "main-avoiding"),      # 25 and 100
 ]
 
 
