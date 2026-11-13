@@ -210,3 +210,35 @@ divergence comparison. It separates two explanations of any advantage the
 proposed arm shows: matching a reference at all, against the particular choice
 of total variation. Ablations are exploratory under section 6 and no ablation
 cell had been launched when this was added.
+
+**2026-11-12, section 3, the cloning budget of the frozen policy.** Each
+backbone was cloned for 20000 steps on both tasks. Under the one-environment
+rule the Pushing frozen policy completes a route in 3.6 per cent of episodes,
+which leaves a 500-episode evaluation about eighteen labelled episodes and no
+estimable route distribution; Avoiding completes about 70 per cent and is
+unaffected. Measured on the frozen policy alone, with no arm and no contrast
+in view, Pushing completion runs 0.036 at 20000 steps, 0.185 at 60000, 0.345
+at 120000 and 0.350 at 240000, so it stops improving at 120000; stacking past
+frames instead of raising the budget lowers it at every width tried. The
+cloning loss keeps falling past that point on both tasks while completion does
+not, so the loss is not what selects the budget. The Pushing backbones are
+re-cloned at 120000 steps and the Avoiding backbones stay at 20000, the rule
+being that each task is cloned until its frozen policy completes the task
+often enough for its route distribution to be measured. The 20000-step Pushing
+checkpoints, their frozen evaluations and their calibration are kept under a
+`steps20000` name and enter nothing. This rule was written after the frozen
+completion rates above had been seen and before any Pushing arm had been run
+at the new budget; the Avoiding matrix and ablations were complete when it was
+written and are not touched by it.
+
+**2026-11-12, section 3, the observation and the environment rule, measured.**
+The tangent observation and the one-environment rule were adopted together,
+and a Pushing frozen success of 0.376 under the earlier rule became 0.042. The
+two were separated by cloning five tangent backbones and rolling them out
+under the current rule: 0.052 against 0.035 for sine and cosine over ten paired
+cells each, a difference inside the evaluation's own noise. The fall is
+therefore the environment rule, which the Avoiding frozen column shows
+independently -- its first weighting reproduces the earlier numbers to the
+digit and the rest were inflated by 15 to 20 per cent. The sine-cosine frame
+holds the largest normalised observation at 2.1e3 where the tangent reaches
+7.9e11.

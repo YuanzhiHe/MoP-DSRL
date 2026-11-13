@@ -1,84 +1,88 @@
 {
-  "_comment": "Which run files each reported quantity is read from. The coverage gate fails when a file on disk appears in no list, so a half of a two-task comparison cannot sit unreported the way the Pushing divergence ablation did. A file that is deliberately out of the analysis goes under superseded, which is a statement rather than a silence. The reported lists name the v22 cohort: it is the only one measured with one environment per process and with the orientation channels as a sine and a cosine, and the two cohorts are not interchangeable.",
-  "tab:main, tab:success, fig:main, sec:separation": [
-    "v22_main_avoiding_0.00.jsonl",
-    "v22_main_avoiding_0.15.jsonl",
-    "v22_main_avoiding_0.30.jsonl",
-    "v22_main_avoiding_0.60.jsonl",
-    "v22_main_pushing_0.00.jsonl",
-    "v22_main_pushing_0.10.jsonl",
-    "v22_main_pushing_0.25.jsonl",
-    "v22_main_pushing_0.50.jsonl"
-  ],
-  "weight selection, sec:setup": [
-    "v22_calibration_avoiding_0.25.jsonl",
-    "v22_calibration_avoiding_0.50.jsonl",
-    "v22_calibration_avoiding_1.00.jsonl",
-    "v22_calibration_pushing_0.25.jsonl",
-    "v22_calibration_pushing_0.50.jsonl",
-    "v22_calibration_pushing_1.00.jsonl"
-  ],
-  "tab:divergence, both tasks": [
-    "v22_ablation_divergence_avoiding_js.jsonl",
-    "v22_ablation_divergence_avoiding_kl.jsonl",
-    "v22_ablation_divergence_avoiding_kl-smooth.jsonl",
-    "v22_ablation_divergence_avoiding_l2.jsonl",
-    "v22_ablation_divergence_pushing_js.jsonl",
-    "v22_ablation_divergence_pushing_kl.jsonl",
-    "v22_ablation_divergence_pushing_kl-smooth.jsonl",
-    "v22_ablation_divergence_pushing_l2.jsonl"
-  ],
-  "fitted prior, both tasks": [
-    "v22_ablation_fitted_prior_avoiding.jsonl",
-    "v22_ablation_fitted_prior_pushing.jsonl"
-  ],
-  "tab:weight": [
-    "v22_ablation_weight_pushing_0.50.jsonl",
-    "v22_ablation_weight_pushing_1.00.jsonl"
-  ],
-  "frozen policy, tab:success and the floor": [
-    "v22_frozen_avoiding.jsonl",
-    "v22_frozen_pushing.jsonl"
-  ],
-  "superseded, measured under the earlier environment rule and the tangent observation": [
-    "ablation_divergence_avoiding_js.jsonl",
-    "ablation_divergence_avoiding_kl-smooth.jsonl",
-    "ablation_divergence_avoiding_kl.jsonl",
-    "ablation_divergence_avoiding_l2.jsonl",
-    "ablation_divergence_pushing_js.jsonl",
-    "ablation_divergence_pushing_kl-smooth.jsonl",
-    "ablation_divergence_pushing_kl.jsonl",
-    "ablation_divergence_pushing_l2.jsonl",
-    "ablation_fitted_prior_avoiding.jsonl",
-    "ablation_fitted_prior_pushing.jsonl",
-    "ablation_weight_pushing_0.50.jsonl",
-    "ablation_weight_pushing_1.00.jsonl",
-    "calibration_avoiding_0.25.jsonl",
-    "calibration_avoiding_0.50.jsonl",
-    "calibration_avoiding_1.00.jsonl",
-    "calibration_pushing_0.25.jsonl",
-    "calibration_pushing_0.50.jsonl",
-    "calibration_pushing_1.00.jsonl",
-    "frozen2_avoiding.jsonl",
-    "frozen2_pushing.jsonl",
-    "frozen_avoiding.jsonl",
-    "frozen_pushing.jsonl",
-    "main_avoiding_0.00.jsonl",
-    "main_avoiding_0.15.jsonl",
-    "main_avoiding_0.30.jsonl",
-    "main_avoiding_0.60.jsonl",
-    "main_pushing_0.00.jsonl",
-    "main_pushing_0.10.jsonl",
-    "main_pushing_0.25.jsonl",
-    "main_pushing_0.50.jsonl",
-    "manifest_legacy.jsonl",
-    "smoke_avoiding.jsonl",
-    "smoke_pushing.jsonl"
-  ],
-  "validation, read by the checks rather than by the paper": [
-    "preflight_avoiding.jsonl",
-    "preflight_pushing.jsonl",
-    "preflight_frozen_avoiding.jsonl",
-    "envscope_avoiding_env1.jsonl"
-  ]
+ "_comment": "Which run files each reported quantity is read from. The coverage gate fails when a file on disk appears in no list, so a half of a two-task comparison cannot sit unreported the way the Pushing divergence ablation did. A file that is deliberately out of the analysis goes under superseded, which is a statement rather than a silence. The reported lists name the v22 cohort: it is the only one measured with one environment per process and with the orientation channels as a sine and a cosine, and the two cohorts are not interchangeable.",
+ "tab:main, tab:success, fig:main, sec:separation": [
+  "v22_main_avoiding_0.00.jsonl",
+  "v22_main_avoiding_0.15.jsonl",
+  "v22_main_avoiding_0.30.jsonl",
+  "v22_main_avoiding_0.60.jsonl",
+  "v22_main_pushing_0.00.jsonl",
+  "v22_main_pushing_0.10.jsonl",
+  "v22_main_pushing_0.25.jsonl",
+  "v22_main_pushing_0.50.jsonl"
+ ],
+ "weight selection, sec:setup": [
+  "v22_calibration_avoiding_0.25.jsonl",
+  "v22_calibration_avoiding_0.50.jsonl",
+  "v22_calibration_avoiding_1.00.jsonl",
+  "v22_calibration_pushing_0.25.jsonl",
+  "v22_calibration_pushing_0.50.jsonl",
+  "v22_calibration_pushing_1.00.jsonl"
+ ],
+ "tab:divergence, both tasks": [
+  "v22_ablation_divergence_avoiding_js.jsonl",
+  "v22_ablation_divergence_avoiding_kl.jsonl",
+  "v22_ablation_divergence_avoiding_kl-smooth.jsonl",
+  "v22_ablation_divergence_avoiding_l2.jsonl",
+  "v22_ablation_divergence_pushing_js.jsonl",
+  "v22_ablation_divergence_pushing_kl.jsonl",
+  "v22_ablation_divergence_pushing_kl-smooth.jsonl",
+  "v22_ablation_divergence_pushing_l2.jsonl"
+ ],
+ "fitted prior, both tasks": [
+  "v22_ablation_fitted_prior_avoiding.jsonl",
+  "v22_ablation_fitted_prior_pushing.jsonl"
+ ],
+ "tab:weight": [
+  "v22_ablation_weight_pushing_0.50.jsonl",
+  "v22_ablation_weight_pushing_1.00.jsonl"
+ ],
+ "frozen policy, tab:success and the floor": [
+  "v22_frozen_avoiding.jsonl",
+  "v22_frozen_pushing.jsonl"
+ ],
+ "superseded, measured under the earlier environment rule, the tangent observation, or the 20000-step clone": [
+  "ablation_divergence_avoiding_js.jsonl",
+  "ablation_divergence_avoiding_kl-smooth.jsonl",
+  "ablation_divergence_avoiding_kl.jsonl",
+  "ablation_divergence_avoiding_l2.jsonl",
+  "ablation_divergence_pushing_js.jsonl",
+  "ablation_divergence_pushing_kl-smooth.jsonl",
+  "ablation_divergence_pushing_kl.jsonl",
+  "ablation_divergence_pushing_l2.jsonl",
+  "ablation_fitted_prior_avoiding.jsonl",
+  "ablation_fitted_prior_pushing.jsonl",
+  "ablation_weight_pushing_0.50.jsonl",
+  "ablation_weight_pushing_1.00.jsonl",
+  "calibration_avoiding_0.25.jsonl",
+  "calibration_avoiding_0.50.jsonl",
+  "calibration_avoiding_1.00.jsonl",
+  "calibration_pushing_0.25.jsonl",
+  "calibration_pushing_0.50.jsonl",
+  "calibration_pushing_1.00.jsonl",
+  "frozen2_avoiding.jsonl",
+  "frozen2_pushing.jsonl",
+  "frozen_avoiding.jsonl",
+  "frozen_pushing.jsonl",
+  "main_avoiding_0.00.jsonl",
+  "main_avoiding_0.15.jsonl",
+  "main_avoiding_0.30.jsonl",
+  "main_avoiding_0.60.jsonl",
+  "main_pushing_0.00.jsonl",
+  "main_pushing_0.10.jsonl",
+  "main_pushing_0.25.jsonl",
+  "main_pushing_0.50.jsonl",
+  "manifest_legacy.jsonl",
+  "smoke_avoiding.jsonl",
+  "smoke_pushing.jsonl",
+  "v22_calibration_pushing_0.25_steps20000.jsonl",
+  "v22_calibration_pushing_0.50_steps20000.jsonl",
+  "v22_calibration_pushing_1.00_steps20000.jsonl",
+  "v22_frozen_pushing_steps20000.jsonl"
+ ],
+ "validation, read by the checks rather than by the paper": [
+  "preflight_avoiding.jsonl",
+  "preflight_pushing.jsonl",
+  "preflight_frozen_avoiding.jsonl",
+  "envscope_avoiding_env1.jsonl"
+ ]
 }

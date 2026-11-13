@@ -32,6 +32,13 @@ SKEW = Path("/shared/scratch/SCWF00111/d3il_data/data/pushing/skew")
 OUT = Path("/shared/scratch/SCWF00111/d3il_backbones/pushing")
 # Outside range(5), so the weight is never chosen on a matrix policy.
 CALIBRATION_SEED = 5
+# Steps of behaviour cloning. Set on the frozen policy alone, with no arm and
+# no contrast in view: the frozen completion rate on Pushing runs 0.036 at
+# 20000 steps, 0.185 at 60000 and 0.345 at 120000, and doubling again to
+# 240000 leaves it at 0.350, so the budget is the point past which the policy
+# the whole matrix starts from stops improving. The cloning loss keeps falling
+# after that point on both tasks and is therefore not what selects it.
+CLONE_STEPS = 120000
 
 
 def one(i: int) -> int:
@@ -49,7 +56,8 @@ def one(i: int) -> int:
         return 1
     cmd = [sys.executable, str(ROOT / "scripts" / "train_d3il_backbone.py"),
            "--task", "pushing", "--weights", str(weights),
-           "--out", str(out), "--seed", str(seed), "--device", "cpu"]
+           "--out", str(out), "--seed", str(seed), "--device", "cpu",
+           "--steps", str(CLONE_STEPS)]
     # One thread per clone. Twenty of these run at once, and torch otherwise
     # sizes its pool to the whole allocation.
     env = dict(os.environ, OMP_NUM_THREADS="1", MKL_NUM_THREADS="1",
@@ -58,9 +66,14 @@ def one(i: int) -> int:
     print(f"  start {out.name}", flush=True)
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, env=env)
     ok = r.returncode == 0 and out.exists()
+    # The final cloning loss belongs in the log whether or not the clone
+    # succeeded: a backbone that trains without raising and still cannot do
+    # the task leaves no other trace of how its fit ended.
+    last = [l for l in r.stdout.splitlines() if "flow-matching" in l]
     print(f"  [{'ok' if ok else 'FAIL'}] {out.name} "
           f"{(time.time() - t0) / 60:.1f} min"
           + (f" {out.stat().st_size}B" if out.exists() else "")
+          + (f" | {last[-1].strip()}" if last else " | no loss line")
           + ("" if ok else "\n" + r.stdout[-800:] + r.stderr[-800:]),
           flush=True)
     return 0 if ok else 1
