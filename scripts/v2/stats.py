@@ -48,9 +48,7 @@ class Contrast:
     runs_undefined: int = 0
     detail: dict = field(default_factory=dict)
 
-
-
-def line(self) -> str:
+    def line(self) -> str:
         p = self.p_adjusted if self.p_adjusted is not None else self.p_one_sided
         return (f"{self.name:<34} n={self.n:3d} df={self.df:3d} "
                 f"mean={self.mean:+.4f} sd={self.sd:.4f} se={self.se:.4f} "

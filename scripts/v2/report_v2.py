@@ -27,6 +27,12 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 
@@ -188,12 +194,14 @@ def contrasts(cells):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", nargs="+",
-                    default=[str(ROOT / "runs" / "_d3il_v2" / "main_*.jsonl")])
+                    default=[str(ROOT / "runs" / "_d3il_v2"
+                                 / f"{PREFIX}main_*.jsonl")])
     ap.add_argument("--planned", type=json.loads,
                     default='{"avoiding": 100, "pushing": 100}',
                     help="completed cells expected per task per arm")
     ap.add_argument("--out", type=Path,
-                    default=ROOT / "runs" / "_d3il_v2" / "report_v2.json")
+                    default=ROOT / "runs" / "_d3il_v2"
+                            / f"{PREFIX}report_main.json")
     args = ap.parse_args()
     if isinstance(args.planned, str):
         args.planned = json.loads(args.planned)

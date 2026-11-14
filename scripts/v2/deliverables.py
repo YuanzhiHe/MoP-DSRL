@@ -28,12 +28,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import launch_plan as LP  # noqa: E402
 
 RUNS = ROOT / "runs" / "_d3il_v2"
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 STAGE_FILES = {
-    "calibration": "calibration_*.jsonl",
-    "main": "main_*.jsonl",
-    "ablation/divergence": "ablation_divergence_*.jsonl",
-    "ablation/fitted prior": "ablation_fitted_prior_*.jsonl",
-    "ablation/weight": "ablation_weight_*.jsonl",
+    "calibration": f"{PREFIX}calibration_*.jsonl",
+    "main": f"{PREFIX}main_*.jsonl",
+    "ablation/divergence": f"{PREFIX}ablation_divergence_*.jsonl",
+    "ablation/fitted prior": f"{PREFIX}ablation_fitted_prior_*.jsonl",
+    "ablation/weight": f"{PREFIX}ablation_weight_*.jsonl",
     # Evaluation only: each frozen policy is rolled out under its own latent
     # prior with no training, which is where the fine-tuned runs start from.
     # The superseded first stage, which measured every cell on the environment
@@ -49,7 +55,7 @@ DEBUG_FILES = ("smoke_*.jsonl", "_tiny*.jsonl")
 
 def planned():
     """Every cell the launch plan defines, keyed the way a run row keys it."""
-    choice = json.loads((RUNS / "lambda_choice.json").read_text())
+    choice = json.loads((RUNS / f"{PREFIX}lambda_choice.json").read_text())
     out = collections.defaultdict(set)
     for task, t in LP.TASK.items():
         for lam in LP.CANDIDATES:
@@ -184,8 +190,9 @@ def results_text(account, missing):
         p = RUNS / name
         return json.loads(p.read_text()) if p.exists() else None
 
-    rep, trend, abl = (read("report_main.json"), read("trend_main.json"),
-                       read("ablations.json"))
+    rep, trend, abl = (read(f"{PREFIX}report_main.json"),
+                       read(f"{PREFIX}trend_main.json"),
+                       read(f"{PREFIX}ablations.json"))
     out = ["# Results, corrected implementation", "",
            "Generated from the run files and the analysis outputs. No number "
            "in this document was entered by hand.", ""]
@@ -324,8 +331,8 @@ def main():
             # ran. Those cells carry the same key, so the grid job resumed
             # them and wrote no file; they are counted here from where they
             # live rather than reported as cells that never happened.
-            reused = [r for r in read("main_pushing_0.00.jsonl")
-                      + read("main_pushing_0.10.jsonl")
+            reused = [r for r in read(f"{PREFIX}main_pushing_0.00.jsonl")
+                      + read(f"{PREFIX}main_pushing_0.10.jsonl")
                       if r["arm"] in ("mi", "mop")
                       and r["weighting"] in ("0.00", "0.10")]
             rows += reused
@@ -359,7 +366,7 @@ def main():
             # rather than leaving a reader to infer it from the file name.
             m["reused_from_another_stage"] = (
                 stage == "ablation/weight" and r["_file"].startswith(
-                    "runs/_d3il_v2/main_"))
+                    f"runs/_d3il_v2/{PREFIX}main_"))
             manifest.append(m)
 
     debug = {p: len(read(p)) for p in DEBUG_FILES}
@@ -412,7 +419,7 @@ def main():
     (out / "references.json").write_text(json.dumps(refs, indent=1, default=str))
 
     cmds = []
-    choice = json.loads((RUNS / "lambda_choice.json").read_text())
+    choice = json.loads((RUNS / f"{PREFIX}lambda_choice.json").read_text())
     for stage, fn in (("calibration", lambda: LP.calibration(None)),
                       ("main", lambda: LP.main_matrix(None, choice)),
                       ("ablation", lambda: LP.ablation(None, choice))):
@@ -425,10 +432,10 @@ def main():
     for src in ("docs/v2/PREREG_v2.md", "docs/v2/FIXES.md",
                 "docs/v2/INVENTORY.md", "docs/v2/TREND.md",
                 "docs/v2/ABLATIONS.md", "docs/v2/REANALYSIS_LEGACY.md",
-                "runs/_d3il_v2/lambda_choice.json",
-                "runs/_d3il_v2/report_main.json",
-                "runs/_d3il_v2/trend_main.json",
-                "runs/_d3il_v2/ablations.json",
+                f"runs/_d3il_v2/{PREFIX}lambda_choice.json",
+                f"runs/_d3il_v2/{PREFIX}report_main.json",
+                f"runs/_d3il_v2/{PREFIX}trend_main.json",
+                f"runs/_d3il_v2/{PREFIX}ablations.json",
                 "runs/_d3il_v2/reanalysis_legacy.json",
                 "runs/_d3il_v2/observation_range.json"):
         p = ROOT / src

@@ -1,0 +1,375 @@
+{
+ "avoiding/divergence": {
+  "js": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.19273235177794917,
+   "success": 0.7383200000000001,
+   "rewarded_success": 0.22655999999999998,
+   "episode_return": 0.22655999999999998,
+   "completion": 0.7494400000000002,
+   "below_floor": 0.0,
+   "coef_absmax_raw": 1.4621491394234474,
+   "coef_absmax_used": 1.4621491394234474,
+   "grad_norm_last": 2.868784541338682,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 2
+  },
+  "kl eps=1e-08": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.13924061683490405,
+   "success": 0.77464,
+   "rewarded_success": 0.18312,
+   "episode_return": 0.18312,
+   "completion": 0.78896,
+   "below_floor": 0.0,
+   "coef_absmax_raw": 6.176856459126991,
+   "coef_absmax_used": 6.176856459126991,
+   "grad_norm_last": 4.291359470039606,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 2
+  },
+  "kl eps=1e-08 smoothing=0.05": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.15534883210539896,
+   "success": 0.7243200000000001,
+   "rewarded_success": 0.11272,
+   "episode_return": 0.11272,
+   "completion": 0.7426400000000001,
+   "below_floor": 0.04,
+   "coef_absmax_raw": 4.848501149650249,
+   "coef_absmax_used": 4.848501149650249,
+   "grad_norm_last": 4.739999424815178,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 0
+  },
+  "l2": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.17600645433000234,
+   "success": 0.754,
+   "rewarded_success": 0.21407999999999996,
+   "episode_return": 0.21407999999999996,
+   "completion": 0.7750400000000001,
+   "below_floor": 0.0,
+   "coef_absmax_raw": 0.5458887539529911,
+   "coef_absmax_used": 0.5458887539529911,
+   "grad_norm_last": 4.07081772595644,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 1
+  },
+  "tv": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.13267817768670218,
+   "success": 0.8016800000000001,
+   "rewarded_success": 0.18975999999999998,
+   "episode_return": 0.18975999999999998,
+   "completion": 0.81432,
+   "below_floor": 0.0,
+   "coef_absmax_raw": 1.1716378441375095,
+   "coef_absmax_used": 1.1716378441375095,
+   "grad_norm_last": 4.778299702350051,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 4
+  }
+ },
+ "avoiding/divergence contrasts/fidelity": [
+  {
+   "name": "tv over js",
+   "n": 5,
+   "df": 4,
+   "mean": 0.060054174091247005,
+   "sd": 0.07519183016178552,
+   "se": 0.03362680871887428,
+   "ci_low": -0.03330881437969415,
+   "ci_high": 0.15341716256218815,
+   "t": 1.7859016772394283,
+   "p_one_sided": 0.07432926588021257,
+   "wins": 4,
+   "p_adjusted": 0.2973170635208503,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     0.0447467854499935,
+     0.004932861677728051,
+     0.17349706142054572,
+     -0.014122508312851473,
+     0.09121667022081924
+    ]
+   }
+  },
+  {
+   "name": "tv over kl eps=1e-08",
+   "n": 5,
+   "df": 4,
+   "mean": 0.006562439148201896,
+   "sd": 0.06318745734026142,
+   "se": 0.02825828998763852,
+   "ci_low": -0.07189515176923703,
+   "ci_high": 0.08502003006564082,
+   "t": 0.23223058263867383,
+   "p_one_sided": 0.4138783483383316,
+   "wins": 3,
+   "p_adjusted": 0.6214178729632714,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.07557140519617334,
+     0.008412135448960495,
+     0.09337176345892019,
+     -0.02554526596705392,
+     0.03214496799635605
+    ]
+   }
+  },
+  {
+   "name": "tv over kl eps=1e-08 smoothing=0.05",
+   "n": 5,
+   "df": 4,
+   "mean": 0.022670654418696833,
+   "sd": 0.09486896254835209,
+   "se": 0.04242668984259939,
+   "ci_low": -0.09512472092453342,
+   "ci_high": 0.14046602976192707,
+   "t": 0.5343488851664759,
+   "p_one_sided": 0.3107089364816357,
+   "wins": 3,
+   "p_adjusted": 0.6214178729632714,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.10377533106968159,
+     0.08530111449138386,
+     0.041003338991326424,
+     -0.040375123259901696,
+     0.13119927294035716
+    ]
+   }
+  },
+  {
+   "name": "tv over l2",
+   "n": 5,
+   "df": 4,
+   "mean": 0.043328276643300155,
+   "sd": 0.09104250430574178,
+   "se": 0.04071544569389118,
+   "ci_low": -0.06971592325945081,
+   "ci_high": 0.1563724765460511,
+   "t": 1.0641729669141506,
+   "p_one_sided": 0.17361293389110932,
+   "wins": 3,
+   "p_adjusted": 0.520838801673328,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.0325178221480146,
+     0.02773666794814726,
+     0.1532810939033435,
+     -0.052237431766475106,
+     0.12037887527949974
+    ]
+   }
+  }
+ ],
+ "avoiding/divergence contrasts/geometric success": [
+  {
+   "name": "tv over js",
+   "n": 5,
+   "df": 4,
+   "mean": 0.06336000000000001,
+   "sd": 0.11025410649948598,
+   "se": 0.049307135386270406,
+   "ci_low": -0.07353855469453564,
+   "ci_high": 0.20025855469453568,
+   "t": 1.2850067136052408,
+   "p_one_sided": 0.13407551802298892,
+   "wins": 3,
+   "p_adjusted": 0.26815103604597784,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     0.08440000000000003,
+     0.24519999999999997,
+     -0.00039999999999995595,
+     0.020000000000000018,
+     -0.032399999999999984
+    ]
+   }
+  },
+  {
+   "name": "tv over kl eps=1e-08",
+   "n": 5,
+   "df": 4,
+   "mean": 0.02704000000000002,
+   "sd": 0.033087278522114835,
+   "se": 0.014797080793183509,
+   "ci_low": -0.014043282539450693,
+   "ci_high": 0.06812328253945073,
+   "t": 1.827387467699466,
+   "p_one_sided": 0.07082826432541428,
+   "wins": 4,
+   "p_adjusted": 0.2675890583797249,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.0032000000000000917,
+     0.07879999999999998,
+     0.00039999999999995595,
+     0.024000000000000132,
+     0.03520000000000012
+    ]
+   }
+  },
+  {
+   "name": "tv over kl eps=1e-08 smoothing=0.05",
+   "n": 5,
+   "df": 4,
+   "mean": 0.07736000000000007,
+   "sd": 0.09217487727141273,
+   "se": 0.041221858279315834,
+   "ci_low": -0.03709022664676373,
+   "ci_high": 0.19181022664676387,
+   "t": 1.876674250729194,
+   "p_one_sided": 0.06689726459493123,
+   "wins": 5,
+   "p_adjusted": 0.2675890583797249,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     0.0012000000000000899,
+     0.23520000000000008,
+     0.02960000000000007,
+     0.04600000000000004,
+     0.07480000000000009
+    ]
+   }
+  },
+  {
+   "name": "tv over l2",
+   "n": 5,
+   "df": 4,
+   "mean": 0.047680000000000056,
+   "sd": 0.08967202462306735,
+   "se": 0.04010254854744271,
+   "ci_low": -0.06366252462050435,
+   "ci_high": 0.15902252462050448,
+   "t": 1.1889518678243842,
+   "p_one_sided": 0.15010818875689733,
+   "wins": 3,
+   "p_adjusted": 0.26815103604597784,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.05679999999999996,
+     0.14760000000000006,
+     0.032400000000000095,
+     -0.015999999999999903,
+     0.13119999999999998
+    ]
+   }
+  }
+ ],
+ "avoiding/skill prior": {
+  "prior fitted": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.22740684657490026,
+   "success": 0.7610399999999999,
+   "rewarded_success": 0.20232000000000003,
+   "episode_return": 0.20232000000000003,
+   "completion": 0.7780799999999999,
+   "below_floor": 0.0,
+   "coef_absmax_raw": 0.0,
+   "coef_absmax_used": 0.5911083463033041,
+   "grad_norm_last": 3.64983731508255,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 1
+  },
+  "prior uniform": {
+   "attempts": 25,
+   "completed": 25,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.2442364384785907,
+   "success": 0.7659999999999999,
+   "rewarded_success": 0.21183999999999997,
+   "episode_return": 0.21183999999999997,
+   "completion": 0.78232,
+   "below_floor": 0.0,
+   "coef_absmax_raw": 0.0,
+   "coef_absmax_used": 0.5911083463033041,
+   "grad_norm_last": 3.64983731508255,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.0,
+   "frac_inert": 0.0,
+   "collapsed": 1
+  }
+ },
+ "avoiding/skill prior contrast": {
+  "name": "avoiding: fitted prior closer than uniform",
+  "n": 5,
+  "df": 4,
+  "mean": 0.01682959190369046,
+  "sd": 0.020488134202727992,
+  "se": 0.00916257216188765,
+  "ci_low": -0.008609786726204119,
+  "ci_high": 0.04226897053358504,
+  "t": 1.8367759190693533,
+  "p_one_sided": 0.07006073311619739,
+  "wins": 3,
+  "p_adjusted": null,
+  "policies_dropped": 0,
+  "runs_undefined": 0,
+  "detail": {
+   "differences": [
+    0.02500827035477815,
+    -4.535737739341794e-06,
+    0.0469374170347015,
+    0.01590627562771929,
+    -0.003699467761007297
+   ]
+  }
+ }
+}

@@ -30,6 +30,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 
 RUNS = ROOT / "runs" / "_d3il_v2"
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 ARMS = ("mi", "dsrl", "bmd")
 
 
@@ -43,9 +49,9 @@ def skew_of(r):
     return float(0.5 * np.abs(q - 1.0 / q.size).sum())
 
 
-def load(task):
+def load(task, prefix=PREFIX):
     rows = []
-    for f in sorted(glob.glob(str(RUNS / f"main_{task}_*.jsonl"))):
+    for f in sorted(glob.glob(str(RUNS / f"{prefix}main_{task}_*.jsonl"))):
         rows += [json.loads(l) for l in Path(f).open() if l.strip()]
     for r in rows:
         v = r.get("tv_to_ref")
@@ -84,13 +90,18 @@ def regress(points):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", type=Path, default=RUNS / "trend_main.json")
+    ap.add_argument("--prefix", default=PREFIX,
+                    help="run-file name prefix; the empty string reads the "
+                         "files the earlier environment rule produced")
+    ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--out-doc", type=Path, default=ROOT / "docs" / "v2" / "TREND.md")
     args = ap.parse_args()
+    if args.out is None:
+        args.out = RUNS / f"{args.prefix}trend_main.json"
 
     report, doc = {}, ["# Advantage against reference skew", ""]
     for task in ("avoiding", "pushing"):
-        rows = load(task)
+        rows = load(task, args.prefix)
         if not rows:
             continue
         byw = collections.defaultdict(list)

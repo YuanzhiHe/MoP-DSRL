@@ -20,6 +20,12 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 EVAL_EPISODES = {"avoiding": 500, "pushing": 300}
 
 
@@ -102,7 +108,7 @@ def main():
                     default=ROOT / "runs" / "_d3il_v2" / "sampling_floor.json")
     args = ap.parse_args()
     rng = np.random.default_rng(args.seed)
-    rows = read("main_*.jsonl")
+    rows = read(f"{PREFIX}main_*.jsonl")
     out = {}
     for task in sorted({r["task"] for r in rows}):
         f = floor_for(rows, task, args.draws, rng)

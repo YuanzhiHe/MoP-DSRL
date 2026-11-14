@@ -33,6 +33,12 @@ import torch                                                  # noqa: E402
 # Jobs run from a frozen copy of scripts/, so the output directory has to come
 # from the environment rather than from where this file happens to sit.
 ROOT = Path(os.environ.get("MOP_DSRL_ROOT") or Path(__file__).resolve().parents[2])
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts"), str(ROOT / "scripts" / "v2")]
 
 import run_d3il_v2 as R                                       # noqa: E402
@@ -132,8 +138,10 @@ def main():
     ap.add_argument("--out", type=Path,
                     default=ROOT / "runs" / "_d3il_v2" / "observation_range.json")
     ap.add_argument("--runs", nargs="*",
-                    default=[str(ROOT / "runs" / "_d3il_v2" / "calibration_*.jsonl"),
-                             str(ROOT / "runs" / "_d3il_v2" / "main_*.jsonl")],
+                    default=[str(ROOT / "runs" / "_d3il_v2"
+                                 / f"{PREFIX}calibration_*.jsonl"),
+                             str(ROOT / "runs" / "_d3il_v2"
+                                 / f"{PREFIX}main_*.jsonl")],
                     help="completed runs to read obs_absmax from")
     a = ap.parse_args()
 

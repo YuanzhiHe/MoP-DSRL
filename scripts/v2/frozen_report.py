@@ -16,6 +16,12 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 
@@ -61,7 +67,7 @@ def main():
     # averaging the two together.
     pattern = sys.argv[1] if len(sys.argv) > 1 else "frozen2_*.jsonl"
     frozen = [r for r in read(pattern) if r.get("status") == "completed"]
-    main_rows = [r for r in read("main_*.jsonl") if r.get("status") == "completed"]
+    main_rows = [r for r in read(f"{PREFIX}main_*.jsonl") if r.get("status") == "completed"]
     if not frozen:
         raise SystemExit(f"no frozen-policy rows under {pattern}")
     versions = {r.get("estimator_version") for r in frozen + main_rows}

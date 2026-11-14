@@ -32,6 +32,12 @@ import stats as S  # noqa: E402
 
 FLOOR = {"avoiding": 0.15, "pushing": 0.10}
 RUNS = ROOT / "runs" / "_d3il_v2"
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 
 
 def policy_of(r):
@@ -179,17 +185,23 @@ def scale_note(d):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-json", type=Path, default=RUNS / "ablations.json")
+    ap.add_argument("--prefix", default=PREFIX,
+                    help="run-file name prefix; the empty string reads the "
+                         "files the earlier environment rule produced")
+    ap.add_argument("--out-json", type=Path, default=None)
     ap.add_argument("--out-doc", type=Path,
                     default=ROOT / "docs" / "v2" / "ABLATIONS.md")
     args = ap.parse_args()
+    pre = args.prefix
+    if args.out_json is None:
+        args.out_json = RUNS / f"{pre}ablations.json"
 
     report, doc = {}, ["# Ablations, corrected implementation", ""]
 
     for task in ("avoiding", "pushing"):
         top = {"avoiding": "0.60", "pushing": "0.50"}[task]
-        rows = [r for r in load([RUNS / f"ablation_divergence_{task}_*.jsonl",
-                                 RUNS / f"main_{task}_{top}.jsonl"])
+        rows = [r for r in load([RUNS / f"{pre}ablation_divergence_{task}_*.jsonl",
+                                 RUNS / f"{pre}main_{task}_{top}.jsonl"])
                 if r["arm"] == "mop" and r["weighting"] == top]
         if rows:
             d = summarise(rows, task, label)
@@ -208,8 +220,8 @@ def main():
                     f"Total variation against each alternative, on {nm}, "
                     f"paired over the five frozen policies.", fam)
 
-        fit = load([RUNS / f"ablation_fitted_prior_{task}.jsonl",
-                    RUNS / f"main_{task}_{top}.jsonl"])
+        fit = load([RUNS / f"{pre}ablation_fitted_prior_{task}.jsonl",
+                    RUNS / f"{pre}main_{task}_{top}.jsonl"])
         fit = [r for r in fit if r["arm"] == "bmd" and r["weighting"] == top]
         if fit:
             d = summarise(fit, task, lambda r: f"prior {r['bmd_prior']}")
@@ -233,9 +245,9 @@ def main():
     # rows live in the main files and are read from there, which is what makes
     # the grid a comparison across weights on one set of cells rather than two
     # cohorts that happen to share a configuration.
-    pw = load([RUNS / "ablation_weight_pushing_*.jsonl",
-               RUNS / "main_pushing_0.00.jsonl",
-               RUNS / "main_pushing_0.10.jsonl"])
+    pw = load([RUNS / f"{pre}ablation_weight_pushing_*.jsonl",
+               RUNS / f"{pre}main_pushing_0.00.jsonl",
+               RUNS / f"{pre}main_pushing_0.10.jsonl"])
     pw = [r for r in pw if r["weighting"] in ("0.00", "0.10")
           and r["arm"] in ("mi", "mop")]
     if pw:
@@ -262,7 +274,7 @@ def main():
                 f"{nm}, paired over the frozen policies of the two lowest "
                 f"demonstration weightings.", fam)
         doc += [f"The weight the main matrix runs is "
-                f"{json.loads((RUNS / 'lambda_choice.json').read_text())['pushing']['mop']['lam']:.2f}, "
+                f"{json.loads((RUNS / f'{pre}lambda_choice.json').read_text())['pushing']['mop']['lam']:.2f}, "
                 f"chosen before any main cell existed by a rule that reads "
                 f"only how often a weight drives geometric success below the "
                 f"task floor. That rule never reads fidelity, and this grid "

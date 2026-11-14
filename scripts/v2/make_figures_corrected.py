@@ -26,6 +26,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 
 RUNS = ROOT / "runs" / "_d3il_v2"
+# Name prefix of the run files the analysis reads. The matrix was measured
+# again after the environment rule changed, and both cohorts sit in the same
+# directory; the prefix is what keeps the two apart, so a bare invocation
+# reads the current one.
+PREFIX = "v22_"
+
 OUT = ROOT / "paper" / "figures"
 W = 5.4167                    # elsarticle preprint text width, 390 pt, measured
 INK, MUT, RULE = "#1a1d21", "#5d6670", "#c2c9d2"
@@ -55,7 +61,7 @@ plt.rcParams.update({
 
 def load(task):
     rows = []
-    for f in sorted(glob.glob(str(RUNS / f"main_{task}_*.jsonl"))):
+    for f in sorted(glob.glob(str(RUNS / f"{PREFIX}main_{task}_*.jsonl"))):
         rows += [json.loads(l) for l in Path(f).open() if l.strip()]
     for r in rows:
         v = r.get("tv_to_ref")
