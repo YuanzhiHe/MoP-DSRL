@@ -35,6 +35,25 @@ def select(rows, task):
         raise SystemExit(
             f"{task} calibration spans estimator versions {sorted(versions)}; "
             f"a weight cannot be selected across two update rules")
+    # One backbone at one demonstration weighting is one checkpoint. Two means
+    # the calibration files named here come from two cloning cohorts, which
+    # doubles every cell count and pools runs the frozen policy of one cohort
+    # could not have produced. The weight rule reads how often success falls
+    # below the floor, so pooling a cohort that cannot reach the floor drives
+    # the rule into its fallback branch whatever the current cohort shows.
+    seen = collections.defaultdict(set)
+    for r in rows:
+        if r.get("task") != task:
+            continue
+        seen[(r["weighting"], r.get("backbone_seed"))].add(
+            r.get("checkpoint_sha256"))
+    mixed = {k: sorted(v) for k, v in seen.items() if len(v) > 1}
+    if mixed:
+        k, v = next(iter(sorted(mixed.items())))
+        raise SystemExit(
+            f"{task} calibration spans {len(mixed)} cells measured on more "
+            f"than one checkpoint, the first being weighting {k[0]} backbone "
+            f"{k[1]} on {[h[:12] for h in v]}; name the files of one cohort")
     by = collections.defaultdict(list)
     for r in rows:
         if r.get("task") != task or r["arm"] == "dsrl":

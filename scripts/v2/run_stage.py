@@ -114,7 +114,13 @@ STAGES = {
     # just written from the calibration both stages above produced.
     "lambda": lambda: [
         [PY, str(SRC / "select_lambda.py"),
-         "--calibration", f"{RUNS}/v22_calibration_*.jsonl",
+         # Named one by one: a glob over this directory also matches the
+         # calibration of a superseded cloning cohort, whose files sit here
+         # under a suffix and are not the cohort the matrix runs on.
+         "--calibration",
+         *[f"{RUNS}/v22_calibration_{t}_{lam}.jsonl"
+           for t in ("avoiding", "pushing")
+           for lam in ("0.25", "0.50", "1.00")],
          "--out", f"{RUNS}/v22_lambda_choice.json"],
     ],
     "main-avoiding": lambda: main_matrix("avoiding", AVOIDING_W),

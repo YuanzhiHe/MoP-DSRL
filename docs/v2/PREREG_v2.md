@@ -242,3 +242,27 @@ independently -- its first weighting reproduces the earlier numbers to the
 digit and the rest were inflated by 15 to 20 per cent. The sine-cosine frame
 holds the largest normalised observation at 2.1e3 where the tangent reaches
 7.9e11.
+
+### Amendment, 2026-11-14: the cohort the weight rule reads
+
+The weight rule of section 5 was applied to Pushing on 2026-11-14 and returned
+its fallback branch for all three arms, reporting 24 calibration runs per arm
+where the stage produces 12. The stage named the calibration by a glob over
+`v22_calibration_*.jsonl`, which also matches the three files the superseded
+20000-step cloning cohort left in the same directory under a `_steps20000`
+suffix. Pooling the two cohorts put runs from a frozen policy that completes
+the task 0.036 of the time beside runs from one that completes it 0.345 of the
+time, and the former cannot reach the floor at any weight, so the pooled
+fraction stayed above tolerance whatever the current cohort showed.
+
+The stage now names the six calibration files one by one, and the selection
+script refuses a calibration in which one weighting and one backbone carry more
+than one checkpoint. The decision recorded under the pooled files is kept as
+`runs/_d3il_v2/v22_lambda_choice_mixedglob.json`; no main or ablation cell was
+run against it, since the matrix was held before any of it started.
+
+On the current cohort alone the rule takes its main branch on both tasks.
+Pushing selects 1.00 for reference matching, 1.00 for the learned-skill
+baseline and 0.50 for entropy maximisation; Avoiding's recorded decision is
+unchanged, which the script verifies by refusing to redecide a task already
+written.
