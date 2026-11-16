@@ -4,7 +4,12 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=48G
+# Per core rather than per job. Every stage here runs one worker per core, and
+# a worker holds its own environment and its own copy of the policy, so what a
+# job needs scales with the cores it asks for. A fixed request sized for the
+# default allocation let a stage take four times the cores and die in its
+# first minute, with the file it had just opened left at zero rows.
+#SBATCH --mem-per-cpu=2G
 #SBATCH --time=2-00:00:00
 #SBATCH --output=logs/cpu_v2/%x_%j.out
 #SBATCH --error=logs/cpu_v2/%x_%j.out

@@ -291,3 +291,16 @@ wrapper runs a frozen copy of `scripts/` under `runs/_d3il_v2/_src/<job>`, so
 under that wrapper both globbed a directory that does not exist, found nothing,
 and passed. They now take the root from the environment, and a gate that finds
 no files to inspect fails rather than passes.
+
+### Amendment, 2026-11-16: a stage that dies leaves a file the checks accept
+
+Three Pushing stages were submitted on 104 cores against the job wrapper's
+fixed 48 GB request and were killed for memory inside their first minute. Each
+had already opened its output file, so the four main files and the two weight
+grid files sat at zero rows. The whole suite then passed 121 of 121 checks:
+every check reads what a file contains, and a file containing nothing
+contradicts nothing. The request is now made per core, which is how the stages
+use memory, and a completeness check compares each file against the number of
+runs its own stage plans. That check is kept out of the suite the launcher runs
+before a cohort, where a file being written is short for an innocent reason,
+and is asked for once the queue is empty.

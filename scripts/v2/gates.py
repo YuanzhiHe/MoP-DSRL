@@ -406,15 +406,69 @@ def gate_fidelity() -> None:
               f"{len(tvs)} distinct value" + ("" if len(tvs) == 1 else "s"))
 
 
+def gate_completeness() -> None:
+    """Every file a stage writes holds every run that stage plans for it.
+
+    A job that dies in its first minute leaves the file it had just opened at
+    zero rows. Every other check reads such a file as having nothing to object
+    to, so a matrix that never ran passed the whole suite. The number of runs
+    a stage plans is the product of the levels, the frozen policies, the seeds
+    and the arms on its own command line, which is read from the command so
+    that it cannot drift from what the stage would submit. A stage writing its
+    file right now is short through no fault of its own, so this is kept out
+    of the default suite and asked for once the queue is empty.
+    """
+    print("completeness")
+    os.environ.setdefault("SLURM_CPUS_PER_TASK", "8")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import run_stage as RS
+
+    def count(cmd, flag, default):
+        """How many values follow a flag that takes a list."""
+        if flag not in cmd:
+            return default
+        i = cmd.index(flag) + 1
+        n = 0
+        while i < len(cmd) and not cmd[i].startswith("--"):
+            n, i = n + 1, i + 1
+        return n
+
+    def planned(cmd):
+        seeds = int(cmd[cmd.index("--seeds") + 1]) if "--seeds" in cmd else 5
+        # The frozen baseline has no arms: it scores the policy it was given.
+        arms = 1 if any(c.endswith("frozen_baseline.py") for c in cmd) \
+            else count(cmd, "--arms", 4)
+        return (count(cmd, "--weightings", 0)
+                * max(1, count(cmd, "--backbone-seeds", 1)) * seeds * arms)
+
+    for stage, build in RS.STAGES.items():
+        if stage in ("prep", "lambda"):
+            continue
+        for cmd in build():
+            cmd = [str(c) for c in cmd]
+            name = Path(cmd[cmd.index("--out") + 1]).name
+            want = planned(cmd)
+            f = RUNS / name
+            have = sum(1 for line in f.open() if line.strip()) \
+                if f.exists() else 0
+            check(f"{name} holds the {want} runs its stage plans",
+                  have == want, f"{have} rows on disk")
+
+
 def main() -> int:
-    only = sys.argv[1:] or ["environment", "hash", "observation",
-                            "estimators", "coverage", "checkpoints",
-                            "policies", "task-settings", "fidelity"]
+    suite = ["environment", "hash", "observation", "estimators",
+             "coverage", "checkpoints", "policies", "task-settings",
+             "fidelity"]
+    only = sys.argv[1:] or suite
+    # Asked for once the queue is empty, when a short file means a stage died
+    # rather than a stage still writing.
+    if only == ["final"]:
+        only = suite + ["completeness"]
     fns = {"environment": gate_environment, "hash": gate_hash,
            "observation": gate_observation, "estimators": gate_estimators,
            "coverage": gate_coverage, "checkpoints": gate_checkpoints,
            "policies": gate_policies, "task-settings": gate_task_settings,
-           "fidelity": gate_fidelity}
+           "fidelity": gate_fidelity, "completeness": gate_completeness}
     for name in only:
         try:
             fns[name]()
