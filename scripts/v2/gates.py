@@ -370,14 +370,46 @@ def gate_task_settings() -> None:
                         for k, v in wrong.items()))
 
 
+def gate_fidelity() -> None:
+    """The distance the paper reports must be able to come out non-zero.
+
+    A reference histogram with one occupied bin makes every policy's distance
+    to it zero whatever the policy did, and a file whose rows all carry the
+    same distance is measuring nothing. Both states complete without raising
+    and both passed every other check, so they are read here directly: the
+    histogram must have the task's number of bins, the reference must occupy
+    more than one of them, and the distances within a file must vary.
+    """
+    print("fidelity")
+    import launch_plan as LP
+    for f in sorted(RUNS.glob("v22_*.jsonl")):
+        rows = [json.loads(l) for l in f.open() if l.strip()]
+        rows = [r for r in rows if r.get("C_ref")]
+        if not rows:
+            continue
+        task = rows[0].get("task")
+        want = LP.TASK[task]["mode_groups"]
+        widths = {len(r["C_ref"]) for r in rows}
+        check(f"{f.name} builds the task's histogram", widths == {want},
+              f"{sorted(widths)} bins where the task has {want}")
+        flat = [r for r in rows
+                if sum(1 for v in r["C_ref"] if v > 0) < 2]
+        check(f"{f.name} has a reference to measure against", not flat,
+              f"{len(flat)} of {len(rows)} references occupy one bin")
+        tvs = {r.get("tv_to_ref") for r in rows if r.get("fidelity_defined")}
+        check(f"{f.name} distances vary across its runs", len(tvs) > 1,
+              f"{len(tvs)} distinct value" + ("" if len(tvs) == 1 else "s"))
+
+
 def main() -> int:
     only = sys.argv[1:] or ["environment", "hash", "observation",
                             "estimators", "coverage", "checkpoints",
-                            "policies", "task-settings"]
+                            "policies", "task-settings", "fidelity"]
     fns = {"environment": gate_environment, "hash": gate_hash,
            "observation": gate_observation, "estimators": gate_estimators,
            "coverage": gate_coverage, "checkpoints": gate_checkpoints,
-           "policies": gate_policies, "task-settings": gate_task_settings}
+           "policies": gate_policies, "task-settings": gate_task_settings,
+           "fidelity": gate_fidelity}
     for name in only:
         try:
             fns[name]()
