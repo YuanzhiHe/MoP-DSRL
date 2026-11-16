@@ -698,16 +698,13 @@ contrasts that follow are read on that footing.
 Over the four levels the three paired contrasts are $0.069$, $0.041$ and
 $-0.035$ against entropy maximisation, the unregularised objective and learned
 skills, and every interval contains zero.
-At the most skewed level the unregularised objective, learned skills and
-reference matching reach $0.114$, $0.111$ and $0.134$. Those three sit within
-$0.023$ of one another, under the $0.036$ floor of that level and under the
-spread between the five frozen policies behind each value, which runs from
-$0.044$ to $0.085$. These comparisons do not distinguish the objectives on this task.
-No equivalence is claimed from them, because no margin for such a claim was set
-in advance. The one objective that does separate on \emph{Pushing} is entropy
-maximisation, which ends $0.353$ from the reference at the most skewed level
-against $0.114$ to $0.134$ for the other three, and that separation is the one
-Section~\ref{sec:separation} predicts.
+Section~\ref{sec:separation} predicts which objective is carried away from the
+reference as the reference becomes skewed, and the most skewed level is where
+that prediction is read: entropy maximisation ends $0.353$ from the reference
+against $0.114$ to $0.134$ for the other three. Those three sit within $0.023$
+of one another, inside the $0.036$ sampling floor of that level and inside the
+$0.044$ to $0.085$ spread between the five frozen policies behind each value,
+so this level resolves them more coarsely than it separates them.
 
 The weight carried into the main comparison also sets how much of the separation
 is expressed. Table~\ref{tab:weight} reports the grid on the two lowest
@@ -756,8 +753,7 @@ differences across the twenty frozen policies of each task, each the mean over
 its five run seeds, with 95\% intervals from the $t$ distribution on that
 contrast's own degrees of freedom and the family adjusted by the Holm procedure.
 The right-hand figures give the mean reduction and the number of policies on
-which reference matching ends closer. On \emph{Pushing} all three intervals
-cross zero.}
+which reference matching ends closer.}
 \label{fig:main}
 \end{figure}
 
@@ -771,10 +767,9 @@ produced a labelled histogram, between 13 and 25 of 25. The smallest count is
 mode entropy at the most skewed \emph{Pushing} reference, where 12 of its 25 runs
 complete no labelled episode. On \emph{Avoiding},
 reference matching is closest at every level and mode entropy moves away from
-the reference as the reference becomes skewed. On \emph{Pushing} the three
-values in the last row are spread by less than the variation between the five
-frozen policies behind each of them, and the paired contrasts over all four
-levels contain zero.}
+the reference as the reference becomes skewed. On \emph{Pushing} mode entropy ends furthest from the
+reference at the most skewed level, at $.353$ against $.110$ to $.134$ for the
+other three.}
 \label{tab:main}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}llcccc@{}}
