@@ -266,3 +266,28 @@ Pushing selects 1.00 for reference matching, 1.00 for the learned-skill
 baseline and 0.50 for entropy maximisation; Avoiding's recorded decision is
 unchanged, which the script verifies by refusing to redecide a task already
 written.
+
+### Amendment, 2026-11-16: the settings a staged run carries
+
+The Pushing matrix completed on 2026-11-16 and its fidelity distance came out
+identically zero for all four arms over all 400 main cells. The cause is that
+`run_stage.py` named the task and left the task's own settings to the driver's
+defaults, which describe Avoiding: six route groups, four rewarded routes, 500
+evaluation and 900 reference episodes. Pushing has four routes and rewards one.
+Six groups put all labelled episodes of a cell in one bin, so every reference
+and every policy read as the point distribution and the distance between them
+was zero by construction; four rewarded routes made the reward a different
+objective from the one the matrix compares. The seed block was Avoiding's.
+
+The whole staged Pushing cohort is therefore set aside under
+`superseded_taskdefaults_*` and run again with the settings the launch plan
+gives the task. The stage now builds them from that same table, and a gate
+reads them back out of every run file. Avoiding is unaffected: its settings
+are the defaults, and the stage now passes the same values explicitly, which
+the gate confirms on all thirteen of its files.
+
+Two gates located the run directory relative to their own source file. The job
+wrapper runs a frozen copy of `scripts/` under `runs/_d3il_v2/_src/<job>`, so
+under that wrapper both globbed a directory that does not exist, found nothing,
+and passed. They now take the root from the environment, and a gate that finds
+no files to inspect fails rather than passes.

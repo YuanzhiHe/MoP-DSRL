@@ -30,6 +30,7 @@ any of them is failing.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -41,6 +42,15 @@ import envfactory as EF  # noqa: E402
 
 # Channels each task presents; the clone and the rollout must agree.
 EXPECTED_OBS_DIM = {"avoiding": 4, "pushing": 12}
+
+# The job wrapper copies scripts/ to runs/_d3il_v2/_src/<job> and runs the
+# copy, so this file's own location points inside that copy and the run files
+# are not under it. Deriving the data path from __file__ made two gates glob a
+# directory that does not exist there: they found nothing, had nothing to
+# object to, and passed. The environment names the real root.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
+RUNS = ROOT / "runs" / "_d3il_v2"
 
 RESULTS: list[tuple[str, bool, str]] = []
 
@@ -211,8 +221,8 @@ def gate_estimators() -> None:
 
 def gate_coverage() -> None:
     print("coverage")
-    root = Path(__file__).resolve().parents[2]
-    runs = root / "runs" / "_d3il_v2"
+    root, runs = ROOT, RUNS
+    check("the run directory is where the gates look", runs.is_dir(), str(runs))
     stages = json.loads((root / "scripts" / "v2" / "stage_map.json").read_text()) \
         if (root / "scripts" / "v2" / "stage_map.json").exists() else None
     if stages is None:
@@ -333,9 +343,13 @@ def gate_task_settings() -> None:
     """
     print("task settings")
     import launch_plan as LP
-    runs = Path(__file__).resolve().parents[2] / "runs" / "_d3il_v2"
     fields = ("mode_groups", "n_rewarded", "eval_episodes", "ref_episodes")
-    for f in sorted(runs.glob("v22_*.jsonl")):
+    files = sorted(RUNS.glob("v22_*.jsonl"))
+    # A gate that inspects nothing is a gate that cannot fail, so say how many
+    # files it found before saying anything about them.
+    check("the current cohort has run files to check", bool(files),
+          f"{len(files)} files under {RUNS}")
+    for f in files:
         seen, tasks = {}, set()
         for line in f.open():
             if not line.strip():
