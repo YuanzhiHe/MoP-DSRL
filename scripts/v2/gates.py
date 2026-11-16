@@ -358,6 +358,11 @@ def gate_task_settings() -> None:
             tasks.add(r.get("task"))
             for k in fields:
                 seen.setdefault(k, set()).add(r.get(k))
+        if not tasks:
+            # A stage opens its output file before it has anything to put in
+            # it, so an empty file means the stage is still running. Whether
+            # it ever fills is the coverage gate's question, not this one.
+            continue
         if len(tasks) != 1:
             check(f"{f.name} holds one task", False, f"holds {sorted(tasks)}")
             continue
