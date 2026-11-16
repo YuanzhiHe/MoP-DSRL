@@ -40,7 +40,13 @@
   "v22_frozen_avoiding.jsonl",
   "v22_frozen_pushing.jsonl"
  ],
- "superseded, measured under the earlier environment rule, the tangent observation, or the 20000-step clone": [
+ "validation, read by the checks rather than by the paper": [
+  "preflight_avoiding.jsonl",
+  "preflight_pushing.jsonl",
+  "preflight_frozen_avoiding.jsonl",
+  "envscope_avoiding_env1.jsonl"
+ ],
+ "superseded, measured under the earlier environment rule, the tangent observation, the 20000-step clone, or the driver's Avoiding defaults": [
   "ablation_divergence_avoiding_js.jsonl",
   "ablation_divergence_avoiding_kl-smooth.jsonl",
   "ablation_divergence_avoiding_kl.jsonl",
@@ -74,15 +80,24 @@
   "manifest_legacy.jsonl",
   "smoke_avoiding.jsonl",
   "smoke_pushing.jsonl",
-  "v22_calibration_pushing_0.25_steps20000.jsonl",
-  "v22_calibration_pushing_0.50_steps20000.jsonl",
-  "v22_calibration_pushing_1.00_steps20000.jsonl",
-  "v22_frozen_pushing_steps20000.jsonl"
- ],
- "validation, read by the checks rather than by the paper": [
-  "preflight_avoiding.jsonl",
-  "preflight_pushing.jsonl",
-  "preflight_frozen_avoiding.jsonl",
-  "envscope_avoiding_env1.jsonl"
+  "superseded_calibration_pushing_0.25_steps20000.jsonl",
+  "superseded_calibration_pushing_0.50_steps20000.jsonl",
+  "superseded_calibration_pushing_1.00_steps20000.jsonl",
+  "superseded_frozen_pushing_steps20000.jsonl",
+  "superseded_taskdefaults_ablation_divergence_pushing_js.jsonl",
+  "superseded_taskdefaults_ablation_divergence_pushing_kl-smooth.jsonl",
+  "superseded_taskdefaults_ablation_divergence_pushing_kl.jsonl",
+  "superseded_taskdefaults_ablation_divergence_pushing_l2.jsonl",
+  "superseded_taskdefaults_ablation_fitted_prior_pushing.jsonl",
+  "superseded_taskdefaults_ablation_weight_pushing_0.50.jsonl",
+  "superseded_taskdefaults_ablation_weight_pushing_1.00.jsonl",
+  "superseded_taskdefaults_calibration_pushing_0.25.jsonl",
+  "superseded_taskdefaults_calibration_pushing_0.50.jsonl",
+  "superseded_taskdefaults_calibration_pushing_1.00.jsonl",
+  "superseded_taskdefaults_frozen_pushing.jsonl",
+  "superseded_taskdefaults_main_pushing_0.00.jsonl",
+  "superseded_taskdefaults_main_pushing_0.10.jsonl",
+  "superseded_taskdefaults_main_pushing_0.25.jsonl",
+  "superseded_taskdefaults_main_pushing_0.50.jsonl"
  ]
 }

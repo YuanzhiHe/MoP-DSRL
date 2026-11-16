@@ -1,0 +1,150 @@
+{
+ "avoiding": {
+  "bmd": {
+   "lam": 1.0,
+   "reason": "largest weight holding the fraction at or below 0.15",
+   "table": [
+    {
+     "lam": 0.25,
+     "n": 12,
+     "below_floor": 0,
+     "fraction": 0.0
+    },
+    {
+     "lam": 0.5,
+     "n": 12,
+     "below_floor": 0,
+     "fraction": 0.0
+    },
+    {
+     "lam": 1.0,
+     "n": 12,
+     "below_floor": 0,
+     "fraction": 0.0
+    }
+   ]
+  },
+  "mi": {
+   "lam": 1.0,
+   "reason": "largest weight holding the fraction at or below 0.15",
+   "table": [
+    {
+     "lam": 0.25,
+     "n": 12,
+     "below_floor": 1,
+     "fraction": 0.08333333333333333
+    },
+    {
+     "lam": 0.5,
+     "n": 12,
+     "below_floor": 1,
+     "fraction": 0.08333333333333333
+    },
+    {
+     "lam": 1.0,
+     "n": 12,
+     "below_floor": 1,
+     "fraction": 0.08333333333333333
+    }
+   ]
+  },
+  "mop": {
+   "lam": 1.0,
+   "reason": "largest weight holding the fraction at or below 0.15",
+   "table": [
+    {
+     "lam": 0.25,
+     "n": 12,
+     "below_floor": 1,
+     "fraction": 0.08333333333333333
+    },
+    {
+     "lam": 0.5,
+     "n": 12,
+     "below_floor": 1,
+     "fraction": 0.08333333333333333
+    },
+    {
+     "lam": 1.0,
+     "n": 12,
+     "below_floor": 0,
+     "fraction": 0.0
+    }
+   ]
+  }
+ },
+ "pushing": {
+  "bmd": {
+   "lam": 0.25,
+   "reason": "lowest fraction, no candidate within tolerance",
+   "table": [
+    {
+     "lam": 0.25,
+     "n": 12,
+     "below_floor": 8,
+     "fraction": 0.6666666666666666
+    },
+    {
+     "lam": 0.5,
+     "n": 12,
+     "below_floor": 9,
+     "fraction": 0.75
+    },
+    {
+     "lam": 1.0,
+     "n": 12,
+     "below_floor": 11,
+     "fraction": 0.9166666666666666
+    }
+   ]
+  },
+  "mi": {
+   "lam": 1.0,
+   "reason": "lowest fraction, no candidate within tolerance",
+   "table": [
+    {
+     "lam": 0.25,
+     "n": 12,
+     "below_floor": 12,
+     "fraction": 1.0
+    },
+    {
+     "lam": 0.5,
+     "n": 12,
+     "below_floor": 12,
+     "fraction": 1.0
+    },
+    {
+     "lam": 1.0,
+     "n": 12,
+     "below_floor": 12,
+     "fraction": 1.0
+    }
+   ]
+  },
+  "mop": {
+   "lam": 0.5,
+   "reason": "lowest fraction, no candidate within tolerance",
+   "table": [
+    {
+     "lam": 0.25,
+     "n": 12,
+     "below_floor": 9,
+     "fraction": 0.75
+    },
+    {
+     "lam": 0.5,
+     "n": 12,
+     "below_floor": 7,
+     "fraction": 0.5833333333333334
+    },
+    {
+     "lam": 1.0,
+     "n": 12,
+     "below_floor": 11,
+     "fraction": 0.9166666666666666
+    }
+   ]
+  }
+ }
+}

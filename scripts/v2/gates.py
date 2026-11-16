@@ -320,14 +320,50 @@ def gate_policies() -> None:
           f'{src.count(chr(34) + "_policy" + chr(34))} references')
 
 
+def gate_task_settings() -> None:
+    """Every run row must carry the settings its task is defined by.
+
+    The driver's defaults are Avoiding's. A stage that names a task without
+    naming its route count, its rewarded routes and its evaluation length
+    therefore runs the other task under Avoiding's definition, and nothing in
+    the row says so: the run completes, the histogram is built over the wrong
+    number of bins, and the reward marks the wrong routes. The settings are
+    recorded per row, so the only thing needed to catch it is to read them
+    back and compare against the table both launchers build from.
+    """
+    print("task settings")
+    import launch_plan as LP
+    runs = Path(__file__).resolve().parents[2] / "runs" / "_d3il_v2"
+    fields = ("mode_groups", "n_rewarded", "eval_episodes", "ref_episodes")
+    for f in sorted(runs.glob("v22_*.jsonl")):
+        seen, tasks = {}, set()
+        for line in f.open():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            tasks.add(r.get("task"))
+            for k in fields:
+                seen.setdefault(k, set()).add(r.get(k))
+        if len(tasks) != 1:
+            check(f"{f.name} holds one task", False, f"holds {sorted(tasks)}")
+            continue
+        want = LP.TASK[tasks.pop()]
+        wrong = {k: (sorted(seen[k]), want[k]) for k in fields
+                 if seen.get(k) != {want[k]}}
+        check(f"{f.name} carries its task's settings", not wrong,
+              "" if not wrong else
+              ", ".join(f"{k} is {v[0]} where the task is {v[1]}"
+                        for k, v in wrong.items()))
+
+
 def main() -> int:
     only = sys.argv[1:] or ["environment", "hash", "observation",
                             "estimators", "coverage", "checkpoints",
-                            "policies"]
-    fns = dict(environment=gate_environment, hash=gate_hash,
-               observation=gate_observation, estimators=gate_estimators,
-               coverage=gate_coverage, checkpoints=gate_checkpoints,
-               policies=gate_policies)
+                            "policies", "task-settings"]
+    fns = {"environment": gate_environment, "hash": gate_hash,
+           "observation": gate_observation, "estimators": gate_estimators,
+           "coverage": gate_coverage, "checkpoints": gate_checkpoints,
+           "policies": gate_policies, "task-settings": gate_task_settings}
     for name in only:
         try:
             fns[name]()
