@@ -180,10 +180,11 @@ def main():
         if args.only and args.only not in name:
             continue
         cpus = workers + args.headroom
-        mem = max(16, (workers * args.mem_per_worker_mb) // 1024 + 8)
+        # Memory comes from the wrapper, which asks per core. A job that
+        # carries both a per core and a whole job request is refused.
         sbatch = ["sbatch", "--parsable", f"--job-name={name}",
                   f"--time={walltime}", f"--cpus-per-task={cpus}",
-                  f"--mem={mem}G", "scripts/v2/cpu_job_v2.sh"] + cmd
+                  "scripts/v2/cpu_job_v2.sh"] + cmd
         print(" ".join(sbatch))
         if args.submit:
             jid = subprocess.run(sbatch, cwd=ROOT, capture_output=True,

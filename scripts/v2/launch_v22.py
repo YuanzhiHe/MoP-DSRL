@@ -31,10 +31,15 @@ AVOIDING_W = ["0.00", "0.15", "0.30", "0.60"]
 PUSHING_W = ["0.00", "0.10", "0.25", "0.50"]
 
 
-def sbatch(name, cmd, cpus, mem, time, dep=None, array=None, dry=False):
-    """Submit one job, optionally held until ``dep`` has succeeded."""
+def sbatch(name, cmd, cpus, time, dep=None, array=None, dry=False):
+    """Submit one job, optionally held until ``dep`` has succeeded.
+
+    Memory comes from the wrapper, which asks for it per core because that is
+    how these stages use it. A job carrying both forms is refused outright, so
+    there is nothing to pass here.
+    """
     a = ["sbatch", "--parsable", f"--job-name={name}",
-         f"--cpus-per-task={cpus}", f"--mem={mem}", f"--time={time}"]
+         f"--cpus-per-task={cpus}", f"--time={time}"]
     if dep:
         a.append(f"--dependency=afterok:{dep}")
     if array:
@@ -107,7 +112,7 @@ def main() -> int:
             got = [ids[x] for x in dep.split(",") if x in ids]
             d = ":".join(got) if got else None
         jid = sbatch(f"v22-{name}", ["python", "scripts/v2/run_stage.py", name],
-                     cpus, "180G" if cpus > 100 else "60G", wall, d, dry=dry)
+                     cpus, wall, d, dry=dry)
         if jid:
             ids[name] = jid
     print("\neight stages. prep runs the gates, the re-clone and the forty"
