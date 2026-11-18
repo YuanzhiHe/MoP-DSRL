@@ -1,0 +1,598 @@
+[
+ {
+  "key": "longhini2026bmd",
+  "bib_authors": 4,
+  "bib_year": "2026",
+  "arxiv": {
+   "title": "Behavioral Mode Discovery for Fine-tuning Multimodal Generative Policies",
+   "authors": [
+    "Alberta Longhini",
+    "David Emukpere",
+    "Jean-Michel Renders",
+    "Seungsu Kim"
+   ],
+   "year": "2026",
+   "journal_ref": "International Conference on Machine Learning, 2026",
+   "doi": null
+  }
+ },
+ {
+  "key": "wagenmaker2025dsrl",
+  "bib_authors": 6,
+  "bib_year": "2025",
+  "arxiv": {
+   "title": "Steering Your Diffusion Policy with Latent Space Reinforcement Learning",
+   "authors": [
+    "Andrew Wagenmaker",
+    "Mitsuhiko Nakamoto",
+    "Yunchu Zhang",
+    "Seohong Park",
+    "Waleed Yagoub",
+    "Anusha Nagabandi",
+    "Abhishek Gupta",
+    "Sergey Levine"
+   ],
+   "year": "2025",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "jia2024d3il",
+  "bib_authors": 5,
+  "bib_year": "2024",
+  "arxiv": {
+   "title": "Towards Diverse Behaviors: A Benchmark for Imitation Learning with Human Demonstrations",
+   "authors": [
+    "Xiaogang Jia",
+    "Denis Blessing",
+    "Xinkai Jiang",
+    "Moritz Reuss",
+    "Atalay Donat",
+    "Rudolf Lioutikov",
+    "Gerhard Neumann"
+   ],
+   "year": "2024",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "reuss2023beso",
+  "bib_authors": 4,
+  "bib_year": "2023",
+  "crossref": {
+   "title": "Goal-Conditioned Imitation Learning using Score-based Diffusion Policies",
+   "authors": [
+    "Moritz Reuss",
+    "Maximilian Li",
+    "Xiaogang Jia",
+    "Rudolf Lioutikov"
+   ],
+   "year": 2023,
+   "container": "Robotics: Science and Systems XIX",
+   "volume": null,
+   "issue": null,
+   "page": null,
+   "type": "proceedings-article"
+  }
+ },
+ {
+  "key": "chi2023diffusionpolicy",
+  "bib_authors": 7,
+  "bib_year": "2023",
+  "arxiv": {
+   "title": "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion",
+   "authors": [
+    "Cheng Chi",
+    "Zhenjia Xu",
+    "Siyuan Feng",
+    "Eric Cousineau",
+    "Yilun Du",
+    "Benjamin Burchfiel",
+    "Russ Tedrake",
+    "Shuran Song"
+   ],
+   "year": "2023",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "liu2022rectifiedflow",
+  "bib_authors": 3,
+  "bib_year": "2022",
+  "arxiv": {
+   "title": "Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow",
+   "authors": [
+    "Xingchao Liu",
+    "Chengyue Gong",
+    "Qiang Liu"
+   ],
+   "year": "2022",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "lipman2022flowmatching",
+  "bib_authors": 4,
+  "bib_year": "2022",
+  "arxiv": {
+   "title": "Flow Matching for Generative Modeling",
+   "authors": [
+    "Yaron Lipman",
+    "Ricky T. Q. Chen",
+    "Heli Ben-Hamu",
+    "Maximilian Nickel",
+    "Matt Le"
+   ],
+   "year": "2022",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "eysenbach2018diayn",
+  "bib_authors": 4,
+  "bib_year": "2018",
+  "arxiv": {
+   "title": "Diversity is All You Need: Learning Skills without a Reward Function",
+   "authors": [
+    "Benjamin Eysenbach",
+    "Abhishek Gupta",
+    "Julian Ibarz",
+    "Sergey Levine"
+   ],
+   "year": "2018",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "liu2023libero",
+  "bib_authors": 6,
+  "bib_year": "2023",
+  "arxiv": {
+   "title": "LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning",
+   "authors": [
+    "Bo Liu",
+    "Yifeng Zhu",
+    "Chongkai Gao",
+    "Yihao Feng",
+    "Qiang Liu",
+    "Yuke Zhu",
+    "Peter Stone"
+   ],
+   "year": "2023",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "black2024pi0",
+  "bib_authors": 19,
+  "bib_year": "2024",
+  "arxiv": {
+   "title": "$\u03c0_0$: A Vision-Language-Action Flow Model for General Robot Control",
+   "authors": [
+    "Kevin Black",
+    "Noah Brown",
+    "Danny Driess",
+    "Adnan Esmail",
+    "Michael Equi",
+    "Chelsea Finn",
+    "Niccolo Fusai",
+    "Lachy Groom",
+    "Karol Hausman",
+    "Brian Ichter",
+    "Szymon Jakubczak",
+    "Tim Jones",
+    "Liyiming Ke",
+    "Sergey Levine",
+    "Adrian Li-Bell",
+    "Mohith Mothukuri",
+    "Suraj Nair",
+    "Karl Pertsch",
+    "Lucy Xiaoyang Shi",
+    "James Tanner",
+    "Quan Vuong",
+    "Anna Walling",
+    "Haohuan Wang",
+    "Ury Zhilinsky"
+   ],
+   "year": "2024",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "haarnoja2018sac",
+  "bib_authors": 4,
+  "bib_year": "2018",
+  "arxiv": {
+   "title": "Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor",
+   "authors": [
+    "Tuomas Haarnoja",
+    "Aurick Zhou",
+    "Pieter Abbeel",
+    "Sergey Levine"
+   ],
+   "year": "2018",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "he2024fewshot",
+  "bib_authors": 4,
+  "bib_year": "2024",
+  "crossref": {
+   "error": "HTTP Error 404: Not Found"
+  }
+ },
+ {
+  "key": "he2026zeroshot",
+  "bib_authors": 6,
+  "bib_year": "2026",
+  "arxiv": {
+   "title": "Sample-efficient Low-level Motion Planning for Robotic Manipulation Tasks via Zero-shot Transfer Learning",
+   "authors": [
+    "Yuanzhi He",
+    "Victor Romero-Cano",
+    "Jos\u00e9 J. Pati\u00f1o",
+    "Juan David Hern\u00e1ndez",
+    "William Sawtell",
+    "Gualtiero Colombo"
+   ],
+   "year": "2026",
+   "journal_ref": null,
+   "doi": null
+  },
+  "crossref": {
+   "error": "HTTP Error 404: Not Found"
+  }
+ },
+ {
+  "key": "he2026contract",
+  "bib_authors": 3,
+  "bib_year": "2026",
+  "crossref": {
+   "title": "Observation-contract auditing for valid modality comparison in robot manipulation benchmarks",
+   "authors": [
+    "Yuanzhi He",
+    "Qiming Wang",
+    "Jiayu Xu"
+   ],
+   "year": 2026,
+   "container": "Scientific Reports",
+   "volume": null,
+   "issue": null,
+   "page": null,
+   "type": "journal-article"
+  }
+ },
+ {
+  "key": "he2026fidelity",
+  "bib_authors": 3,
+  "bib_year": "2026",
+  "crossref": {
+   "title": "Benchmark-path fidelity in parallel robot-policy evaluation: a CALVIN case study",
+   "authors": [
+    "Yuanzhi He",
+    "Qiming Wang",
+    "Jiayu Xu"
+   ],
+   "year": 2026,
+   "container": "The Journal of Supercomputing",
+   "volume": "82",
+   "issue": "16",
+   "page": "810",
+   "type": "journal-article"
+  }
+ },
+ {
+  "key": "he2026decomposition",
+  "bib_authors": 5,
+  "bib_year": "2026",
+  "arxiv": {
+   "title": "Enhancing Deep Reinforcement Learning for Robotic Motion Planning via Task Decomposition",
+   "authors": [
+    "Yuanzhi He",
+    "Victor Romero-Cano",
+    "Jiayu Xu",
+    "Juan David Hern\u00e1ndez",
+    "Gualtiero Colombo"
+   ],
+   "year": "2026",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "he2026detector",
+  "bib_authors": 1,
+  "bib_year": "2026",
+  "arxiv": {
+   "title": "Detector Confidence Signals Presence Rather Than Occlusion in Cluttered Manipulation",
+   "authors": [
+    "Yuanzhi He"
+   ],
+   "year": "2026",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "ho2016gail",
+  "bib_authors": 2,
+  "bib_year": "2016",
+  "arxiv": {
+   "title": "Generative Adversarial Imitation Learning",
+   "authors": [
+    "Jonathan Ho",
+    "Stefano Ermon"
+   ],
+   "year": "2016",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "fujimoto2021td3bc",
+  "bib_authors": 2,
+  "bib_year": "2021",
+  "arxiv": {
+   "title": "A Minimalist Approach to Offline Reinforcement Learning",
+   "authors": [
+    "Scott Fujimoto",
+    "Shixiang Shane Gu"
+   ],
+   "year": "2021",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "kumar2020cql",
+  "bib_authors": 4,
+  "bib_year": "2020",
+  "arxiv": {
+   "title": "Conservative Q-Learning for Offline Reinforcement Learning",
+   "authors": [
+    "Aviral Kumar",
+    "Aurick Zhou",
+    "George Tucker",
+    "Sergey Levine"
+   ],
+   "year": "2020",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "ziegler2019finetune",
+  "bib_authors": 8,
+  "bib_year": "2019",
+  "arxiv": {
+   "title": "Fine-Tuning Language Models from Human Preferences",
+   "authors": [
+    "Daniel M. Ziegler",
+    "Nisan Stiennon",
+    "Jeffrey Wu",
+    "Tom B. Brown",
+    "Alec Radford",
+    "Dario Amodei",
+    "Paul Christiano",
+    "Geoffrey Irving"
+   ],
+   "year": "2019",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "stiennon2020summarize",
+  "bib_authors": 9,
+  "bib_year": "2020",
+  "arxiv": {
+   "title": "Learning to summarize from human feedback",
+   "authors": [
+    "Nisan Stiennon",
+    "Long Ouyang",
+    "Jeff Wu",
+    "Daniel M. Ziegler",
+    "Ryan Lowe",
+    "Chelsea Voss",
+    "Alec Radford",
+    "Dario Amodei",
+    "Paul Christiano"
+   ],
+   "year": "2020",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "williams1992reinforce",
+  "bib_authors": 1,
+  "bib_year": "1992",
+  "crossref": {
+   "title": "Simple statistical gradient-following algorithms for connectionist reinforcement learning",
+   "authors": [
+    "Ronald J. Williams"
+   ],
+   "year": 1992,
+   "container": "Machine Learning",
+   "volume": "8",
+   "issue": "3-4",
+   "page": "229-256",
+   "type": "journal-article"
+  }
+ },
+ {
+  "key": "sharma2020dads",
+  "bib_authors": 5,
+  "bib_year": "2019",
+  "arxiv": {
+   "title": "Dynamics-Aware Unsupervised Discovery of Skills",
+   "authors": [
+    "Archit Sharma",
+    "Shixiang Gu",
+    "Sergey Levine",
+    "Vikash Kumar",
+    "Karol Hausman"
+   ],
+   "year": "2019",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "gregor2016vic",
+  "bib_authors": 3,
+  "bib_year": "2016",
+  "arxiv": {
+   "title": "Variational Intrinsic Control",
+   "authors": [
+    "Karol Gregor",
+    "Danilo Jimenez Rezende",
+    "Daan Wierstra"
+   ],
+   "year": "2016",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "florence2022ibc",
+  "bib_authors": 10,
+  "bib_year": "2021",
+  "arxiv": {
+   "title": "Implicit Behavioral Cloning",
+   "authors": [
+    "Pete Florence",
+    "Corey Lynch",
+    "Andy Zeng",
+    "Oscar Ramirez",
+    "Ayzaan Wahid",
+    "Laura Downs",
+    "Adrian Wong",
+    "Johnny Lee",
+    "Igor Mordatch",
+    "Jonathan Tompson"
+   ],
+   "year": "2021",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "shafiullah2022bet",
+  "bib_authors": 3,
+  "bib_year": "2022",
+  "crossref": {
+   "title": "Behavior Transformers: Cloning k Modes with One Stone",
+   "authors": [
+    "Nur Muhammad Shafiullah",
+    "Zichen Cui",
+    "Ariuntuya (Arty) Altanzaya",
+    "Lerrel Pinto"
+   ],
+   "year": 2022,
+   "container": "Advances in Neural Information Processing Systems 35",
+   "volume": null,
+   "issue": null,
+   "page": "22955-22968",
+   "type": "proceedings-article"
+  }
+ },
+ {
+  "key": "janner2022diffuser",
+  "bib_authors": 4,
+  "bib_year": "2022",
+  "arxiv": {
+   "title": "Planning with Diffusion for Flexible Behavior Synthesis",
+   "authors": [
+    "Michael Janner",
+    "Yilun Du",
+    "Joshua B. Tenenbaum",
+    "Sergey Levine"
+   ],
+   "year": "2022",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "zhao2023act",
+  "bib_authors": 4,
+  "bib_year": "2023",
+  "arxiv": {
+   "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+   "authors": [
+    "Tony Z. Zhao",
+    "Vikash Kumar",
+    "Sergey Levine",
+    "Chelsea Finn"
+   ],
+   "year": "2023",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "ren2024dppo",
+  "bib_authors": 9,
+  "bib_year": "2024",
+  "arxiv": {
+   "title": "Diffusion Policy Policy Optimization",
+   "authors": [
+    "Allen Z. Ren",
+    "Justin Lidard",
+    "Lars L. Ankile",
+    "Anthony Simeonov",
+    "Pulkit Agrawal",
+    "Anirudha Majumdar",
+    "Benjamin Burchfiel",
+    "Hongkai Dai",
+    "Max Simchowitz"
+   ],
+   "year": "2024",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "song2021ddim",
+  "bib_authors": 3,
+  "bib_year": "2020",
+  "arxiv": {
+   "title": "Denoising Diffusion Implicit Models",
+   "authors": [
+    "Jiaming Song",
+    "Chenlin Meng",
+    "Stefano Ermon"
+   ],
+   "year": "2020",
+   "journal_ref": null,
+   "doi": null
+  }
+ },
+ {
+  "key": "ho2020ddpm",
+  "bib_authors": 3,
+  "bib_year": "2020",
+  "arxiv": {
+   "title": "Denoising Diffusion Probabilistic Models",
+   "authors": [
+    "Jonathan Ho",
+    "Ajay Jain",
+    "Pieter Abbeel"
+   ],
+   "year": "2020",
+   "journal_ref": null,
+   "doi": null
+  }
+ }
+]

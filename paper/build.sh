@@ -26,9 +26,17 @@ command -v pdflatex >/dev/null || { echo "pdflatex not found"; exit 1; }
   echo "elsarticle.cls not found; it belongs in $TEXMFHOME/tex/latex/elsarticle"
   exit 1; }
 
-for pass in 1 2 3; do
+# The reference list is generated, so bibtex runs between the passes. Without
+# it a change to references.bib reaches nothing: main.bbl keeps whatever it
+# held and the typeset list silently disagrees with the file it came from.
+pdflatex -interaction=nonstopmode main.tex > build-pass1.log 2>&1 || true
+bibtex main > build-bibtex.log 2>&1 || true
+for pass in 2 3; do
   pdflatex -interaction=nonstopmode main.tex > "build-pass$pass.log" 2>&1 || true
 done
+if grep -qiE "^I couldn't open|error message" build-bibtex.log; then
+  echo "BIBTEX FAILED"; cat build-bibtex.log; exit 1
+fi
 
 if grep -qE '^! ' build-pass3.log; then
   echo "FAILED"; grep -E '^! ' -A3 build-pass3.log | head -20; exit 1
@@ -38,4 +46,4 @@ echo "pdflatex: $(pdflatex --version | head -1)"
 echo "class:    $(kpsewhich elsarticle.cls)"
 grep -E 'Output written' build-pass3.log
 echo "undefined references or citations: $bad"
-rm -f build-pass1.log build-pass2.log build-pass3.log
+rm -f build-pass1.log build-pass2.log build-pass3.log build-bibtex.log

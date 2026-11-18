@@ -38,9 +38,8 @@ C.~Chi, Z.~Xu, S.~Feng, E.~Cousineau, Y.~Du, B.~Burchfiel, R.~Tedrake, S.~Song,
 \bibitem{florence2022ibc}
 P.~Florence, C.~Lynch, A.~Zeng, O.~Ramirez, A.~Wahid, L.~Downs, A.~Wong,
   J.~Lee, I.~Mordatch, J.~Tompson, Implicit behavioral cloning, arXiv preprint
-  arXiv:2109.00137v1 (2021).
-\newblock \href {http://arxiv.org/abs/2109.00137v1}
-  {\path{arXiv:2109.00137v1}}.
+  arXiv:2109.00137 (2021).
+\newblock \href {http://arxiv.org/abs/2109.00137} {\path{arXiv:2109.00137}}.
 
 \bibitem{shafiullah2022bet}
 N.~M. Shafiullah, Z.~Cui, A.~Altanzaya, L.~Pinto, Behavior transformers:
@@ -51,16 +50,13 @@ N.~M. Shafiullah, Z.~Cui, A.~Altanzaya, L.~Pinto, Behavior transformers:
 
 \bibitem{zhao2023act}
 T.~Z. Zhao, V.~Kumar, S.~Levine, C.~Finn, Learning fine-grained bimanual
-  manipulation with low-cost hardware, arXiv preprint arXiv:2304.13705v1
-  (2023).
-\newblock \href {http://arxiv.org/abs/2304.13705v1}
-  {\path{arXiv:2304.13705v1}}.
+  manipulation with low-cost hardware, arXiv preprint arXiv:2304.13705 (2023).
+\newblock \href {http://arxiv.org/abs/2304.13705} {\path{arXiv:2304.13705}}.
 
 \bibitem{janner2022diffuser}
 M.~Janner, Y.~Du, J.~B. Tenenbaum, S.~Levine, Planning with diffusion for
-  flexible behavior synthesis, arXiv preprint arXiv:2205.09991v2 (2022).
-\newblock \href {http://arxiv.org/abs/2205.09991v2}
-  {\path{arXiv:2205.09991v2}}.
+  flexible behavior synthesis, arXiv preprint arXiv:2205.09991 (2022).
+\newblock \href {http://arxiv.org/abs/2205.09991} {\path{arXiv:2205.09991}}.
 
 \bibitem{lipman2022flowmatching}
 Y.~Lipman, R.~T.~Q. Chen, H.~Ben-Hamu, M.~Nickel, M.~Le, Flow matching for
@@ -74,15 +70,13 @@ X.~Liu, C.~Gong, Q.~Liu, Flow straight and fast: Learning to generate and
 
 \bibitem{ho2020ddpm}
 J.~Ho, A.~Jain, P.~Abbeel, Denoising diffusion probabilistic models, arXiv
-  preprint arXiv:2006.11239v2 (2020).
-\newblock \href {http://arxiv.org/abs/2006.11239v2}
-  {\path{arXiv:2006.11239v2}}.
+  preprint arXiv:2006.11239 (2020).
+\newblock \href {http://arxiv.org/abs/2006.11239} {\path{arXiv:2006.11239}}.
 
 \bibitem{song2021ddim}
 J.~Song, C.~Meng, S.~Ermon, Denoising diffusion implicit models, arXiv preprint
-  arXiv:2010.02502v4 (2020).
-\newblock \href {http://arxiv.org/abs/2010.02502v4}
-  {\path{arXiv:2010.02502v4}}.
+  arXiv:2010.02502 (2020).
+\newblock \href {http://arxiv.org/abs/2010.02502} {\path{arXiv:2010.02502}}.
 
 \bibitem{black2024pi0}
 K.~Black, N.~Brown, D.~Driess, A.~Esmail, M.~Equi, C.~Finn, N.~Fusai, L.~Groom,
@@ -133,53 +127,45 @@ T.~Haarnoja, A.~Zhou, P.~Abbeel, S.~Levine, Soft actor-critic: Off-policy
 \bibitem{ren2024dppo}
 A.~Z. Ren, J.~Lidard, L.~L. Ankile, A.~Simeonov, P.~Agrawal, A.~Majumdar,
   B.~Burchfiel, H.~Dai, M.~Simchowitz, Diffusion policy policy optimization,
-  arXiv preprint arXiv:2409.00588v3 (2024).
-\newblock \href {http://arxiv.org/abs/2409.00588v3}
-  {\path{arXiv:2409.00588v3}}.
+  arXiv preprint arXiv:2409.00588 (2024).
+\newblock \href {http://arxiv.org/abs/2409.00588} {\path{arXiv:2409.00588}}.
 
 \bibitem{gregor2016vic}
 K.~Gregor, D.~J. Rezende, D.~Wierstra, Variational intrinsic control, arXiv
-  preprint arXiv:1611.07507v1 (2016).
-\newblock \href {http://arxiv.org/abs/1611.07507v1}
-  {\path{arXiv:1611.07507v1}}.
+  preprint arXiv:1611.07507 (2016).
+\newblock \href {http://arxiv.org/abs/1611.07507} {\path{arXiv:1611.07507}}.
 
 \bibitem{sharma2020dads}
 A.~Sharma, S.~Gu, S.~Levine, V.~Kumar, K.~Hausman, Dynamics-aware unsupervised
-  discovery of skills, arXiv preprint arXiv:1907.01657v2 (2019).
-\newblock \href {http://arxiv.org/abs/1907.01657v2}
-  {\path{arXiv:1907.01657v2}}.
+  discovery of skills, arXiv preprint arXiv:1907.01657 (2019).
+\newblock \href {http://arxiv.org/abs/1907.01657} {\path{arXiv:1907.01657}}.
 
 \bibitem{ziegler2019finetune}
 D.~M. Ziegler, N.~Stiennon, J.~Wu, T.~B. Brown, A.~Radford, D.~Amodei,
   P.~Christiano, G.~Irving, Fine-tuning language models from human preferences,
-  arXiv preprint arXiv:1909.08593v2 (2019).
-\newblock \href {http://arxiv.org/abs/1909.08593v2}
-  {\path{arXiv:1909.08593v2}}.
+  arXiv preprint arXiv:1909.08593 (2019).
+\newblock \href {http://arxiv.org/abs/1909.08593} {\path{arXiv:1909.08593}}.
 
 \bibitem{stiennon2020summarize}
 N.~Stiennon, L.~Ouyang, J.~Wu, D.~M. Ziegler, R.~Lowe, C.~Voss, A.~Radford,
   D.~Amodei, P.~Christiano, Learning to summarize from human feedback, arXiv
-  preprint arXiv:2009.01325v3 (2020).
-\newblock \href {http://arxiv.org/abs/2009.01325v3}
-  {\path{arXiv:2009.01325v3}}.
+  preprint arXiv:2009.01325 (2020).
+\newblock \href {http://arxiv.org/abs/2009.01325} {\path{arXiv:2009.01325}}.
 
 \bibitem{kumar2020cql}
 A.~Kumar, A.~Zhou, G.~Tucker, S.~Levine, Conservative q-learning for offline
-  reinforcement learning, arXiv preprint arXiv:2006.04779v3 (2020).
-\newblock \href {http://arxiv.org/abs/2006.04779v3}
-  {\path{arXiv:2006.04779v3}}.
+  reinforcement learning, arXiv preprint arXiv:2006.04779 (2020).
+\newblock \href {http://arxiv.org/abs/2006.04779} {\path{arXiv:2006.04779}}.
 
 \bibitem{fujimoto2021td3bc}
 S.~Fujimoto, S.~S. Gu, A minimalist approach to offline reinforcement learning,
-  arXiv preprint arXiv:2106.06860v2 (2021).
-\newblock \href {http://arxiv.org/abs/2106.06860v2}
-  {\path{arXiv:2106.06860v2}}.
+  arXiv preprint arXiv:2106.06860 (2021).
+\newblock \href {http://arxiv.org/abs/2106.06860} {\path{arXiv:2106.06860}}.
 
 \bibitem{ho2016gail}
 J.~Ho, S.~Ermon, Generative adversarial imitation learning, arXiv preprint
-  arXiv:1606.03476v1 (2016).
-\newblock \href {http://arxiv.org/abs/1606.03476v1}
-  {\path{arXiv:1606.03476v1}}.
+  arXiv:1606.03476 (2016).
+\newblock \href {http://arxiv.org/abs/1606.03476} {\path{arXiv:1606.03476}}.
 
 \bibitem{he2026contract}
 Y.~He, Q.~Wang, J.~Xu, Observation-contract auditing for valid modality

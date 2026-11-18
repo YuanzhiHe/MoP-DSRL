@@ -166,7 +166,7 @@ used to plan directly over trajectories \citep{janner2022diffuser}. Flow
 matching \citep{lipman2022flowmatching} and rectified flow
 \citep{liu2022rectifiedflow} replace the denoising chain of denoising diffusion
 probabilistic models \citep{ho2020ddpm} with a deterministic transport that is
-faster to integrate, where deterministic samplers such as DDIM
+faster to integrate, while deterministic samplers such as DDIM
 \citep{song2021ddim} shorten the same chain in place. Flow policies of this
 kind underpin recent vision-language-action models such as $\pi_0$
 \citep{black2024pi0}. Score-based
@@ -199,8 +199,8 @@ trains a discriminator to recover that index from the resulting behaviour, using
 the variational mutual information bound as an intrinsic reward. The construction
 follows unsupervised skill discovery \citep{gregor2016vic,eysenbach2018diayn},
 later extended with dynamics-aware variants \citep{sharma2020dads}, where the
-same bound is used to learn skills without any task reward. Both discover their own
-notion of a mode. A lighter alternative, and the one closest to our setting,
+same bound is used to learn skills without any task reward. Each of them
+discovers its own notion of a mode. A lighter alternative, and the one closest to our setting,
 maximises the entropy of a histogram over externally defined modes directly. Our
 analysis applies to this family as a whole, since Equation~\ref{eq:identity}
 relates any entropy-maximising objective to matching against a uniform
@@ -230,9 +230,10 @@ can diverge from the serial path the benchmark intends \citep{he2026fidelity},
 and a confidence signal read as evidence of occlusion turns out to track mere
 presence \citep{he2026detector}. Each is the same failure: a quantity assumed to
 measure one thing measures another, which is also what
-Equation~\ref{eq:identity} says about maximising behavioural entropy. Both bear on the choice made here to define modes from
-task geometry and to measure the reference by rollout, which keeps the quantity
-being compared independent of the evaluation code.
+Equation~\ref{eq:identity} says about maximising behavioural entropy. They
+bear on the choice made here to define modes from task geometry and to measure
+the reference by rollout, which keeps the quantity being compared independent
+of the evaluation code.
 
 \paragraph{Multi-solution benchmarks.}
 Measuring mode preservation requires tasks with more than one valid solution.
