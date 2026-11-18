@@ -1,7 +1,14 @@
 % Every entry below was retrieved from a live index (arXiv API or Crossref) and
-% re-checked against that index on 2026-11-01 by scripts/maint/verify_bib.py.
+% re-checked against that index on 2026-11-18 by scripts/maint/verify_bib.py.
 % None was written from memory. Identifiers are recorded so each can be
 % re-checked at any time by re-running that script.
+%
+% On 2026-11-18 the entries that had carried only an arXiv identifier were
+% checked for a peer-reviewed version and nineteen of them had one. Each venue,
+% volume and page range below was read from the publisher's own record: the
+% PMLR volume page, the NeurIPS proceedings page, the ICLR proceedings listing,
+% or Crossref for a registered DOI. Three entries have no such version and
+% stay as preprints.
 
 @inproceedings{longhini2026bmd,
   title     = {Behavioral Mode Discovery for Fine-tuning Multimodal Generative Policies},
@@ -12,26 +19,29 @@
   archivePrefix = {arXiv}
 }
 
-@article{wagenmaker2025dsrl,
-  title   = {Steering Your Diffusion Policy with Latent Space Reinforcement Learning},
-  author  = {Wagenmaker, Andrew and Nakamoto, Mitsuhiko and Zhang, Yunchu and
-             Park, Seohong and Yagoub, Waleed and Nagabandi, Anusha and
-             Gupta, Abhishek and Levine, Sergey},
-  journal = {arXiv preprint arXiv:2506.15799},
-  year    = {2025},
-  eprint  = {2506.15799},
+@inproceedings{wagenmaker2025dsrl,
+  title     = {Steering Your Diffusion Policy with Latent Space Reinforcement Learning},
+  author    = {Wagenmaker, Andrew and Zhang, Yunchu and Nakamoto, Mitsuhiko and
+               Park, Seohong and Yagoub, Waleed and Nagabandi, Anusha and
+               Gupta, Abhishek and Levine, Sergey},
+  booktitle = {Proceedings of the 9th Conference on Robot Learning (CoRL)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {305},
+  pages     = {258--282},
+  year      = {2025},
+  eprint    = {2506.15799},
   archivePrefix = {arXiv}
 }
 
-@article{jia2024d3il,
-  title   = {Towards Diverse Behaviors: A Benchmark for Imitation Learning with
-             Human Demonstrations},
-  author  = {Jia, Xiaogang and Blessing, Denis and Jiang, Xinkai and
-             Reuss, Moritz and Donat, Atalay and Lioutikov, Rudolf and
-             Neumann, Gerhard},
-  journal = {arXiv preprint arXiv:2402.14606},
-  year    = {2024},
-  eprint  = {2402.14606},
+@inproceedings{jia2024d3il,
+  title     = {Towards Diverse Behaviors: A Benchmark for Imitation Learning with
+               Human Demonstrations},
+  author    = {Jia, Xiaogang and Blessing, Denis and Jiang, Xinkai and
+               Reuss, Moritz and Donat, Atalay and Lioutikov, Rudolf and
+               Neumann, Gerhard},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2024},
+  eprint    = {2402.14606},
   archivePrefix = {arXiv}
 }
 
@@ -43,52 +53,56 @@
   doi       = {10.15607/RSS.2023.XIX.028}
 }
 
-@article{chi2023diffusionpolicy,
-  title   = {Diffusion Policy: Visuomotor Policy Learning via Action Diffusion},
-  author  = {Chi, Cheng and Xu, Zhenjia and Feng, Siyuan and Cousineau, Eric and
-             Du, Yilun and Burchfiel, Benjamin and Tedrake, Russ and Song, Shuran},
-  journal = {arXiv preprint arXiv:2303.04137},
-  year    = {2023},
-  eprint  = {2303.04137},
+@inproceedings{chi2023diffusionpolicy,
+  title     = {Diffusion Policy: Visuomotor Policy Learning via Action Diffusion},
+  author    = {Chi, Cheng and Xu, Zhenjia and Feng, Siyuan and Cousineau, Eric and
+               Du, Yilun and Burchfiel, Benjamin and Tedrake, Russ and Song, Shuran},
+  booktitle = {Robotics: Science and Systems XIX},
+  year      = {2023},
+  doi       = {10.15607/RSS.2023.XIX.026},
+  eprint    = {2303.04137},
   archivePrefix = {arXiv}
 }
 
-@article{liu2022rectifiedflow,
-  title   = {Flow Straight and Fast: Learning to Generate and Transfer Data with
-             Rectified Flow},
-  author  = {Liu, Xingchao and Gong, Chengyue and Liu, Qiang},
-  journal = {arXiv preprint arXiv:2209.03003},
-  year    = {2022},
-  eprint  = {2209.03003},
+@inproceedings{liu2022rectifiedflow,
+  title     = {Flow Straight and Fast: Learning to Generate and Transfer Data with
+               Rectified Flow},
+  author    = {Liu, Xingchao and Gong, Chengyue and Liu, Qiang},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2209.03003},
   archivePrefix = {arXiv}
 }
 
-@article{lipman2022flowmatching,
-  title   = {Flow Matching for Generative Modeling},
-  author  = {Lipman, Yaron and Chen, Ricky T. Q. and Ben-Hamu, Heli and
-             Nickel, Maximilian and Le, Matt},
-  journal = {arXiv preprint arXiv:2210.02747},
-  year    = {2022},
-  eprint  = {2210.02747},
+@inproceedings{lipman2022flowmatching,
+  title     = {Flow Matching for Generative Modeling},
+  author    = {Lipman, Yaron and Chen, Ricky T. Q. and Ben-Hamu, Heli and
+               Nickel, Maximilian and Le, Matt},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2023},
+  eprint    = {2210.02747},
   archivePrefix = {arXiv}
 }
 
-@article{eysenbach2018diayn,
-  title   = {Diversity is All You Need: Learning Skills without a Reward Function},
-  author  = {Eysenbach, Benjamin and Gupta, Abhishek and Ibarz, Julian and Levine, Sergey},
-  journal = {arXiv preprint arXiv:1802.06070},
-  year    = {2018},
-  eprint  = {1802.06070},
+@inproceedings{eysenbach2018diayn,
+  title     = {Diversity is All You Need: Learning Skills without a Reward Function},
+  author    = {Eysenbach, Benjamin and Gupta, Abhishek and Ibarz, Julian and Levine, Sergey},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019},
+  eprint    = {1802.06070},
   archivePrefix = {arXiv}
 }
 
-@article{liu2023libero,
-  title   = {{LIBERO}: Benchmarking Knowledge Transfer for Lifelong Robot Learning},
-  author  = {Liu, Bo and Zhu, Yifeng and Gao, Chongkai and Feng, Yihao and
-             Liu, Qiang and Zhu, Yuke and Stone, Peter},
-  journal = {arXiv preprint arXiv:2306.03310},
-  year    = {2023},
-  eprint  = {2306.03310},
+@inproceedings{liu2023libero,
+  title     = {{LIBERO}: Benchmarking Knowledge Transfer for Lifelong Robot Learning},
+  author    = {Liu, Bo and Zhu, Yifeng and Gao, Chongkai and Feng, Yihao and
+               Liu, Qiang and Zhu, Yuke and Stone, Peter},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {36},
+  pages     = {44776--44791},
+  year      = {2023},
+  doi       = {10.52202/075280-1939},
+  eprint    = {2306.03310},
   archivePrefix = {arXiv}
 }
 
@@ -106,13 +120,17 @@
   archivePrefix = {arXiv}
 }
 
-@article{haarnoja2018sac,
-  title   = {Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement
-             Learning with a Stochastic Actor},
-  author  = {Haarnoja, Tuomas and Zhou, Aurick and Abbeel, Pieter and Levine, Sergey},
-  journal = {arXiv preprint arXiv:1801.01290},
-  year    = {2018},
-  eprint  = {1801.01290},
+@inproceedings{haarnoja2018sac,
+  title     = {Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement
+               Learning with a Stochastic Actor},
+  author    = {Haarnoja, Tuomas and Zhou, Aurick and Abbeel, Pieter and Levine, Sergey},
+  booktitle = {Proceedings of the 35th International Conference on Machine
+               Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {80},
+  pages     = {1861--1870},
+  year      = {2018},
+  eprint    = {1801.01290},
   archivePrefix = {arXiv}
 }
 
@@ -176,30 +194,33 @@
   eprint    = {2607.13361},
   archivePrefix = {arXiv}
 }
-@article{ho2016gail,
-  title   = {Generative Adversarial Imitation Learning},
-  author  = {Jonathan Ho and Stefano Ermon},
-  journal = {arXiv preprint arXiv:1606.03476},
-  year    = {2016},
-  eprint  = {1606.03476},
+@inproceedings{ho2016gail,
+  title     = {Generative Adversarial Imitation Learning},
+  author    = {Ho, Jonathan and Ermon, Stefano},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {29},
+  year      = {2016},
+  eprint    = {1606.03476},
   archivePrefix = {arXiv}
 }
 
-@article{fujimoto2021td3bc,
-  title   = {A Minimalist Approach to Offline Reinforcement Learning},
-  author  = {Scott Fujimoto and Shixiang Shane Gu},
-  journal = {arXiv preprint arXiv:2106.06860},
-  year    = {2021},
-  eprint  = {2106.06860},
+@inproceedings{fujimoto2021td3bc,
+  title     = {A Minimalist Approach to Offline Reinforcement Learning},
+  author    = {Fujimoto, Scott and Gu, Shixiang Shane},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {34},
+  year      = {2021},
+  eprint    = {2106.06860},
   archivePrefix = {arXiv}
 }
 
-@article{kumar2020cql,
-  title   = {Conservative Q-Learning for Offline Reinforcement Learning},
-  author  = {Aviral Kumar and Aurick Zhou and George Tucker and Sergey Levine},
-  journal = {arXiv preprint arXiv:2006.04779},
-  year    = {2020},
-  eprint  = {2006.04779},
+@inproceedings{kumar2020cql,
+  title     = {Conservative Q-Learning for Offline Reinforcement Learning},
+  author    = {Kumar, Aviral and Zhou, Aurick and Tucker, George and Levine, Sergey},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {33},
+  year      = {2020},
+  eprint    = {2006.04779},
   archivePrefix = {arXiv}
 }
 
@@ -212,12 +233,15 @@
   archivePrefix = {arXiv}
 }
 
-@article{stiennon2020summarize,
-  title   = {Learning to summarize from human feedback},
-  author  = {Nisan Stiennon and Long Ouyang and Jeff Wu and Daniel M. Ziegler and Ryan Lowe and Chelsea Voss and Alec Radford and Dario Amodei and Paul Christiano},
-  journal = {arXiv preprint arXiv:2009.01325},
-  year    = {2020},
-  eprint  = {2009.01325},
+@inproceedings{stiennon2020summarize,
+  title     = {Learning to Summarize from Human Feedback},
+  author    = {Stiennon, Nisan and Ouyang, Long and Wu, Jeffrey and
+               Ziegler, Daniel M. and Lowe, Ryan and Voss, Chelsea and
+               Radford, Alec and Amodei, Dario and Christiano, Paul},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {33},
+  year      = {2020},
+  eprint    = {2009.01325},
   archivePrefix = {arXiv}
 }
 
@@ -233,12 +257,13 @@
   doi     = {10.1007/BF00992696}
 }
 
-@article{sharma2020dads,
-  title   = {Dynamics-Aware Unsupervised Discovery of Skills},
-  author  = {Archit Sharma and Shixiang Gu and Sergey Levine and Vikash Kumar and Karol Hausman},
-  journal = {arXiv preprint arXiv:1907.01657},
-  year    = {2019},
-  eprint  = {1907.01657},
+@inproceedings{sharma2020dads,
+  title     = {Dynamics-Aware Unsupervised Discovery of Skills},
+  author    = {Sharma, Archit and Gu, Shixiang and Levine, Sergey and
+               Kumar, Vikash and Hausman, Karol},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2020},
+  eprint    = {1907.01657},
   archivePrefix = {arXiv}
 }
 
@@ -251,12 +276,17 @@
   archivePrefix = {arXiv}
 }
 
-@article{florence2022ibc,
-  title   = {Implicit Behavioral Cloning},
-  author  = {Pete Florence and Corey Lynch and Andy Zeng and Oscar Ramirez and Ayzaan Wahid and Laura Downs and Adrian Wong and Johnny Lee and Igor Mordatch and Jonathan Tompson},
-  journal = {arXiv preprint arXiv:2109.00137},
-  year    = {2021},
-  eprint  = {2109.00137},
+@inproceedings{florence2022ibc,
+  title     = {Implicit Behavioral Cloning},
+  author    = {Florence, Pete and Lynch, Corey and Zeng, Andy and
+               Ramirez, Oscar and Wahid, Ayzaan and Downs, Laura and
+               Wong, Adrian and Lee, Johnny and Mordatch, Igor and Tompson, Jonathan},
+  booktitle = {Proceedings of the 5th Conference on Robot Learning (CoRL)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {164},
+  pages     = {158--168},
+  year      = {2022},
+  eprint    = {2109.00137},
   archivePrefix = {arXiv}
 }
 
@@ -271,47 +301,55 @@
   doi       = {10.52202/068431-1668}
 }
 
-@article{janner2022diffuser,
-  title   = {Planning with Diffusion for Flexible Behavior Synthesis},
-  author  = {Michael Janner and Yilun Du and Joshua B. Tenenbaum and Sergey Levine},
-  journal = {arXiv preprint arXiv:2205.09991},
-  year    = {2022},
-  eprint  = {2205.09991},
+@inproceedings{janner2022diffuser,
+  title     = {Planning with Diffusion for Flexible Behavior Synthesis},
+  author    = {Janner, Michael and Du, Yilun and Tenenbaum, Joshua B. and Levine, Sergey},
+  booktitle = {Proceedings of the 39th International Conference on Machine
+               Learning (ICML)},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {162},
+  pages     = {9902--9915},
+  year      = {2022},
+  eprint    = {2205.09991},
   archivePrefix = {arXiv}
 }
 
-@article{zhao2023act,
-  title   = {Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware},
-  author  = {Tony Z. Zhao and Vikash Kumar and Sergey Levine and Chelsea Finn},
-  journal = {arXiv preprint arXiv:2304.13705},
-  year    = {2023},
-  eprint  = {2304.13705},
+@inproceedings{zhao2023act,
+  title     = {Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware},
+  author    = {Zhao, Tony Z. and Kumar, Vikash and Levine, Sergey and Finn, Chelsea},
+  booktitle = {Robotics: Science and Systems XIX},
+  year      = {2023},
+  doi       = {10.15607/RSS.2023.XIX.016},
+  eprint    = {2304.13705},
   archivePrefix = {arXiv}
 }
 
-@article{ren2024dppo,
-  title   = {Diffusion Policy Policy Optimization},
-  author  = {Allen Z. Ren and Justin Lidard and Lars L. Ankile and Anthony Simeonov and Pulkit Agrawal and Anirudha Majumdar and Benjamin Burchfiel and Hongkai Dai and Max Simchowitz},
-  journal = {arXiv preprint arXiv:2409.00588},
-  year    = {2024},
-  eprint  = {2409.00588},
+@inproceedings{ren2024dppo,
+  title     = {Diffusion Policy Policy Optimization},
+  author    = {Ren, Allen Z. and Lidard, Justin and Ankile, Lars L. and
+               Simeonov, Anthony and Agrawal, Pulkit and Majumdar, Anirudha and
+               Burchfiel, Benjamin and Dai, Hongkai and Simchowitz, Max},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2025},
+  eprint    = {2409.00588},
   archivePrefix = {arXiv}
 }
 
-@article{song2021ddim,
-  title   = {Denoising Diffusion Implicit Models},
-  author  = {Jiaming Song and Chenlin Meng and Stefano Ermon},
-  journal = {arXiv preprint arXiv:2010.02502},
-  year    = {2020},
-  eprint  = {2010.02502},
+@inproceedings{song2021ddim,
+  title     = {Denoising Diffusion Implicit Models},
+  author    = {Song, Jiaming and Meng, Chenlin and Ermon, Stefano},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2021},
+  eprint    = {2010.02502},
   archivePrefix = {arXiv}
 }
 
-@article{ho2020ddpm,
-  title   = {Denoising Diffusion Probabilistic Models},
-  author  = {Jonathan Ho and Ajay Jain and Pieter Abbeel},
-  journal = {arXiv preprint arXiv:2006.11239},
-  year    = {2020},
-  eprint  = {2006.11239},
+@inproceedings{ho2020ddpm,
+  title     = {Denoising Diffusion Probabilistic Models},
+  author    = {Ho, Jonathan and Jain, Ajay and Abbeel, Pieter},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {33},
+  year      = {2020},
+  eprint    = {2006.11239},
   archivePrefix = {arXiv}
 }

@@ -96,12 +96,30 @@
    "year": "2023",
    "journal_ref": null,
    "doi": null
+  },
+  "crossref": {
+   "title": "Diffusion Policy: Visuomotor Policy Learning via Action Diffusion",
+   "authors": [
+    "Cheng Chi",
+    "Siyuan Feng",
+    "Yilun Du",
+    "Zhenjia Xu",
+    "Eric Cousineau",
+    "Benjamin Burchfiel",
+    "Shuran Song"
+   ],
+   "year": 2023,
+   "container": "Robotics: Science and Systems XIX",
+   "volume": null,
+   "issue": null,
+   "page": null,
+   "type": "proceedings-article"
   }
  },
  {
   "key": "liu2022rectifiedflow",
   "bib_authors": 3,
-  "bib_year": "2022",
+  "bib_year": "2023",
   "arxiv": {
    "title": "Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow",
    "authors": [
@@ -117,7 +135,7 @@
  {
   "key": "lipman2022flowmatching",
   "bib_authors": 4,
-  "bib_year": "2022",
+  "bib_year": "2023",
   "arxiv": {
    "title": "Flow Matching for Generative Modeling",
    "authors": [
@@ -135,7 +153,7 @@
  {
   "key": "eysenbach2018diayn",
   "bib_authors": 4,
-  "bib_year": "2018",
+  "bib_year": "2019",
   "arxiv": {
    "title": "Diversity is All You Need: Learning Skills without a Reward Function",
    "authors": [
@@ -167,6 +185,24 @@
    "year": "2023",
    "journal_ref": null,
    "doi": null
+  },
+  "crossref": {
+   "title": "LIBERO: Benchmarking Knowledge Transfer for Lifelong Robot Learning",
+   "authors": [
+    "Bo Liu",
+    "Yifeng Zhu",
+    "Chongkai Gao",
+    "Yihao Feng",
+    "Qiang Liu",
+    "Yuke Zhu",
+    "Peter Stone"
+   ],
+   "year": 2023,
+   "container": "Advances in Neural Information Processing Systems 36",
+   "volume": null,
+   "issue": null,
+   "page": "44776-44791",
+   "type": "proceedings-article"
   }
  },
  {
@@ -393,7 +429,7 @@
  },
  {
   "key": "stiennon2020summarize",
-  "bib_authors": 9,
+  "bib_authors": 7,
   "bib_year": "2020",
   "arxiv": {
    "title": "Learning to summarize from human feedback",
@@ -432,8 +468,8 @@
  },
  {
   "key": "sharma2020dads",
-  "bib_authors": 5,
-  "bib_year": "2019",
+  "bib_authors": 4,
+  "bib_year": "2020",
   "arxiv": {
    "title": "Dynamics-Aware Unsupervised Discovery of Skills",
    "authors": [
@@ -466,8 +502,8 @@
  },
  {
   "key": "florence2022ibc",
-  "bib_authors": 10,
-  "bib_year": "2021",
+  "bib_authors": 8,
+  "bib_year": "2022",
   "arxiv": {
    "title": "Implicit Behavioral Cloning",
    "authors": [
@@ -539,12 +575,27 @@
    "year": "2023",
    "journal_ref": null,
    "doi": null
+  },
+  "crossref": {
+   "title": "Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware",
+   "authors": [
+    "Tony Zhao",
+    "Vikash Kumar",
+    "Sergey Levine",
+    "Chelsea Finn"
+   ],
+   "year": 2023,
+   "container": "Robotics: Science and Systems XIX",
+   "volume": null,
+   "issue": null,
+   "page": null,
+   "type": "proceedings-article"
   }
  },
  {
   "key": "ren2024dppo",
-  "bib_authors": 9,
-  "bib_year": "2024",
+  "bib_authors": 7,
+  "bib_year": "2025",
   "arxiv": {
    "title": "Diffusion Policy Policy Optimization",
    "authors": [
@@ -566,7 +617,7 @@
  {
   "key": "song2021ddim",
   "bib_authors": 3,
-  "bib_year": "2020",
+  "bib_year": "2021",
   "arxiv": {
    "title": "Denoising Diffusion Implicit Models",
    "authors": [

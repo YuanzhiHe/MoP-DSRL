@@ -6,9 +6,11 @@
   \def\href#1#2{#2} \def\path#1{#1}\fi
 
 \bibitem{wagenmaker2025dsrl}
-A.~Wagenmaker, M.~Nakamoto, Y.~Zhang, S.~Park, W.~Yagoub, A.~Nagabandi,
+A.~Wagenmaker, Y.~Zhang, M.~Nakamoto, S.~Park, W.~Yagoub, A.~Nagabandi,
   A.~Gupta, S.~Levine, Steering your diffusion policy with latent space
-  reinforcement learning, arXiv preprint arXiv:2506.15799 (2025).
+  reinforcement learning, in: Proceedings of the 9th Conference on Robot
+  Learning (CoRL), Vol. 305 of Proceedings of Machine Learning Research, 2025,
+  pp. 258--282.
 \newblock \href {http://arxiv.org/abs/2506.15799} {\path{arXiv:2506.15799}}.
 
 \bibitem{longhini2026bmd}
@@ -19,26 +21,30 @@ A.~Longhini, D.~Emukpere, J.-M. Renders, S.~Kim, Behavioral mode discovery for
 
 \bibitem{eysenbach2018diayn}
 B.~Eysenbach, A.~Gupta, J.~Ibarz, S.~Levine, Diversity is all you need:
-  Learning skills without a reward function, arXiv preprint arXiv:1802.06070
-  (2018).
+  Learning skills without a reward function, in: International Conference on
+  Learning Representations (ICLR), 2019.
 \newblock \href {http://arxiv.org/abs/1802.06070} {\path{arXiv:1802.06070}}.
 
 \bibitem{jia2024d3il}
 X.~Jia, D.~Blessing, X.~Jiang, M.~Reuss, A.~Donat, R.~Lioutikov, G.~Neumann,
   Towards diverse behaviors: A benchmark for imitation learning with human
-  demonstrations, arXiv preprint arXiv:2402.14606 (2024).
+  demonstrations, in: International Conference on Learning Representations
+  (ICLR), 2024.
 \newblock \href {http://arxiv.org/abs/2402.14606} {\path{arXiv:2402.14606}}.
 
 \bibitem{chi2023diffusionpolicy}
 C.~Chi, Z.~Xu, S.~Feng, E.~Cousineau, Y.~Du, B.~Burchfiel, R.~Tedrake, S.~Song,
-  Diffusion policy: Visuomotor policy learning via action diffusion, arXiv
-  preprint arXiv:2303.04137 (2023).
-\newblock \href {http://arxiv.org/abs/2303.04137} {\path{arXiv:2303.04137}}.
+  Diffusion policy: Visuomotor policy learning via action diffusion, in:
+  Robotics: Science and Systems XIX, 2023.
+\newblock \href {http://arxiv.org/abs/2303.04137} {\path{arXiv:2303.04137}},
+  \href {https://doi.org/10.15607/RSS.2023.XIX.026}
+  {\path{doi:10.15607/RSS.2023.XIX.026}}.
 
 \bibitem{florence2022ibc}
 P.~Florence, C.~Lynch, A.~Zeng, O.~Ramirez, A.~Wahid, L.~Downs, A.~Wong,
-  J.~Lee, I.~Mordatch, J.~Tompson, Implicit behavioral cloning, arXiv preprint
-  arXiv:2109.00137 (2021).
+  J.~Lee, I.~Mordatch, J.~Tompson, Implicit behavioral cloning, in: Proceedings
+  of the 5th Conference on Robot Learning (CoRL), Vol. 164 of Proceedings of
+  Machine Learning Research, 2022, pp. 158--168.
 \newblock \href {http://arxiv.org/abs/2109.00137} {\path{arXiv:2109.00137}}.
 
 \bibitem{shafiullah2022bet}
@@ -50,32 +56,39 @@ N.~M. Shafiullah, Z.~Cui, A.~Altanzaya, L.~Pinto, Behavior transformers:
 
 \bibitem{zhao2023act}
 T.~Z. Zhao, V.~Kumar, S.~Levine, C.~Finn, Learning fine-grained bimanual
-  manipulation with low-cost hardware, arXiv preprint arXiv:2304.13705 (2023).
-\newblock \href {http://arxiv.org/abs/2304.13705} {\path{arXiv:2304.13705}}.
+  manipulation with low-cost hardware, in: Robotics: Science and Systems XIX,
+  2023.
+\newblock \href {http://arxiv.org/abs/2304.13705} {\path{arXiv:2304.13705}},
+  \href {https://doi.org/10.15607/RSS.2023.XIX.016}
+  {\path{doi:10.15607/RSS.2023.XIX.016}}.
 
 \bibitem{janner2022diffuser}
 M.~Janner, Y.~Du, J.~B. Tenenbaum, S.~Levine, Planning with diffusion for
-  flexible behavior synthesis, arXiv preprint arXiv:2205.09991 (2022).
+  flexible behavior synthesis, in: Proceedings of the 39th International
+  Conference on Machine Learning (ICML), Vol. 162 of Proceedings of Machine
+  Learning Research, 2022, pp. 9902--9915.
 \newblock \href {http://arxiv.org/abs/2205.09991} {\path{arXiv:2205.09991}}.
 
 \bibitem{lipman2022flowmatching}
 Y.~Lipman, R.~T.~Q. Chen, H.~Ben-Hamu, M.~Nickel, M.~Le, Flow matching for
-  generative modeling, arXiv preprint arXiv:2210.02747 (2022).
+  generative modeling, in: International Conference on Learning Representations
+  (ICLR), 2023.
 \newblock \href {http://arxiv.org/abs/2210.02747} {\path{arXiv:2210.02747}}.
 
 \bibitem{liu2022rectifiedflow}
 X.~Liu, C.~Gong, Q.~Liu, Flow straight and fast: Learning to generate and
-  transfer data with rectified flow, arXiv preprint arXiv:2209.03003 (2022).
+  transfer data with rectified flow, in: International Conference on Learning
+  Representations (ICLR), 2023.
 \newblock \href {http://arxiv.org/abs/2209.03003} {\path{arXiv:2209.03003}}.
 
 \bibitem{ho2020ddpm}
-J.~Ho, A.~Jain, P.~Abbeel, Denoising diffusion probabilistic models, arXiv
-  preprint arXiv:2006.11239 (2020).
+J.~Ho, A.~Jain, P.~Abbeel, Denoising diffusion probabilistic models, in:
+  Advances in Neural Information Processing Systems, Vol.~33, 2020.
 \newblock \href {http://arxiv.org/abs/2006.11239} {\path{arXiv:2006.11239}}.
 
 \bibitem{song2021ddim}
-J.~Song, C.~Meng, S.~Ermon, Denoising diffusion implicit models, arXiv preprint
-  arXiv:2010.02502 (2020).
+J.~Song, C.~Meng, S.~Ermon, Denoising diffusion implicit models, in:
+  International Conference on Learning Representations (ICLR), 2021.
 \newblock \href {http://arxiv.org/abs/2010.02502} {\path{arXiv:2010.02502}}.
 
 \bibitem{black2024pi0}
@@ -120,14 +133,15 @@ Y.~He, V.~Romero-Cano, J.~Xu, J.~D. Hern{\'a}ndez, G.~Colombo, Enhancing deep
 
 \bibitem{haarnoja2018sac}
 T.~Haarnoja, A.~Zhou, P.~Abbeel, S.~Levine, Soft actor-critic: Off-policy
-  maximum entropy deep reinforcement learning with a stochastic actor, arXiv
-  preprint arXiv:1801.01290 (2018).
+  maximum entropy deep reinforcement learning with a stochastic actor, in:
+  Proceedings of the 35th International Conference on Machine Learning (ICML),
+  Vol.~80 of Proceedings of Machine Learning Research, 2018, pp. 1861--1870.
 \newblock \href {http://arxiv.org/abs/1801.01290} {\path{arXiv:1801.01290}}.
 
 \bibitem{ren2024dppo}
 A.~Z. Ren, J.~Lidard, L.~L. Ankile, A.~Simeonov, P.~Agrawal, A.~Majumdar,
   B.~Burchfiel, H.~Dai, M.~Simchowitz, Diffusion policy policy optimization,
-  arXiv preprint arXiv:2409.00588 (2024).
+  in: International Conference on Learning Representations (ICLR), 2025.
 \newblock \href {http://arxiv.org/abs/2409.00588} {\path{arXiv:2409.00588}}.
 
 \bibitem{gregor2016vic}
@@ -137,7 +151,8 @@ K.~Gregor, D.~J. Rezende, D.~Wierstra, Variational intrinsic control, arXiv
 
 \bibitem{sharma2020dads}
 A.~Sharma, S.~Gu, S.~Levine, V.~Kumar, K.~Hausman, Dynamics-aware unsupervised
-  discovery of skills, arXiv preprint arXiv:1907.01657 (2019).
+  discovery of skills, in: International Conference on Learning Representations
+  (ICLR), 2020.
 \newblock \href {http://arxiv.org/abs/1907.01657} {\path{arXiv:1907.01657}}.
 
 \bibitem{ziegler2019finetune}
@@ -148,23 +163,24 @@ D.~M. Ziegler, N.~Stiennon, J.~Wu, T.~B. Brown, A.~Radford, D.~Amodei,
 
 \bibitem{stiennon2020summarize}
 N.~Stiennon, L.~Ouyang, J.~Wu, D.~M. Ziegler, R.~Lowe, C.~Voss, A.~Radford,
-  D.~Amodei, P.~Christiano, Learning to summarize from human feedback, arXiv
-  preprint arXiv:2009.01325 (2020).
+  D.~Amodei, P.~Christiano, Learning to summarize from human feedback, in:
+  Advances in Neural Information Processing Systems, Vol.~33, 2020.
 \newblock \href {http://arxiv.org/abs/2009.01325} {\path{arXiv:2009.01325}}.
 
 \bibitem{kumar2020cql}
 A.~Kumar, A.~Zhou, G.~Tucker, S.~Levine, Conservative q-learning for offline
-  reinforcement learning, arXiv preprint arXiv:2006.04779 (2020).
+  reinforcement learning, in: Advances in Neural Information Processing
+  Systems, Vol.~33, 2020.
 \newblock \href {http://arxiv.org/abs/2006.04779} {\path{arXiv:2006.04779}}.
 
 \bibitem{fujimoto2021td3bc}
 S.~Fujimoto, S.~S. Gu, A minimalist approach to offline reinforcement learning,
-  arXiv preprint arXiv:2106.06860 (2021).
+  in: Advances in Neural Information Processing Systems, Vol.~34, 2021.
 \newblock \href {http://arxiv.org/abs/2106.06860} {\path{arXiv:2106.06860}}.
 
 \bibitem{ho2016gail}
-J.~Ho, S.~Ermon, Generative adversarial imitation learning, arXiv preprint
-  arXiv:1606.03476 (2016).
+J.~Ho, S.~Ermon, Generative adversarial imitation learning, in: Advances in
+  Neural Information Processing Systems, Vol.~29, 2016.
 \newblock \href {http://arxiv.org/abs/1606.03476} {\path{arXiv:1606.03476}}.
 
 \bibitem{he2026contract}
@@ -188,9 +204,11 @@ Y.~He, Detector confidence signals presence rather than occlusion in cluttered
 
 \bibitem{liu2023libero}
 B.~Liu, Y.~Zhu, C.~Gao, Y.~Feng, Q.~Liu, Y.~Zhu, P.~Stone, {LIBERO}:
-  Benchmarking knowledge transfer for lifelong robot learning, arXiv preprint
-  arXiv:2306.03310 (2023).
-\newblock \href {http://arxiv.org/abs/2306.03310} {\path{arXiv:2306.03310}}.
+  Benchmarking knowledge transfer for lifelong robot learning, in: Advances in
+  Neural Information Processing Systems, Vol.~36, 2023, pp. 44776--44791.
+\newblock \href {http://arxiv.org/abs/2306.03310} {\path{arXiv:2306.03310}},
+  \href {https://doi.org/10.52202/075280-1939}
+  {\path{doi:10.52202/075280-1939}}.
 
 \bibitem{williams1992reinforce}
 R.~J. Williams, Simple statistical gradient-following algorithms for
