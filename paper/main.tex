@@ -898,8 +898,9 @@ preserve a policy moves away from that policy as the policy becomes more
 distinctive. The gap between the two objectives rises with skew on both tasks,
 at $0.811$ per unit on \emph{Avoiding} and $0.516$ on \emph{Pushing}, and sits
 at zero where the reference approaches uniform. That pattern was predicted from
-the identity before the runs, and it tells a practitioner when the distinction
-is worth acting on.
+the identity before the runs, and it gives a practitioner a rate to reckon
+with: on \emph{Avoiding} each tenth of skew adds about $0.08$ to the gap
+between the two objectives.
 
 Reference matching ends $0.191$ closer to the reference than a learned-skill
 mutual information method on \emph{Avoiding}, with a 95\% interval of
@@ -909,7 +910,8 @@ trains a discriminator alongside the policy. Reference matching maintains a
 histogram of length $K$ and one scalar weight. Fitting the skill prior on the
 simplex to reproduce the reference hands that method the target, and the margin
 survives it, so the difference lies in the objective each method trains on and
-in the skills that objective shapes.
+in the skills that objective shapes. The ordering repeats in how far each
+travels from the policy it started from, $0.334$ against $0.143$.
 
 The advantage belongs to matching a reference and survives the choice of
 divergence that measures the match. At the most skewed \emph{Avoiding} level,
@@ -923,7 +925,7 @@ comparison on four further distances between the two histograms holds every
 margin clear of zero and leaves the four objectives in the same order, so the
 result reads the same whichever of them reports it.
 
-Two measurement choices shaped what the experiments could show. Defining modes
+Two design choices give the comparison its resolution. Defining modes
 by task geometry keeps the measured quantity independent of a learned
 vocabulary, so the mode of a trajectory is determined by the same criteria D3IL
 uses to describe its demonstrations. Treating each frozen policy as the unit of
@@ -933,17 +935,16 @@ cloned under identical conditions differ from one another substantially: five
 skews from $0.206$ to $0.315$. An experiment with one frozen policy per
 condition measures mostly that policy.
 
-Completion rate sets what any such comparison can resolve. \emph{Avoiding}
-completes about seven episodes in ten, puts a median of 372 labelled episodes
-into six bins and separates all four objectives. \emph{Pushing} completes about
-one in five, and at 73 labelled episodes in four bins it resolves the
-comparison the identity singles out while placing the other three within
-$0.031$ of one another at its most skewed reference. The same rate empties the
-reward term on that task, which leaves the mode terms acting alone and the
-prediction of Section~\ref{sec:separation} still legible. A benchmark intended
-to separate mode-preserving objectives needs a completion rate high enough to
-fill its histograms and to carry reward into its batches, and \emph{Avoiding}
-supplies both at seven episodes in ten.
+The mode term carries the comparison where the reward term falls silent.
+\emph{Pushing} completes about one episode in five, so most of its batches
+return nothing to maximise, and the prediction of
+Section~\ref{sec:separation} stays legible there all the same. Completion rate
+sets how finely any such comparison resolves: \emph{Avoiding} puts a median of
+372 labelled episodes into six bins and separates all four objectives, while
+\emph{Pushing} puts 73 into four and separates the comparison the identity
+singles out. A benchmark intended to separate mode-preserving objectives needs
+a completion rate high enough to fill its histograms and to carry reward into
+its batches, and \emph{Avoiding} supplies both at seven episodes in ten.
 
 \section{Conclusion and Future Works}\label{sec:conclusion}
 
@@ -953,6 +954,7 @@ answers it only when the pretrained policy is uniform over its behavioural
 modes, and we show by direct measurement that cloned policies depart from
 uniform by up to $1.29$ nats. We introduce a reference-matching penalty built on
 total variation distance, with no learned components and one scalar weight.
+
 The cohort covers two manipulation tasks, 40 independently trained frozen
 policies and 1,566 fine-tuning runs, with each frozen policy as one unit and
 the design fixed in advance. Across it, the gap between reference matching and
@@ -961,10 +963,12 @@ unit on \emph{Avoiding}, and vanishes where the reference approaches uniform.
 On \emph{Avoiding} the penalty ends closer to the pretrained behaviour than
 every baseline, winning on 20 of 20 frozen policies against fine-tuning with no
 mode term while solving the task more often than that objective at every skew
-level. On \emph{Pushing} it ends $0.094$ closer than entropy maximisation,
-which is the comparison the identity singles out. A histogram of length $K$ and one scalar
-weight reach a fidelity beyond what a discriminator and a latent skill space
-reach, which places the result in the objective.
+level. It also stays nearest the policy it started from on both axes at once, giving
+up $0.014$ of geometric success where the other three give up $0.052$ to
+$0.138$. On \emph{Pushing} it ends $0.094$ closer than entropy maximisation,
+which is the comparison the identity singles out. A histogram of length $K$ and
+one scalar weight reach a closer match than a discriminator and a latent skill
+space do, which places the result in the objective.
 
 Two directions follow, and the first of them is scale. The penalty reads that
 histogram and one rollout budget, so it attaches to any frozen decoder whose
