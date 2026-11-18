@@ -182,6 +182,18 @@ def contrasts(cells):
                    for other in ("mi", "dsrl", "bmd")]
             S.holm(fam)
             out[f"{task}/{label}"] = [c.__dict__ for c in fam]
+        # The endpoint is the distance the penalty optimises, so the same
+        # cells are scored again on every other distance the runs recorded.
+        for metric, title in (("hellinger", "Hellinger"), ("maxbin",
+                              "largest single-bin error"),
+                              ("js", "Jensen-Shannon"), ("l2", "squared error")):
+            fam = [S.paired(scored, f"closeness_{metric}", other, "mop",
+                            policy_of, arm_of, "greater",
+                            name=f"mop closer than {other}, {title}")
+                   for other in ("mi", "dsrl", "bmd")]
+            S.holm(fam)
+            out[f"{task}/alternative distance, {title}"] = [c.__dict__
+                                                            for c in fam]
         out[f"{task}/undefined fidelity"] = dict(
             runs=len(rows), scored=len(scored), undefined=len(rows) - len(scored),
             by_arm={a: sum(1 for r in rows

@@ -122,8 +122,11 @@ def main():
         # These rows were measured after the main analysis, so the contrasts
         # below are exploratory and carry intervals without a p value: no
         # direction for them was declared before the runs they compare.
+        # Fidelity enters as displacement from the policy each arm started
+        # from: the frozen policy scores its own distance to its own
+        # reference on the same budget, so the two are the same quantity.
         for metric in ("success_rate", "rewarded_success_rate",
-                       "completion_rate"):
+                       "completion_rate", "tv_to_ref"):
             fam = [S.paired(both, metric, "frozen", a, pol, arm,
                             name=f"{NAME[a]} over the frozen policy")
                    for a in ARMS]

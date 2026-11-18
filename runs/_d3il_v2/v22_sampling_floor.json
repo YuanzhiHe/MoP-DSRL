@@ -1,0 +1,68 @@
+{
+ "avoiding": {
+  "task": "avoiding",
+  "policies": 20,
+  "draws": 2000,
+  "labelled_median": 372,
+  "labelled_q25": 326,
+  "labelled_q75": 410,
+  "reference_labelled_median": 707,
+  "floor": 0.04596908723825118,
+  "floor_sd": 0.019676922436192536,
+  "by_level": {
+   "0.00": {
+    "skew": 0.2396723985752928,
+    "labelled_median": 347,
+    "floor": 0.05477923336782376
+   },
+   "0.15": {
+    "skew": 0.31711961366142827,
+    "labelled_median": 381,
+    "floor": 0.05025799880223482
+   },
+   "0.30": {
+    "skew": 0.45500092779281853,
+    "labelled_median": 367,
+    "floor": 0.04368546165039979
+   },
+   "0.60": {
+    "skew": 0.5553147489538706,
+    "labelled_median": 392,
+    "floor": 0.03576059128386114
+   }
+  }
+ },
+ "pushing": {
+  "task": "pushing",
+  "policies": 20,
+  "draws": 2000,
+  "labelled_median": 73,
+  "labelled_q25": 33,
+  "labelled_q75": 103,
+  "reference_labelled_median": 222,
+  "floor": 0.07357466090197659,
+  "floor_sd": 0.03978446855637936,
+  "by_level": {
+   "0.00": {
+    "skew": 0.2424163385574299,
+    "labelled_median": 80,
+    "floor": 0.08295392680586346
+   },
+   "0.10": {
+    "skew": 0.24417421054868466,
+    "labelled_median": 61,
+    "floor": 0.09343595665547592
+   },
+   "0.25": {
+    "skew": 0.4171021794640053,
+    "labelled_median": 72,
+    "floor": 0.07231775505293389
+   },
+   "0.50": {
+    "skew": 0.5365004619041385,
+    "labelled_median": 94,
+    "floor": 0.04576933984952965
+   }
+  }
+ }
+}
