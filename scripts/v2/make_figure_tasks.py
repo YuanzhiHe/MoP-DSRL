@@ -38,6 +38,44 @@ def crop(frame: np.ndarray, keep: float = 0.96) -> np.ndarray:
     return frame[: int(h * 0.97), dw:w - dw]
 
 
+def blocks_panel(ax, bundle, n_show):
+    """Pushing: where each box went, which is what its modes are about.
+
+    The arm's own path crosses the whole workspace on every episode because it
+    returns for the second box, so it separates nothing. The boxes do.
+    """
+    import matplotlib.lines as mlines
+    groups, frames = bundle["groups"], bundle["frames"]
+    order = [g for g in sorted(set(int(g) for g in groups)) if g >= 0]
+    shown = {g: 0 for g in order}
+    for fr, g in zip(frames, groups):
+        g = int(g)
+        if g < 0 or shown[g] >= n_show:
+            continue
+        shown[g] += 1
+        f = np.asarray(fr, float)
+        for cols, style in (((4, 5), "-"), ((8, 9), (0, (2, 1.4)))):
+            # A dash pattern is a keyword; as a positional it is read as a
+            # format string and refused.
+            ax.plot(f[:, cols[0]], f[:, cols[1]], ls=style, lw=0.8, alpha=0.8,
+                    color=PALETTE[g % len(PALETTE)], zorder=2,
+                    label=f"mode {g + 1}"
+                    if (shown[g] == 1 and style == "-") else None)
+    h, lab = ax.get_legend_handles_labels()
+    o = sorted(range(len(lab)), key=lambda i: lab[i])
+    h = [h[i] for i in o] + [
+        mlines.Line2D([], [], color="#777777", lw=0.8, ls="-"),
+        mlines.Line2D([], [], color="#777777", lw=0.8, ls=(0, (2, 1.4)))]
+    # push_box carries the red block and push_box2 the green one, which is
+    # the order the observation reports them in.
+    lab = [lab[i] for i in o] + ["red box", "green box"]
+    ax.legend(h, lab, loc="upper left", frameon=False, fontsize=5.8,
+              handlelength=1.4, borderaxespad=0.2, ncol=2)
+    ax.set_aspect("equal")
+    ax.set_xlabel("$x$ (m)")
+    ax.set_ylabel("$y$ (m)")
+
+
 def paths_panel(ax, bundle, task, n_show):
     groups = bundle["groups"]
     paths = bundle["paths"]
@@ -105,10 +143,15 @@ def main() -> int:
                      loc="left")
         ax = axes[row, 1]
         n = int((np.asarray(bundle["modes"]) >= 0).sum())
-        paths_panel(ax, bundle, task, n_show=6)
-        ax.set_title(f"({tag[2 * row + 1]})  end-effector paths, six rollouts "
-                     f"of each group, {n} labelled of "
-                     f"{len(bundle['modes'])}", loc="left")
+        if task == "pushing" and "frames" in bundle:
+            blocks_panel(ax, bundle, n_show=6)
+            what, unit = "box paths", "mode"
+        else:
+            paths_panel(ax, bundle, task, n_show=6)
+            what, unit = "end-effector paths", "group"
+        ax.set_title(f"({tag[2 * row + 1]})  {what}, six rollouts of each "
+                     f"{unit}, {n} labelled of {len(bundle['modes'])}",
+                     loc="left")
 
     fig.tight_layout(pad=0.5, h_pad=1.1, w_pad=1.0)
     out = ROOT / "paper" / "figures" / "fig4_tasks"

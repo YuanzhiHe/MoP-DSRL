@@ -90,12 +90,16 @@ def main() -> int:
     obs = env.reset()
     frame = render(env._env.scene, args.task, args.size)
 
-    paths, modes = [], []
+    paths, modes, frames = [], [], []
     for ep in range(args.episodes):
         obs = env.reset()
-        xy, done = [], False
+        xy, seen, done = [], [], False
         while not done:
             xy.append(np.asarray(env._env.robot_state()[:2], dtype=np.float64))
+            # The observation carries what the task is about on Pushing: each
+            # box's own position. A mode there is which box reaches which
+            # target in which order, which the arm's path does not show.
+            seen.append(np.asarray(obs, dtype=np.float64).reshape(-1)[-12:])
             o = torch.tensor(norm_obs(obs, blob, args.obs_clip),
                              dtype=torch.float32)[None]
             with torch.no_grad():
@@ -103,6 +107,7 @@ def main() -> int:
                 a = decode(model, blob, o, z, 10)[0]
             obs, _, done, info = env.step(a)
         paths.append(np.asarray(xy))
+        frames.append(np.asarray(seen))
         modes.append(int(info["mode_id"]))
         if (ep + 1) % 20 == 0:
             print(f"  {ep + 1}/{args.episodes} episodes", flush=True)
@@ -124,7 +129,8 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         out, frame=frame,
-        paths=np.array(paths, dtype=object), modes=np.asarray(modes),
+        paths=np.array(paths, dtype=object),
+        frames=np.array(frames, dtype=object), modes=np.asarray(modes),
         groups=np.asarray([coarsen(m, TASKS[args.task]["n_modes"] if
                                    args.task == "pushing" else 6)
                            if m >= 0 else -1 for m in modes]),

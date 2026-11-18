@@ -399,7 +399,8 @@ them, giving 24 routes that we group into $K = 6$ by the first two rows. In
 \emph{Pushing}, two blocks must be delivered to two targets, and the mode is
 which block reaches which target in which order, giving $K = 4$. Both modes are
 read from object and end-effector geometry using the benchmark's own criteria, so
-no clustering step enters the measurement.
+no clustering step enters the measurement. Figure~\ref{fig:tasks} shows both, and
+the paths a frozen policy takes through them.
 
 The frozen policy for each task is a rectified-flow velocity field
 \citep{liu2022rectifiedflow} trained by flow matching on the benchmark's
@@ -453,6 +454,25 @@ cohort to 1{,}566. A further 200 evaluations measure
 the forty frozen policies themselves under their own latent prior, on the
 budget a fine-tuned run is evaluated on, and train nothing. Every planned run
 completed; none raised an exception, none was retried, and no cell is missing.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4_tasks.pdf}
+\caption{The two tasks and the behaviour a mode names. (a, c) A frame from the
+simulator of each task, taken from above, where the side of an obstacle the arm
+passes on is visible: \emph{Avoiding} puts three rows of posts between the arm
+and the green goal line, and \emph{Pushing} starts with a red and a green box
+below the two targets they are delivered to. (b, d) Rollouts of one frozen
+policy under its own latent prior, six of each mode, from the most skewed level
+of each task. Colour names the mode the episode realised. On \emph{Avoiding}
+the lines are the end-effector path and the posts are drawn where the
+environment reports them. On \emph{Pushing} they are the boxes' own paths,
+solid for the red box and dashed for the green one, because the arm crosses the
+workspace on every episode and its path separates nothing. That policy realises
+two of the four \emph{Pushing} modes in 120 rollouts, which is what a reference
+skew of $0.54$ looks like.}
+\label{fig:tasks}
+\end{figure}
 
 \begin{table}[t]
 \caption{Settings used for every reported run. The noise policy and the
