@@ -1,0 +1,5 @@
+- Matching a pretrained policy and maximising mode entropy are one objective at uniform
+- Forty cloned policies depart from uniform by up to 1.29 nats, so the two come apart
+- A total variation penalty on the mode histogram adds no learned component
+- The gap grows with each policy's measured skew at 0.811 per unit of it
+- Reference matching ends 0.177 closer to the pretrained behaviour than entropy
