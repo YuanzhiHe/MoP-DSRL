@@ -133,7 +133,7 @@ mode-preserving regulariser should target, and give the condition
 
 Second, we introduce a penalty on the total variation distance between $C_\phi$
 and $C_{\mathrm{ref}}$, built from a weight $\lambda$, a rate for the running
-histogram estimate, and the resolution $K$ at which modes are counted. It
+estimates, and the resolution $K$ at which modes are counted. It
 carries no learned components, and its partial derivative with respect to any
 mode's probability is bounded by one half however narrow the pretrained
 policy's support is.
@@ -348,26 +348,32 @@ so a trajectory that carries no label contributes exactly zero and a labelled on
 carries its own partial derivative measured against the $C_\phi$-weighted mean of
 all $K$ of them. The quantities $C_\phi$ and $s_\phi$ entering the coefficient are
 the running estimates described below, read before the current batch updates
-them, with $1/s_\phi$ bounded at $20$; the coefficient is therefore a plug-in
-approximation of the population one. For total variation the partial derivative
-is
+them, with $s_\phi$ held at or above $0.05$ so that the factor $1/s_\phi$ never
+exceeds twenty; the coefficient is therefore a plug-in approximation of the
+population one.
+
+Each divergence enters through its own partial derivative. For total variation
+that derivative is
 $\tfrac{1}{2}\,\mathrm{sgn}\!\left(C_\phi[k] - C_{\mathrm{ref}}[k]\right)$, whose
 magnitude is one half for every mode. The Jensen-Shannon divergence gives
 $\tfrac{1}{2}\log\!\left(C_\phi[k] / \bar{C}[k]\right)$, where
 $\bar{C} = (C_\phi + C_{\mathrm{ref}})/2$ is the mixture of the two histograms.
-Since $\bar{C}[k] \geq C_{\mathrm{ref}}[k]/2$, this stays finite as
-$C_{\mathrm{ref}}[k] \rightarrow 0$, the direction in which the
-Kullback-Leibler form diverges. The Jensen-Shannon derivative grows instead as
-$C_\phi[k] \rightarrow 0$, and the running estimate introduced below bounds it
-away from that limit;
+Since $\bar{C}[k] \geq C_\phi[k]/2$, the ratio is at most two and this
+derivative is at most $\tfrac{1}{2}\log 2$ however small
+$C_{\mathrm{ref}}[k]$ becomes, which is the direction in which the
+Kullback-Leibler form diverges. The Jensen-Shannon form grows instead as
+$C_\phi[k] \rightarrow 0$, where the running estimate introduced below holds
+the histogram positive and the guard of Table~\ref{tab:hyper} bounds the
+ratio.
 Table~\ref{tab:divergence} reports the largest coefficient each form reaches
 in practice. The corresponding partial derivative for the KL divergence is
 $\log\!\left(C_\phi[k] / C_{\mathrm{ref}}[k]\right) + 1$, which grows without
 bound as $C_{\mathrm{ref}}[k] \rightarrow 0$. A pretrained policy need not visit
 every mode, so that case arises whenever the reference has narrow support, and
-the KL form carries a numerical guard for it. Section~\ref{sec:robust} compares
-both forms along with two divergences that flatten the ratio between the
-histograms.
+the KL form carries a numerical guard for it. Section~\ref{sec:robust}
+compares both forms with the Jensen-Shannon divergence, a squared error whose
+derivative carries no ratio at all, and a Kullback-Leibler form whose reference
+is smoothed toward uniform before the ratio is taken.
 
 The estimates $C_\phi$ and $s_\phi$ are exponential moving averages over
 iterations, so that every mode retains a stable probability even when a batch of
@@ -378,12 +384,13 @@ coefficient is rescaled. The update is therefore the gradient of
 Equation~\ref{eq:objective} at the plug-in estimates, and $\lambda$ carries the
 units of that objective.
 
-The complete method adds three settings to unregularised noise-space
-fine-tuning: the weight $\lambda$, the rate of the running histogram estimate,
-and the resolution $K$. It also holds one histogram of length $K$ in memory and
-uses one rollout budget before training to estimate $C_{\mathrm{ref}}$. It
-introduces no learned components, and Table~\ref{tab:hyper} gives the values used
-for every reported run.
+The complete method adds a weight $\lambda$, a rate for the running
+estimates and a resolution $K$ to unregularised noise-space fine-tuning,
+together with the two estimator constants of Table~\ref{tab:hyper}, the guard
+inside a ratio and the lower bound on $s_\phi$. It holds one histogram of
+length $K$ in memory and uses one rollout budget before training to estimate
+$C_{\mathrm{ref}}$. It introduces no learned components, and
+Table~\ref{tab:hyper} gives the values used for every reported run.
 \section{Experimental Results}\label{sec:results}
 
 \subsection{Setup}\label{sec:setup}
@@ -467,7 +474,9 @@ Rewarded modes & 4 of 24 & 1 of 4 \\
 Penalty weight $\lambda$, reference matching & 1.0 & 0.50 \\
 Penalty weight $\lambda$, mode entropy & 1.0 & 0.50 \\
 Penalty weight $\lambda$, learned skills & 1.0 & 1.00 \\
-Rate of the running histogram estimate & 0.15 & 0.15 \\
+Rate of the running estimates $C_\phi$ and $s_\phi$ & 0.15 & 0.15 \\
+Guard added inside a divergence ratio & $10^{-8}$ & $10^{-8}$ \\
+Lower bound on $s_\phi$ in the coefficient & 0.05 & 0.05 \\
 Policy updates & 60 & 60 \\
 Episodes per update & 16 & 16 \\
 Evaluation episodes & 500 & 300 \\
@@ -855,7 +864,7 @@ Divergence & Distance to & Success & Coefficient \\
 \midrule
 Total variation & $\mathbf{.133}$ & $.802$ & $1.17$ \\
 Kullback-Leibler & $.139$ & $.775$ & $6.18$ \\
-Kullback-Leibler, smoothed & $.155$ & $.724$ & $4.85$ \\
+Kullback-Leibler, reference smoothed at $0.05$ & $.155$ & $.724$ & $4.85$ \\
 Squared error & $.176$ & $.754$ & $0.55$ \\
 Jensen-Shannon & $.193$ & $.738$ & $1.46$ \\
 \bottomrule
