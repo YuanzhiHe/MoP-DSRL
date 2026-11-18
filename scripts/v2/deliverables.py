@@ -333,16 +333,10 @@ def main():
     manifest, account, missing = [], {}, {}
     for stage, pattern in STAGE_FILES.items():
         rows = read(pattern)
-        if stage == "ablation/weight":
-            # One weight of the grid is the weight the main matrix already
-            # ran. Those cells carry the same key, so the grid job resumed
-            # them and wrote no file; they are counted here from where they
-            # live rather than reported as cells that never happened.
-            reused = [r for r in read(f"{PREFIX}main_pushing_0.00.jsonl")
-                      + read(f"{PREFIX}main_pushing_0.10.jsonl")
-                      if r["arm"] in ("mi", "mop")
-                      and r["weighting"] in ("0.00", "0.10")]
-            rows += reused
+        # The grid wrote its own rows at every candidate weight, so the main
+        # matrix is no longer counted into this stage: doing so added a second
+        # measurement of one weight and reported four hundred rows against
+        # three hundred planned cells.
         seen = collections.Counter(key(stage, r) for r in rows)
         want = plan[stage]
         extra = sorted(k for k in seen if k not in want)
@@ -356,7 +350,6 @@ def main():
                                    if not r.get("fidelity_defined", True)),
             nonfinite_gradients=sum(r.get("n_nonfinite_grad", 0) for r in rows),
             missing=len(absent), unplanned=len(extra),
-            reused_from_the_main_matrix=len(reused) if stage == "ablation/weight" else 0,
             estimator_versions=sorted({str(r.get("estimator_version"))
                                        for r in rows}),
             code_commits=sorted({str(r.get("code_commit")) for r in rows}),
@@ -368,12 +361,8 @@ def main():
         for r in rows:
             m = {f: r.get(f) for f in MANIFEST_FIELDS}
             m["stage"], m["source_file"] = stage, r["_file"]
-            # A cell the grid shares with the main matrix is listed under both
-            # stages, since it belongs to both analyses, and the flag says so
-            # rather than leaving a reader to infer it from the file name.
-            m["reused_from_another_stage"] = (
-                stage == "ablation/weight" and r["_file"].startswith(
-                    f"runs/_d3il_v2/{PREFIX}main_"))
+            # Every row is now listed under the one stage that measured it.
+            m["reused_from_another_stage"] = False
             manifest.append(m)
 
     debug = {p: len(read(p)) for p in DEBUG_FILES}

@@ -210,3 +210,97 @@ divergence comparison. It separates two explanations of any advantage the
 proposed arm shows: matching a reference at all, against the particular choice
 of total variation. Ablations are exploratory under section 6 and no ablation
 cell had been launched when this was added.
+
+**2026-11-12, section 3, the cloning budget of the frozen policy.** Each
+backbone was cloned for 20000 steps on both tasks. Under the one-environment
+rule the Pushing frozen policy completes a route in 3.6 per cent of episodes,
+which leaves a 500-episode evaluation about eighteen labelled episodes and no
+estimable route distribution; Avoiding completes about 70 per cent and is
+unaffected. Measured on the frozen policy alone, with no arm and no contrast
+in view, Pushing completion runs 0.036 at 20000 steps, 0.185 at 60000, 0.345
+at 120000 and 0.350 at 240000, so it stops improving at 120000; stacking past
+frames instead of raising the budget lowers it at every width tried. The
+cloning loss keeps falling past that point on both tasks while completion does
+not, so the loss is not what selects the budget. The Pushing backbones are
+re-cloned at 120000 steps and the Avoiding backbones stay at 20000, the rule
+being that each task is cloned until its frozen policy completes the task
+often enough for its route distribution to be measured. The 20000-step Pushing
+checkpoints, their frozen evaluations and their calibration are kept under a
+`steps20000` name and enter nothing. This rule was written after the frozen
+completion rates above had been seen and before any Pushing arm had been run
+at the new budget; the Avoiding matrix and ablations were complete when it was
+written and are not touched by it.
+
+**2026-11-12, section 3, the observation and the environment rule, measured.**
+The tangent observation and the one-environment rule were adopted together,
+and a Pushing frozen success of 0.376 under the earlier rule became 0.042. The
+two were separated by cloning five tangent backbones and rolling them out
+under the current rule: 0.052 against 0.035 for sine and cosine over ten paired
+cells each, a difference inside the evaluation's own noise. The fall is
+therefore the environment rule, which the Avoiding frozen column shows
+independently -- its first weighting reproduces the earlier numbers to the
+digit and the rest were inflated by 15 to 20 per cent. The sine-cosine frame
+holds the largest normalised observation at 2.1e3 where the tangent reaches
+7.9e11.
+
+### Amendment, 2026-11-14: the cohort the weight rule reads
+
+The weight rule of section 5 was applied to Pushing on 2026-11-14 and returned
+its fallback branch for all three arms, reporting 24 calibration runs per arm
+where the stage produces 12. The stage named the calibration by a glob over
+`v22_calibration_*.jsonl`, which also matches the three files the superseded
+20000-step cloning cohort left in the same directory under a `_steps20000`
+suffix. Pooling the two cohorts put runs from a frozen policy that completes
+the task 0.036 of the time beside runs from one that completes it 0.345 of the
+time, and the former cannot reach the floor at any weight, so the pooled
+fraction stayed above tolerance whatever the current cohort showed.
+
+The stage now names the six calibration files one by one, and the selection
+script refuses a calibration in which one weighting and one backbone carry more
+than one checkpoint. The decision recorded under the pooled files is kept as
+`runs/_d3il_v2/v22_lambda_choice_mixedglob.json`; no main or ablation cell was
+run against it, since the matrix was held before any of it started.
+
+On the current cohort alone the rule takes its main branch on both tasks.
+Pushing selects 1.00 for reference matching, 1.00 for the learned-skill
+baseline and 0.50 for entropy maximisation; Avoiding's recorded decision is
+unchanged, which the script verifies by refusing to redecide a task already
+written.
+
+### Amendment, 2026-11-16: the settings a staged run carries
+
+The Pushing matrix completed on 2026-11-16 and its fidelity distance came out
+identically zero for all four arms over all 400 main cells. The cause is that
+`run_stage.py` named the task and left the task's own settings to the driver's
+defaults, which describe Avoiding: six route groups, four rewarded routes, 500
+evaluation and 900 reference episodes. Pushing has four routes and rewards one.
+Six groups put all labelled episodes of a cell in one bin, so every reference
+and every policy read as the point distribution and the distance between them
+was zero by construction; four rewarded routes made the reward a different
+objective from the one the matrix compares. The seed block was Avoiding's.
+
+The whole staged Pushing cohort is therefore set aside under
+`superseded_taskdefaults_*` and run again with the settings the launch plan
+gives the task. The stage now builds them from that same table, and a gate
+reads them back out of every run file. Avoiding is unaffected: its settings
+are the defaults, and the stage now passes the same values explicitly, which
+the gate confirms on all thirteen of its files.
+
+Two gates located the run directory relative to their own source file. The job
+wrapper runs a frozen copy of `scripts/` under `runs/_d3il_v2/_src/<job>`, so
+under that wrapper both globbed a directory that does not exist, found nothing,
+and passed. They now take the root from the environment, and a gate that finds
+no files to inspect fails rather than passes.
+
+### Amendment, 2026-11-16: a stage that dies leaves a file the checks accept
+
+Three Pushing stages were submitted on 104 cores against the job wrapper's
+fixed 48 GB request and were killed for memory inside their first minute. Each
+had already opened its output file, so the four main files and the two weight
+grid files sat at zero rows. The whole suite then passed 121 of 121 checks:
+every check reads what a file contains, and a file containing nothing
+contradicts nothing. The request is now made per core, which is how the stages
+use memory, and a completeness check compares each file against the number of
+runs its own stage plans. That check is kept out of the suite the launcher runs
+before a cohort, where a file being written is short for an innocent reason,
+and is asked for once the queue is empty.

@@ -1,0 +1,168 @@
+{
+ "bound": 50.0,
+ "pushing": {
+  "unbounded": {
+   "task": "pushing",
+   "weightings": [
+    "0.00",
+    "0.50"
+   ],
+   "episodes": 12,
+   "steps": 6741,
+   "median": 1.8425633466694742,
+   "p99": 3.5746801354606768,
+   "max": 3.829204667584935,
+   "per_channel_max": [
+    3.829204667584935,
+    2.324488628660691,
+    3.10654825701754,
+    2.3786751099643033,
+    2.636939160031814,
+    1.749098727998855,
+    1.5192048912280744,
+    2.6315630333643316,
+    2.5759949228269523,
+    1.745149110388408,
+    1.4492506867803348,
+    2.9726280999406067
+   ],
+   "steps_over_bound": 0,
+   "runaway_channels": []
+  },
+  "bounded": {
+   "task": "pushing",
+   "weightings": [
+    "0.00",
+    "0.50"
+   ],
+   "episodes": 12,
+   "steps": 7004,
+   "median": 1.7111018665200646,
+   "p99": 3.9224035928777616,
+   "max": 3.9224035928777616,
+   "per_channel_max": [
+    3.808154686355988,
+    3.019822604049374,
+    3.788798746791494,
+    3.1187275022173773,
+    2.8183926730649014,
+    1.5057277514605856,
+    1.5192077779001312,
+    2.7683673219671676,
+    3.9224035928777616,
+    2.0181762603277025,
+    1.4492706802626283,
+    2.9728487685119207
+   ],
+   "steps_over_bound": 0,
+   "headroom": 12.74728589653273
+  }
+ },
+ "avoiding": {
+  "unbounded": {
+   "task": "avoiding",
+   "weightings": [
+    "0.00",
+    "0.60"
+   ],
+   "episodes": 12,
+   "steps": 1363,
+   "median": 1.1298996884133046,
+   "p99": 2.0777521993550483,
+   "max": 2.110259645159517,
+   "per_channel_max": [
+    2.032336020987881,
+    1.523721743121819,
+    2.110259645159517,
+    1.4701947493142522
+   ],
+   "steps_over_bound": 0,
+   "runaway_channels": []
+  },
+  "bounded": {
+   "task": "avoiding",
+   "weightings": [
+    "0.00",
+    "0.60"
+   ],
+   "episodes": 12,
+   "steps": 1363,
+   "median": 1.1298996884133046,
+   "p99": 2.0777521993550483,
+   "max": 2.110259645159517,
+   "per_channel_max": [
+    2.032336020987881,
+    1.523721743121819,
+    2.110259645159517,
+    1.4701947493142522
+   ],
+   "steps_over_bound": 0,
+   "headroom": 23.693766837976206
+  }
+ },
+ "from_completed_runs": {
+  "avoiding": {
+   "runs": 508,
+   "obs_absmax_median": 2.9663584766806372,
+   "obs_absmax_max": 1006.2472970492507,
+   "runs_touching_bound": 30,
+   "clipped_frac_median": 0.0,
+   "clipped_frac_max": 0.540862368878815,
+   "nonfinite_gradients": 0,
+   "by_arm": {
+    "bmd": {
+     "runs": 136,
+     "clipped_frac_mean": 0.00016039571852398922,
+     "obs_absmax_median": 3.015980324084419
+    },
+    "dsrl": {
+     "runs": 100,
+     "clipped_frac_mean": 0.00016591682386675675,
+     "obs_absmax_median": 2.9140478196301722
+    },
+    "mi": {
+     "runs": 136,
+     "clipped_frac_mean": 0.008195605047721145,
+     "obs_absmax_median": 2.9698755242281383
+    },
+    "mop": {
+     "runs": 136,
+     "clipped_frac_mean": 0.00011232921925622578,
+     "obs_absmax_median": 2.9631406954210746
+    }
+   }
+  },
+  "pushing": {
+   "runs": 508,
+   "obs_absmax_median": 345.8394195977521,
+   "obs_absmax_max": 159966.73921595427,
+   "runs_touching_bound": 330,
+   "clipped_frac_median": 0.0018575153712682316,
+   "clipped_frac_max": 0.6514469128313999,
+   "nonfinite_gradients": 0,
+   "by_arm": {
+    "bmd": {
+     "runs": 136,
+     "clipped_frac_mean": 0.012176081122672336,
+     "obs_absmax_median": 257.08632529996703
+    },
+    "dsrl": {
+     "runs": 100,
+     "clipped_frac_mean": 0.016472114358393197,
+     "obs_absmax_median": 366.90089399152436
+    },
+    "mi": {
+     "runs": 136,
+     "clipped_frac_mean": 0.02662817069731481,
+     "obs_absmax_median": 271.69015946587115
+    },
+    "mop": {
+     "runs": 136,
+     "clipped_frac_mean": 0.017452132038155856,
+     "obs_absmax_median": 357.2468003886864
+    }
+   }
+  }
+ },
+ "verdict": "PASS"
+}

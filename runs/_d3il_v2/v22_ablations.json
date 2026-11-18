@@ -746,6 +746,26 @@
   }
  },
  "pushing/weight": {
+  "mi lam=0.25": {
+   "attempts": 50,
+   "completed": 50,
+   "exception": 0,
+   "fidelity_undefined": 2,
+   "tv_to_ref": 0.2309320145633297,
+   "success": 0.2072,
+   "rewarded_success": 0.050133333333333335,
+   "episode_return": 0.050133333333333335,
+   "completion": 0.21286666666666665,
+   "below_floor": 0.22,
+   "coef_absmax_raw": 15.616960695430919,
+   "coef_absmax_used": 15.616960695430919,
+   "grad_norm_last": 5.263109093606472,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.01595901736056058,
+   "frac_inert": 0.0,
+   "collapsed": 0
+  },
   "mi lam=0.50": {
    "attempts": 100,
    "completed": 100,
@@ -785,6 +805,26 @@
    "obs_clipped_frac": 0.012906747576320526,
    "frac_inert": 0.0,
    "collapsed": 2
+  },
+  "mop lam=0.25": {
+   "attempts": 50,
+   "completed": 50,
+   "exception": 0,
+   "fidelity_undefined": 0,
+   "tv_to_ref": 0.23228358808914418,
+   "success": 0.22206666666666666,
+   "rewarded_success": 0.05526666666666667,
+   "episode_return": 0.05526666666666667,
+   "completion": 0.22826666666666667,
+   "below_floor": 0.14,
+   "coef_absmax_raw": 4.782031785781804,
+   "coef_absmax_used": 4.782031785781804,
+   "grad_norm_last": 4.435307377576828,
+   "nonfinite": 0,
+   "nonfinite_grad": 0,
+   "obs_clipped_frac": 0.008669861254669994,
+   "frac_inert": 0.0,
+   "collapsed": 1
   },
   "mop lam=0.50": {
    "attempts": 100,
@@ -829,6 +869,36 @@
  },
  "pushing/weight contrasts/fidelity": [
   {
+   "name": "weight 0.25",
+   "n": 10,
+   "df": 9,
+   "mean": -0.0011464388494766358,
+   "sd": 0.09084551492646446,
+   "se": 0.02872787423784516,
+   "ci_low": -0.0661334053285841,
+   "ci_high": 0.06384052762963081,
+   "t": -0.03990684587327923,
+   "p_one_sided": 0.5154806838796573,
+   "wins": 6,
+   "p_adjusted": 0.5154806838796573,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.1276691423721565,
+     0.1078941648123066,
+     0.025289063213082608,
+     -0.0934917991487208,
+     -0.12142570815107445,
+     0.041725462889324494,
+     0.05690306681801477,
+     0.11356098579782792,
+     0.0389599301594335,
+     -0.05321041251280448
+    ]
+   }
+  },
+  {
    "name": "weight 0.50",
    "n": 10,
    "df": 9,
@@ -840,7 +910,7 @@
    "t": 2.746993126389557,
    "p_one_sided": 0.011293825044463893,
    "wins": 8,
-   "p_adjusted": 0.022587650088927786,
+   "p_adjusted": 0.03388147513339168,
    "policies_dropped": 0,
    "runs_undefined": 0,
    "detail": {
@@ -870,7 +940,7 @@
    "t": 2.1171469753555066,
    "p_one_sided": 0.03166521059255845,
    "wins": 7,
-   "p_adjusted": 0.03166521059255845,
+   "p_adjusted": 0.0633304211851169,
    "policies_dropped": 0,
    "runs_undefined": 0,
    "detail": {
@@ -891,6 +961,36 @@
  ],
  "pushing/weight contrasts/geometric success": [
   {
+   "name": "weight 0.25",
+   "n": 10,
+   "df": 9,
+   "mean": 0.014866666666666684,
+   "sd": 0.03970639156186567,
+   "se": 0.012556263500198605,
+   "ci_low": -0.013537574748289247,
+   "ci_high": 0.043270908081622615,
+   "t": 1.1840040364262454,
+   "p_one_sided": 0.13336907454140112,
+   "wins": 5,
+   "p_adjusted": 0.1747393689128598,
+   "policies_dropped": 0,
+   "runs_undefined": 0,
+   "detail": {
+    "differences": [
+     -0.0040000000000000036,
+     -0.0026666666666666505,
+     0.004666666666666597,
+     -0.005333333333333273,
+     0.008000000000000063,
+     -0.033999999999999975,
+     -0.0006666666666666488,
+     0.096,
+     0.07600000000000004,
+     0.010666666666666685
+    ]
+   }
+  },
+  {
    "name": "weight 0.50",
    "n": 10,
    "df": 9,
@@ -902,7 +1002,7 @@
    "t": 3.804598771954517,
    "p_one_sided": 0.002093846531002142,
    "wins": 9,
-   "p_adjusted": 0.004187693062004284,
+   "p_adjusted": 0.006281539593006426,
    "policies_dropped": 0,
    "runs_undefined": 0,
    "detail": {
@@ -932,7 +1032,7 @@
    "t": 1.4733874066444235,
    "p_one_sided": 0.0873696844564299,
    "wins": 6,
-   "p_adjusted": 0.0873696844564299,
+   "p_adjusted": 0.1747393689128598,
    "policies_dropped": 0,
    "runs_undefined": 0,
    "detail": {

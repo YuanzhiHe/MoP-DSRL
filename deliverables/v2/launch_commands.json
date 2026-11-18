@@ -74,28 +74,28 @@
   "name": "main-pu-0.00",
   "walltime": "2-00:00:00",
   "workers": 100,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.00.jsonl --weightings 0.00 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.25 --lam-mi 0.25 --lam-bmd 0.50"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.00.jsonl --weightings 0.00 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.50 --lam-mi 0.50 --lam-bmd 1.00"
  },
  {
   "stage": "main",
   "name": "main-pu-0.10",
   "walltime": "2-00:00:00",
   "workers": 100,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.10.jsonl --weightings 0.10 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.25 --lam-mi 0.25 --lam-bmd 0.50"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.10.jsonl --weightings 0.10 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.50 --lam-mi 0.50 --lam-bmd 1.00"
  },
  {
   "stage": "main",
   "name": "main-pu-0.25",
   "walltime": "2-00:00:00",
   "workers": 100,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.25.jsonl --weightings 0.25 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.25 --lam-mi 0.25 --lam-bmd 0.50"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.25.jsonl --weightings 0.25 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.50 --lam-mi 0.50 --lam-bmd 1.00"
  },
  {
   "stage": "main",
   "name": "main-pu-0.50",
   "walltime": "2-00:00:00",
   "workers": 100,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.50.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.25 --lam-mi 0.25 --lam-bmd 0.50"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 100 --workers 100 --out runs/_d3il_v2/main_pushing_0.50.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms dsrl mi mop bmd --seeds 5 --seed-offset 900 --lam 1.0 --lam-mop 0.50 --lam-mi 0.50 --lam-bmd 1.00"
  },
  {
   "stage": "ablation",
@@ -130,28 +130,28 @@
   "name": "abl-pu-js",
   "walltime": "1-00:00:00",
   "workers": 25,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_js.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.25 --divergence js"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_js.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.50 --divergence js"
  },
  {
   "stage": "ablation",
   "name": "abl-pu-l2",
   "walltime": "1-00:00:00",
   "workers": 25,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_l2.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.25 --divergence l2"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_l2.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.50 --divergence l2"
  },
  {
   "stage": "ablation",
   "name": "abl-pu-kl",
   "walltime": "1-00:00:00",
   "workers": 25,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_kl.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.25 --divergence kl --kl-eps 1e-6"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_kl.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.50 --divergence kl --kl-eps 1e-6"
  },
  {
   "stage": "ablation",
   "name": "abl-pu-kl-smooth",
   "walltime": "1-00:00:00",
   "workers": 25,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_kl-smooth.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.25 --divergence kl --kl-eps 1e-8 --ref-smooth 0.05"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_divergence_pushing_kl-smooth.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms mop --seeds 5 --seed-offset 900 --lam 0.50 --divergence kl --kl-eps 1e-8 --ref-smooth 0.05"
  },
  {
   "stage": "ablation",
@@ -165,7 +165,7 @@
   "name": "abl-pu-fitted",
   "walltime": "1-00:00:00",
   "workers": 25,
-  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_fitted_prior_pushing.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms bmd --seeds 5 --seed-offset 900 --lam 0.50 --bmd-prior fitted"
+  "command": "python -u scripts/v2/run_d3il_v2.py --task pushing --mode-groups 4 --n-rewarded 1 --eval-episodes 300 --ref-episodes 600 --iters 60 --episodes-per-iter 16 --lr 0.003 --M 10 --ref-workers 25 --workers 25 --out runs/_d3il_v2/ablation_fitted_prior_pushing.jsonl --weightings 0.50 --backbone-seeds 0 1 2 3 4 --arms bmd --seeds 5 --seed-offset 900 --lam 1.00 --bmd-prior fitted"
  },
  {
   "stage": "ablation",

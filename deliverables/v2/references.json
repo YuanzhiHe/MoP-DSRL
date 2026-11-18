@@ -1,720 +1,712 @@
 {
- "4251f81ad1c68f9cdd201886cc3ebf9dcd68cea20f897848eb83a280af583d4f": {
+ "99fff2f8c620dac730292000bcf8291877fdbb935b7e23902add75efa27bf1e2": {
   "task": "avoiding",
   "weighting": "0.00",
   "backbone_seed": null,
   "episodes": 904,
-  "valid_episodes": 731,
+  "valid_episodes": 584,
   "counts": [
-   193,
-   144,
-   125,
-   83,
-   150,
-   36
-  ],
-  "complete": true
- },
- "9e09f09bd76357e43f327f0548e7f9f988d559a0c4a42a28d8c212b865b1666b": {
-  "task": "avoiding",
-  "weighting": "0.15",
-  "backbone_seed": null,
-  "episodes": 904,
-  "valid_episodes": 834,
-  "counts": [
-   381,
-   125,
-   101,
-   122,
-   76,
-   29
-  ],
-  "complete": true
- },
- "1ec546137151b09240b849e79d97b756d05cdc7e40e809651cac0dc802f3a715": {
-  "task": "avoiding",
-  "weighting": "0.30",
-  "backbone_seed": null,
-  "episodes": 904,
-  "valid_episodes": 820,
-  "counts": [
-   353,
-   103,
-   191,
-   60,
-   50,
-   63
-  ],
-  "complete": true
- },
- "c5f658de68d845036162a24f7adc1659a436788b265bc0d8bde7cdc838f88ceb": {
-  "task": "avoiding",
-  "weighting": "0.60",
-  "backbone_seed": null,
-  "episodes": 904,
-  "valid_episodes": 851,
-  "counts": [
-   527,
-   174,
-   102,
-   39,
-   7,
-   2
-  ],
-  "complete": true
- },
- "e40b3c08776ff7fece0683ef67292700c2e912d6e012d5285b8fc94475488f54": {
-  "task": "pushing",
-  "weighting": "0.00",
-  "backbone_seed": null,
-  "episodes": 600,
-  "valid_episodes": 238,
-  "counts": [
-   68,
-   21,
-   15,
-   134
-  ],
-  "complete": true
- },
- "e4d6071d3f6b552ae058a0b57a1734b76814932d56cfabbbf2e97cbafa93e67f": {
-  "task": "pushing",
-  "weighting": "0.10",
-  "backbone_seed": null,
-  "episodes": 600,
-  "valid_episodes": 204,
-  "counts": [
-   70,
-   87,
-   28,
+   167,
+   133,
+   90,
+   59,
+   116,
    19
   ],
   "complete": true
  },
- "8d2f26c6523ddce7b3e2e8a89fc65cb8d16b52a8cfb663ba8a542dd74333f660": {
-  "task": "pushing",
-  "weighting": "0.25",
-  "backbone_seed": null,
-  "episodes": 600,
-  "valid_episodes": 244,
-  "counts": [
-   162,
-   52,
-   16,
-   14
-  ],
-  "complete": true
- },
- "182450dfb1cb9355f7b08eb20b1583a663f06ead577870e05a4f61525209ee21": {
-  "task": "pushing",
-  "weighting": "0.50",
-  "backbone_seed": null,
-  "episodes": 600,
-  "valid_episodes": 240,
-  "counts": [
-   183,
-   49,
-   6,
-   2
-  ],
-  "complete": true
- },
- "f65b94383f507bd4c3a63ffc4b4be5948ffc98f38407fff4447546d826d75c63": {
-  "task": "avoiding",
-  "weighting": "0.00",
-  "backbone_seed": 0,
-  "episodes": 904,
-  "valid_episodes": 606,
-  "counts": [
-   168,
-   133,
-   98,
-   62,
-   122,
-   23
-  ],
-  "complete": true
- },
- "2b8f4674ba79ae0f5efa91c8dca43b8cce6f8dbf1a9a57f6546b131380380cf0": {
-  "task": "avoiding",
-  "weighting": "0.00",
-  "backbone_seed": 1,
-  "episodes": 904,
-  "valid_episodes": 622,
-  "counts": [
-   104,
-   65,
-   115,
-   124,
-   105,
-   109
-  ],
-  "complete": true
- },
- "6c0f45edff59f7c18d1753416fb9eb9400eae02feff1896f8b17fe0cbcf66de3": {
-  "task": "avoiding",
-  "weighting": "0.00",
-  "backbone_seed": 2,
-  "episodes": 904,
-  "valid_episodes": 761,
-  "counts": [
-   163,
-   54,
-   35,
-   237,
-   102,
-   170
-  ],
-  "complete": true
- },
- "85fd66825c3f34c98616932281728f1af8e57a8bb739af556f133b4c33629eaa": {
-  "task": "avoiding",
-  "weighting": "0.00",
-  "backbone_seed": 3,
-  "episodes": 904,
-  "valid_episodes": 689,
-  "counts": [
-   155,
-   41,
-   11,
-   87,
-   47,
-   348
-  ],
-  "complete": true
- },
- "1915025a77c06c7a7befb6c3527b6a8e1991d98c2c001eb3414f4b57fa7c01fb": {
-  "task": "avoiding",
-  "weighting": "0.00",
-  "backbone_seed": 4,
-  "episodes": 904,
-  "valid_episodes": 643,
-  "counts": [
-   290,
-   62,
-   73,
-   90,
-   94,
-   34
-  ],
-  "complete": true
- },
- "57762f1cc1fff83abe75fde2a835da13ab8ee701018e7324ba3ec1b56cd9ead4": {
+ "7952d567303ae67613e8891f2243882c2878a5e8d43c8657616510e92b8bdd48": {
   "task": "avoiding",
   "weighting": "0.15",
-  "backbone_seed": 0,
+  "backbone_seed": null,
   "episodes": 904,
-  "valid_episodes": 741,
+  "valid_episodes": 728,
   "counts": [
    365,
    94,
-   81,
-   109,
-   74,
-   18
-  ],
-  "complete": true
- },
- "a07bfbf2cf28d2a9526354e58ae31c511e1c8a85b40d0f43fdfabea9a6996f50": {
-  "task": "avoiding",
-  "weighting": "0.15",
-  "backbone_seed": 1,
-  "episodes": 904,
-  "valid_episodes": 707,
-  "counts": [
-   277,
-   135,
-   64,
-   110,
-   47,
-   74
-  ],
-  "complete": true
- },
- "f60ff8ac68b6fb4169cb1ab90037353cda76ef6a65030ad65b01e062a291f616": {
-  "task": "avoiding",
-  "weighting": "0.15",
-  "backbone_seed": 2,
-  "episodes": 904,
-  "valid_episodes": 719,
-  "counts": [
-   374,
-   128,
-   94,
-   56,
-   56,
-   11
-  ],
-  "complete": true
- },
- "a9b92e0c169b6b427b06e6c15d6ec52788c9fe3012cfcbe34b8ccc5c258ccbcf": {
-  "task": "avoiding",
-  "weighting": "0.15",
-  "backbone_seed": 3,
-  "episodes": 904,
-  "valid_episodes": 699,
-  "counts": [
-   273,
-   137,
-   103,
-   70,
-   51,
-   65
-  ],
-  "complete": true
- },
- "ae49816ec124f0724be549fea0c2afd8ab9b717cc8e2d3aa3af697f355123175": {
-  "task": "avoiding",
-  "weighting": "0.15",
-  "backbone_seed": 4,
-  "episodes": 904,
-  "valid_episodes": 812,
-  "counts": [
-   365,
-   56,
-   15,
-   92,
-   72,
-   212
-  ],
-  "complete": true
- },
- "de8bba2949f7da5be44c98a404eab7ea3682d0a575ea0bd54b1562324b4bf7cb": {
-  "task": "avoiding",
-  "weighting": "0.30",
-  "backbone_seed": 0,
-  "episodes": 904,
-  "valid_episodes": 697,
-  "counts": [
-   322,
-   89,
-   137,
-   64,
-   32,
-   53
-  ],
-  "complete": true
- },
- "25d23ed200ff8c8f2db03453b791da626241486f9f5baedbdba475c3ccee2a72": {
-  "task": "avoiding",
-  "weighting": "0.30",
-  "backbone_seed": 1,
-  "episodes": 904,
-  "valid_episodes": 665,
-  "counts": [
-   297,
-   115,
-   88,
-   85,
-   37,
-   43
-  ],
-  "complete": true
- },
- "8852fd3045e7057ea03921361b58979392c3085df4280f7cce475ca436191ca6": {
-  "task": "avoiding",
-  "weighting": "0.30",
-  "backbone_seed": 2,
-  "episodes": 904,
-  "valid_episodes": 724,
-  "counts": [
-   542,
-   77,
-   28,
-   48,
-   8,
-   21
-  ],
-  "complete": true
- },
- "b29cca8f79f04849e8477bfd6419b2d2e95047fa37fce2ddebc369bd85e9a214": {
-  "task": "avoiding",
-  "weighting": "0.30",
-  "backbone_seed": 3,
-  "episodes": 904,
-  "valid_episodes": 783,
-  "counts": [
-   595,
-   124,
-   40,
-   13,
-   8,
-   3
-  ],
-  "complete": true
- },
- "8648611777ecb2a88a8f5acd6d12d5cfdd76811a39f3b0501396b64be0c6b5ca": {
-  "task": "avoiding",
-  "weighting": "0.30",
-  "backbone_seed": 4,
-  "episodes": 904,
-  "valid_episodes": 786,
-  "counts": [
-   460,
-   162,
-   68,
-   30,
-   26,
-   40
-  ],
-  "complete": true
- },
- "98ce9c141cc76ed1cdf7e24e5050bba5f31613a0f9109114e23a669371d9633b": {
-  "task": "avoiding",
-  "weighting": "0.60",
-  "backbone_seed": 0,
-  "episodes": 904,
-  "valid_episodes": 788,
-  "counts": [
-   507,
-   171,
-   64,
-   35,
-   9,
-   2
-  ],
-  "complete": true
- },
- "36e977c8cde4cdf2a0ead7d9b79c185ceae4f4728538ff6f6e003f8747d8503a": {
-  "task": "avoiding",
-  "weighting": "0.60",
-  "backbone_seed": 1,
-  "episodes": 904,
-  "valid_episodes": 805,
-  "counts": [
-   700,
-   72,
-   10,
-   6,
-   3,
-   14
-  ],
-  "complete": true
- },
- "4596adc5d7aaf2ff6735094ab7335f5d40c673e933a9edc2f5747ea84ad5f5be": {
-  "task": "avoiding",
-  "weighting": "0.60",
-  "backbone_seed": 2,
-  "episodes": 904,
-  "valid_episodes": 723,
-  "counts": [
-   350,
-   266,
-   88,
-   10,
-   5,
-   4
-  ],
-  "complete": true
- },
- "eff7bd2a22b4507bd2cbff22be92f4a48e42e96ce4206bde45b82898811fcfd9": {
-  "task": "avoiding",
-  "weighting": "0.60",
-  "backbone_seed": 3,
-  "episodes": 904,
-  "valid_episodes": 782,
-  "counts": [
-   549,
-   92,
-   31,
-   53,
-   9,
-   48
-  ],
-  "complete": true
- },
- "489ee491c77526e17a63147397100502c90aa76ea3b3e006d261d0a165ac27bd": {
-  "task": "avoiding",
-  "weighting": "0.60",
-  "backbone_seed": 4,
-  "episodes": 904,
-  "valid_episodes": 726,
-  "counts": [
-   342,
-   129,
-   234,
-   13,
-   5,
-   3
-  ],
-  "complete": true
- },
- "4ad325ff0715b6404137ceacf9ef21ae1239c3573f6b23fbb4e5ec010b682588": {
-  "task": "pushing",
-  "weighting": "0.00",
-  "backbone_seed": 0,
-  "episodes": 600,
-  "valid_episodes": 246,
-  "counts": [
-   70,
-   38,
-   16,
-   122
-  ],
-  "complete": true
- },
- "f851b502c6bc93ee9d4ef9c9d9c5342a2d100e6b567b0cf69e95597ca4914e20": {
-  "task": "pushing",
-  "weighting": "0.00",
-  "backbone_seed": 1,
-  "episodes": 600,
-  "valid_episodes": 286,
-  "counts": [
+   79,
    102,
-   78,
-   6,
-   100
-  ],
-  "complete": true
- },
- "1f9002ad321d2c053afa76c2dff8630acf291ed6a8111aff8d5c327e9ac905f0": {
-  "task": "pushing",
-  "weighting": "0.00",
-  "backbone_seed": 2,
-  "episodes": 600,
-  "valid_episodes": 293,
-  "counts": [
-   93,
-   48,
-   20,
-   132
-  ],
-  "complete": true
- },
- "cf03c79ace40de059a98cc742c9a3275d43991b0bae8a176ae7c403c60ec60f6": {
-  "task": "pushing",
-  "weighting": "0.00",
-  "backbone_seed": 3,
-  "episodes": 600,
-  "valid_episodes": 174,
-  "counts": [
-   29,
-   35,
-   21,
-   89
-  ],
-  "complete": true
- },
- "17f61faa5067336f8cfb81b5f4ffbe0ca1400e6bbefc23f1a71593790fbe39e9": {
-  "task": "pushing",
-  "weighting": "0.00",
-  "backbone_seed": 4,
-  "episodes": 600,
-  "valid_episodes": 183,
-  "counts": [
-   53,
-   47,
-   28,
-   55
-  ],
-  "complete": true
- },
- "56f35f182dc971c433964a2b3c64aca30f0a5ce5f32e1d6e8e5cf67f7e624f98": {
-  "task": "pushing",
-  "weighting": "0.10",
-  "backbone_seed": 0,
-  "episodes": 600,
-  "valid_episodes": 175,
-  "counts": [
-   51,
-   70,
-   40,
-   14
-  ],
-  "complete": true
- },
- "c1df98361cc9e5cb81d1f152b132c7251886ae11a6304e01fe615b283ae56261": {
-  "task": "pushing",
-  "weighting": "0.10",
-  "backbone_seed": 1,
-  "episodes": 600,
-  "valid_episodes": 183,
-  "counts": [
-   50,
-   90,
-   12,
-   31
-  ],
-  "complete": true
- },
- "ab832a011837606d4b93c7c16166c8f1c916ca3c084461c5e115f52a08890b6a": {
-  "task": "pushing",
-  "weighting": "0.10",
-  "backbone_seed": 2,
-  "episodes": 600,
-  "valid_episodes": 306,
-  "counts": [
-   157,
-   55,
-   25,
-   69
-  ],
-  "complete": true
- },
- "b0cf3035ca7f6eeea1ac7cfda235adfbee0f0f2723f97b8a40bca8ede88e489c": {
-  "task": "pushing",
-  "weighting": "0.10",
-  "backbone_seed": 3,
-  "episodes": 600,
-  "valid_episodes": 219,
-  "counts": [
-   123,
-   37,
-   13,
-   46
-  ],
-  "complete": true
- },
- "145b89ba086c244dd4db6ea02be6d6b6cbd7d332af55d086f50d7dc845f54284": {
-  "task": "pushing",
-  "weighting": "0.10",
-  "backbone_seed": 4,
-  "episodes": 600,
-  "valid_episodes": 219,
-  "counts": [
-   96,
-   28,
-   44,
-   51
-  ],
-  "complete": true
- },
- "df6b9b227a0ace9b9665984ffdf61e5468b096c04bf5405f4b4241b7c61fb829": {
-  "task": "pushing",
-  "weighting": "0.25",
-  "backbone_seed": 0,
-  "episodes": 600,
-  "valid_episodes": 232,
-  "counts": [
-   137,
-   70,
-   13,
-   12
-  ],
-  "complete": true
- },
- "a081449f6a7a1320bfb1405bf1d50e51ac7bbc162e4344659dc3be26da35cb27": {
-  "task": "pushing",
-  "weighting": "0.25",
-  "backbone_seed": 1,
-  "episodes": 600,
-  "valid_episodes": 209,
-  "counts": [
-   94,
-   94,
-   6,
-   15
-  ],
-  "complete": true
- },
- "ffa7715279fa983667b675a29192b31e5f5d6366956e918ab7b4aaff18dbb991": {
-  "task": "pushing",
-  "weighting": "0.25",
-  "backbone_seed": 2,
-  "episodes": 600,
-  "valid_episodes": 209,
-  "counts": [
-   108,
-   51,
-   46,
-   4
-  ],
-  "complete": true
- },
- "aa3f53d1f55f4a05941ea542198efe2a2c6db83563a23e37f04b446f1d1db667": {
-  "task": "pushing",
-  "weighting": "0.25",
-  "backbone_seed": 3,
-  "episodes": 600,
-  "valid_episodes": 215,
-  "counts": [
-   139,
-   52,
-   8,
-   16
-  ],
-  "complete": true
- },
- "528a6a6154bab28c08fe57a8ff90c6a54d00a87c7688be8d5efa47a1ff968300": {
-  "task": "pushing",
-  "weighting": "0.25",
-  "backbone_seed": 4,
-  "episodes": 600,
-  "valid_episodes": 222,
-  "counts": [
-   160,
-   25,
-   20,
+   71,
    17
   ],
   "complete": true
  },
- "324c33218cbb533abfbb9e2d7a147f063633fe20d7f3ed30ef9ecb0f05a39956": {
-  "task": "pushing",
-  "weighting": "0.50",
-  "backbone_seed": 0,
-  "episodes": 600,
-  "valid_episodes": 261,
+ "a7e3fa9a4b3e044f9441931386c0c8e089ad74897f5f53ea4180ca9ff54c7ae9": {
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": null,
+  "episodes": 904,
+  "valid_episodes": 672,
   "counts": [
-   201,
-   51,
-   9,
-   0
+   316,
+   88,
+   124,
+   64,
+   28,
+   52
   ],
   "complete": true
  },
- "edbffef9b683d8e1f272e563a1b318b0669fdfa8466ad9840a256e652df35ac5": {
-  "task": "pushing",
-  "weighting": "0.50",
-  "backbone_seed": 1,
-  "episodes": 600,
-  "valid_episodes": 278,
+ "d6c7b2c1dd2bf6edb5f607acceed95cdedd633ca9b1f60ea71a9f3f77e4e063b": {
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": null,
+  "episodes": 904,
+  "valid_episodes": 771,
   "counts": [
-   226,
-   44,
+   499,
+   172,
+   58,
+   34,
    8,
    0
   ],
   "complete": true
  },
- "8936d496f1c33887abf359d1f0199c5bcc514f875075807ed5fbf80e61351c66": {
+ "d1479bc238666a1cc0a1a26894da241e7ce3f314eeaf80ee2637dc4a364e3b37": {
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 236,
+  "counts": [
+   24,
+   41,
+   11,
+   160
+  ],
+  "complete": true
+ },
+ "fe9d88816fa4dd48b4dfa3b79b606c0028c864e57f609e34ee0fc1b73de9324f": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 260,
+  "counts": [
+   113,
+   100,
+   5,
+   42
+  ],
+  "complete": true
+ },
+ "d46ab7008e108b9c4d00549b195c2683425223eea0b9b256667eb2b0df34d435": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 189,
+  "counts": [
+   98,
+   58,
+   14,
+   19
+  ],
+  "complete": true
+ },
+ "d1df10137ab7ca6c94493860acace059d1300197247447e0a4702132eafb9be0": {
   "task": "pushing",
   "weighting": "0.50",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 235,
+  "counts": [
+   180,
+   49,
+   3,
+   3
+  ],
+  "complete": true
+ },
+ "28457f1781e281da931605d7fc3a9386eca8f58a53bc5e865c9de9511eda3d1b": {
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 269,
+  "counts": [
+   30,
+   72,
+   9,
+   158
+  ],
+  "complete": true
+ },
+ "0f883c0ebd3759d537638ca28e794672f97535a27b575868fb10db21e1d6635c": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 275,
+  "counts": [
+   132,
+   98,
+   6,
+   39
+  ],
+  "complete": true
+ },
+ "2a03714d8eb14cdb1cc6aaf681fbe37222227a789c2882d886bc677241929cae": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 192,
+  "counts": [
+   114,
+   58,
+   8,
+   12
+  ],
+  "complete": true
+ },
+ "3a127c38b71e358991fc7a410303a2a1338a60ed99b1a8f14d6164cc0e14f128": {
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": null,
+  "episodes": 600,
+  "valid_episodes": 273,
+  "counts": [
+   197,
+   65,
+   3,
+   8
+  ],
+  "complete": true
+ },
+ "e71349721a99f9c74b14131288b9359a0c1a77e3c62458dc15759651394a2b29": {
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 1,
+  "episodes": 904,
+  "valid_episodes": 609,
+  "counts": [
+   108,
+   66,
+   114,
+   114,
+   104,
+   103
+  ],
+  "complete": true
+ },
+ "fe3ed0786775df8247d6e84478348119f926d609745ba84df95ddabe9bd29464": {
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 2,
+  "episodes": 904,
+  "valid_episodes": 750,
+  "counts": [
+   158,
+   52,
+   37,
+   235,
+   100,
+   168
+  ],
+  "complete": true
+ },
+ "e9783b8de89783ffc416363c035e8f76bd0251257e52945f60ca3925297685a4": {
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 3,
+  "episodes": 904,
+  "valid_episodes": 674,
+  "counts": [
+   155,
+   41,
+   11,
+   88,
+   47,
+   332
+  ],
+  "complete": true
+ },
+ "d519fc4908bfe5e11c3cbd6f0a3bd33dd56ea6a025e7bb92981f2c2f719adc9f": {
+  "task": "avoiding",
+  "weighting": "0.00",
+  "backbone_seed": 4,
+  "episodes": 904,
+  "valid_episodes": 619,
+  "counts": [
+   283,
+   61,
+   67,
+   93,
+   85,
+   30
+  ],
+  "complete": true
+ },
+ "90e8b858f4ed737ebe8c6c3a9c931fecbb2857f17bd061f4d4fe2e32050a5c81": {
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 1,
+  "episodes": 904,
+  "valid_episodes": 695,
+  "counts": [
+   272,
+   140,
+   56,
+   108,
+   46,
+   73
+  ],
+  "complete": true
+ },
+ "bc8f811916ef804753559f0e0bf3ef580317fcd8c9d38ea814baf3c1bd44bd95": {
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 2,
+  "episodes": 904,
+  "valid_episodes": 710,
+  "counts": [
+   369,
+   132,
+   89,
+   55,
+   56,
+   9
+  ],
+  "complete": true
+ },
+ "b14ffe0b3071293dbdd4c83269800f536c6cf8758f638f1189da85a30b7df041": {
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 3,
+  "episodes": 904,
+  "valid_episodes": 688,
+  "counts": [
+   267,
+   130,
+   106,
+   74,
+   48,
+   63
+  ],
+  "complete": true
+ },
+ "02768ed4274edff156f817a3897aed6eac2f69461a6f4a1744a64affef9c1e10": {
+  "task": "avoiding",
+  "weighting": "0.15",
+  "backbone_seed": 4,
+  "episodes": 904,
+  "valid_episodes": 800,
+  "counts": [
+   360,
+   54,
+   15,
+   92,
+   72,
+   207
+  ],
+  "complete": true
+ },
+ "1489b4f3421be964e4a61f3bb4f9c8094356746969e8631ce2aab484acec3082": {
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 1,
+  "episodes": 904,
+  "valid_episodes": 640,
+  "counts": [
+   291,
+   117,
+   77,
+   84,
+   30,
+   41
+  ],
+  "complete": true
+ },
+ "d31a69e4eddc7d4e3f97657cc8cef93f4af22430ca414fb2e4892f49acc2e422": {
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 2,
+  "episodes": 904,
+  "valid_episodes": 708,
+  "counts": [
+   536,
+   74,
+   28,
+   43,
+   8,
+   19
+  ],
+  "complete": true
+ },
+ "f2cae1b7ce45ba6c95898800df161d6af13829a3f772baa9b9029f26dd50f34f": {
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 3,
+  "episodes": 904,
+  "valid_episodes": 766,
+  "counts": [
+   582,
+   124,
+   37,
+   11,
+   8,
+   4
+  ],
+  "complete": true
+ },
+ "11801825107537ddd171082f2cc506055daa1b1164d9af50a8fea946afcfedd6": {
+  "task": "avoiding",
+  "weighting": "0.30",
+  "backbone_seed": 4,
+  "episodes": 904,
+  "valid_episodes": 772,
+  "counts": [
+   455,
+   162,
+   65,
+   28,
+   22,
+   40
+  ],
+  "complete": true
+ },
+ "ef0906408f6b6a50b4871c9fc1af0abde25cd7b01370fe9a82de1a5c473339bc": {
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 1,
+  "episodes": 904,
+  "valid_episodes": 794,
+  "counts": [
+   693,
+   72,
+   8,
+   5,
+   2,
+   14
+  ],
+  "complete": true
+ },
+ "c4404bd89cea7850f788e87123f0f4282f80a12e2e88b79ec6b464006fe9fddb": {
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 2,
+  "episodes": 904,
+  "valid_episodes": 707,
+  "counts": [
+   339,
+   266,
+   86,
+   10,
+   4,
+   2
+  ],
+  "complete": true
+ },
+ "327d3bab1685319f9c1f6431ebda2ca94ebb023cec3646e02f3a165210b06ac6": {
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 3,
+  "episodes": 904,
+  "valid_episodes": 772,
+  "counts": [
+   544,
+   92,
+   28,
+   54,
+   8,
+   46
+  ],
+  "complete": true
+ },
+ "379912d3a7d0ded5f6b82ef8c426dd94323e5a06f2da67041394d0d8e62da388": {
+  "task": "avoiding",
+  "weighting": "0.60",
+  "backbone_seed": 4,
+  "episodes": 904,
+  "valid_episodes": 706,
+  "counts": [
+   337,
+   133,
+   217,
+   13,
+   3,
+   3
+  ],
+  "complete": true
+ },
+ "96baa1586ecbb953214307a07dba56d4d1906a865a1747c6cd2f0168fd2d6540": {
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 0,
+  "episodes": 600,
+  "valid_episodes": 214,
+  "counts": [
+   41,
+   79,
+   22,
+   72
+  ],
+  "complete": true
+ },
+ "d59a6c91fb709cb1308c967d04f93257ad675b47b2a84c06648876b2f6248806": {
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 1,
+  "episodes": 600,
+  "valid_episodes": 217,
+  "counts": [
+   47,
+   76,
+   16,
+   78
+  ],
+  "complete": true
+ },
+ "6ab743e386e4e2c77dbc1f96e6feb06dfe28bd03faef3a6dc724e7385f3eed1d": {
+  "task": "pushing",
+  "weighting": "0.00",
   "backbone_seed": 2,
   "episodes": 600,
-  "valid_episodes": 258,
+  "valid_episodes": 222,
   "counts": [
-   205,
-   35,
-   18,
+   46,
+   41,
+   28,
+   107
+  ],
+  "complete": true
+ },
+ "95f820373fd8299ed9eb9096193e4a40cf62512adc59159d157661ff56bcba8e": {
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 3,
+  "episodes": 600,
+  "valid_episodes": 284,
+  "counts": [
+   64,
+   142,
+   30,
+   48
+  ],
+  "complete": true
+ },
+ "86a22cd6bdb91625e8daff5ea27272b35a6ae47f392331493231eed80a213097": {
+  "task": "pushing",
+  "weighting": "0.00",
+  "backbone_seed": 4,
+  "episodes": 600,
+  "valid_episodes": 216,
+  "counts": [
+   109,
+   30,
+   10,
+   67
+  ],
+  "complete": true
+ },
+ "b956ab1b9e3154cf0d0784f4adfb278546e40dac01ab0eba5c06ceae8187d49f": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 0,
+  "episodes": 600,
+  "valid_episodes": 225,
+  "counts": [
+   78,
+   87,
+   20,
+   40
+  ],
+  "complete": true
+ },
+ "64f06c09ebeb0954552f270cbb0203e64b2dc0e7a79a6088f52839b2594a01ac": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 1,
+  "episodes": 600,
+  "valid_episodes": 232,
+  "counts": [
+   145,
+   31,
+   21,
+   35
+  ],
+  "complete": true
+ },
+ "b78dabf61db5764962f8e94305fc230e1bf8307853eed301fb982418853ae736": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 2,
+  "episodes": 600,
+  "valid_episodes": 150,
+  "counts": [
+   48,
+   47,
+   10,
+   45
+  ],
+  "complete": true
+ },
+ "d29f81e8b04e648179d4cae13d4eff8ad2e36cc779ff45c467e356b9151fcb1c": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 3,
+  "episodes": 600,
+  "valid_episodes": 186,
+  "counts": [
+   87,
+   31,
+   41,
+   27
+  ],
+  "complete": true
+ },
+ "f93fdc80247b52e515099b242f9eac63564bbf762a9ac350a125ee685097365e": {
+  "task": "pushing",
+  "weighting": "0.10",
+  "backbone_seed": 4,
+  "episodes": 600,
+  "valid_episodes": 253,
+  "counts": [
+   114,
+   66,
+   16,
+   57
+  ],
+  "complete": true
+ },
+ "4d4f252281f6778a27042c91668959a2bcea521aa4e212b49ad85adcbd80e719": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 0,
+  "episodes": 600,
+  "valid_episodes": 213,
+  "counts": [
+   136,
+   41,
+   20,
+   16
+  ],
+  "complete": true
+ },
+ "cc4e0bdd7dc34bef2dd657a9e4a21005d6897c3d3ba025828655df3e3f48e29d": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 1,
+  "episodes": 600,
+  "valid_episodes": 243,
+  "counts": [
+   145,
+   66,
+   3,
+   29
+  ],
+  "complete": true
+ },
+ "7a140d2caf59d76665e9c6609585db8e846d7ca768050ae6c279e18d98378393": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 2,
+  "episodes": 600,
+  "valid_episodes": 204,
+  "counts": [
+   149,
+   39,
+   9,
+   7
+  ],
+  "complete": true
+ },
+ "979d9ec040fcb7a487a4ce19ebb341c27386961c45c80cd6d38a8c87d0221ae0": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 3,
+  "episodes": 600,
+  "valid_episodes": 182,
+  "counts": [
+   115,
+   46,
+   9,
+   12
+  ],
+  "complete": true
+ },
+ "d47e2340a962e1dbd6c2afcd36344ef091f5c0ddec0cafba47a69a7fa38f8eb5": {
+  "task": "pushing",
+  "weighting": "0.25",
+  "backbone_seed": 4,
+  "episodes": 600,
+  "valid_episodes": 241,
+  "counts": [
+   172,
+   52,
+   11,
+   6
+  ],
+  "complete": true
+ },
+ "744ba22680c10ddfbcda9598a9b1853748d8281c3a2d0cd83fb2427138dd2609": {
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 0,
+  "episodes": 600,
+  "valid_episodes": 280,
+  "counts": [
+   225,
+   53,
+   2,
    0
   ],
   "complete": true
  },
- "752dd4666b4d95a034d682f1bdffbb66c52a603443dc86e14615d3a25fe1daed": {
+ "2784d23e160796384032812396852e017f7fd27de7d31a2335c5ba381f915a15": {
   "task": "pushing",
   "weighting": "0.50",
-  "backbone_seed": 3,
+  "backbone_seed": 1,
   "episodes": 600,
-  "valid_episodes": 289,
+  "valid_episodes": 249,
   "counts": [
-   237,
-   36,
-   15,
+   197,
+   50,
+   1,
    1
   ],
   "complete": true
  },
- "bffc2fc27f59589dee45afe3b32c2b5bce1404d661f642719926924e3f679b8c": {
+ "824fc67efac823933821493996d710afce485f97108b5a159e9c22f48603af87": {
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 2,
+  "episodes": 600,
+  "valid_episodes": 194,
+  "counts": [
+   161,
+   30,
+   3,
+   0
+  ],
+  "complete": true
+ },
+ "36d205546fd9af27a775dae473db042c84c068d3e50b77c67e40a163f79bdae8": {
+  "task": "pushing",
+  "weighting": "0.50",
+  "backbone_seed": 3,
+  "episodes": 600,
+  "valid_episodes": 222,
+  "counts": [
+   160,
+   54,
+   6,
+   2
+  ],
+  "complete": true
+ },
+ "6cc8f12e5d61fd9766a7c7664417feed32aa7a7f8a647b3c25ee707cefaa5f44": {
   "task": "pushing",
   "weighting": "0.50",
   "backbone_seed": 4,
   "episodes": 600,
-  "valid_episodes": 256,
+  "valid_episodes": 249,
   "counts": [
-   234,
-   10,
-   11,
+   196,
+   51,
+   1,
    1
   ],
   "complete": true

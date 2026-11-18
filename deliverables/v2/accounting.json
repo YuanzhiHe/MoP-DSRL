@@ -7,16 +7,17 @@
    "completed": 216,
    "exceptions": 0,
    "retried": 0,
-   "undefined_fidelity": 11,
+   "undefined_fidelity": 7,
    "nonfinite_gradients": 0,
    "missing": 0,
    "unplanned": 0,
-   "reused_from_the_main_matrix": 0,
    "estimator_versions": [
-    "v2.1"
+    "v2.2"
    ],
    "code_commits": [
-    "c690db15b336ccc5dffc31f1d4852540d7229baa"
+    "01bdadb05d01ea070af41341a5f9764af0e243f7",
+    "23b90f984716eebc744d297606c5ff1acb23d07c",
+    "ab97b8025fa6bbedc59e3690f4e639d8388abb2d"
    ],
    "by_task_arm": {
     "avoiding/bmd": 36,
@@ -34,17 +35,16 @@
    "completed": 800,
    "exceptions": 0,
    "retried": 0,
-   "undefined_fidelity": 54,
+   "undefined_fidelity": 47,
    "nonfinite_gradients": 0,
    "missing": 0,
    "unplanned": 0,
-   "reused_from_the_main_matrix": 0,
    "estimator_versions": [
-    "v2.1"
+    "v2.2"
    ],
    "code_commits": [
-    "5ba6c09fc56afc5c55187d82faa7aa56bc6d2279",
-    "f2e54ba2a184ed0bf3a796ffd67772a19ee5a282"
+    "64b0d3a889d77a0f5e07aab82be3a2484bfb4a23",
+    "6e12880e88e7a91de2602dfa81723134e26c89af"
    ],
    "by_task_arm": {
     "avoiding/bmd": 100,
@@ -64,17 +64,16 @@
    "completed": 200,
    "exceptions": 0,
    "retried": 0,
-   "undefined_fidelity": 10,
+   "undefined_fidelity": 6,
    "nonfinite_gradients": 0,
    "missing": 0,
    "unplanned": 0,
-   "reused_from_the_main_matrix": 0,
    "estimator_versions": [
-    "v2.1"
+    "v2.2"
    ],
    "code_commits": [
-    "5ba6c09fc56afc5c55187d82faa7aa56bc6d2279",
-    "d687b73c2644f3f1e2418be579702a9b878956dc"
+    "194248e8402c1e80c71ba23139538b9bf933e7e8",
+    "6e12880e88e7a91de2602dfa81723134e26c89af"
    ],
    "by_task_arm": {
     "avoiding/mop": 100,
@@ -88,16 +87,16 @@
    "completed": 50,
    "exceptions": 0,
    "retried": 0,
-   "undefined_fidelity": 0,
+   "undefined_fidelity": 2,
    "nonfinite_gradients": 0,
    "missing": 0,
    "unplanned": 0,
-   "reused_from_the_main_matrix": 0,
    "estimator_versions": [
-    "v2.1"
+    "v2.2"
    ],
    "code_commits": [
-    "d687b73c2644f3f1e2418be579702a9b878956dc"
+    "194248e8402c1e80c71ba23139538b9bf933e7e8",
+    "6e12880e88e7a91de2602dfa81723134e26c89af"
    ],
    "by_task_arm": {
     "avoiding/bmd": 25,
@@ -111,17 +110,16 @@
    "completed": 300,
    "exceptions": 0,
    "retried": 0,
-   "undefined_fidelity": 45,
+   "undefined_fidelity": 15,
    "nonfinite_gradients": 0,
    "missing": 0,
    "unplanned": 0,
-   "reused_from_the_main_matrix": 100,
    "estimator_versions": [
-    "v2.1"
+    "v2.2"
    ],
    "code_commits": [
-    "bc7d9ed13384e5c709ef1714aaa37d302e9f3657",
-    "f2e54ba2a184ed0bf3a796ffd67772a19ee5a282"
+    "0ea985bb2c38c344ed10671a024ce80f0def971a",
+    "64b0d3a889d77a0f5e07aab82be3a2484bfb4a23"
    ],
    "by_task_arm": {
     "pushing/mi": 150,
@@ -139,12 +137,12 @@
    "nonfinite_gradients": 0,
    "missing": 0,
    "unplanned": 0,
-   "reused_from_the_main_matrix": 0,
    "estimator_versions": [
-    "v2.1"
+    "v2.2"
    ],
    "code_commits": [
-    "feb70b714482fbfd35bb1bc91cabd067c82167d6"
+    "01bdadb05d01ea070af41341a5f9764af0e243f7",
+    "23b90f984716eebc744d297606c5ff1acb23d07c"
    ],
    "by_task_arm": {
     "avoiding/frozen": 100,

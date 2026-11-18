@@ -245,11 +245,13 @@ def main():
                     f"95% interval [{c.ci_low:+.4f}, {c.ci_high:+.4f}], "
                     f"p = {S.fmt_p(c.p_one_sided)}.", ""]
 
-    # The weight the main matrix already ran is not repeated: those cells
-    # carry the same key, so the grid job resumed them and wrote nothing. The
-    # rows live in the main files and are read from there, which is what makes
-    # the grid a comparison across weights on one set of cells rather than two
-    # cohorts that happen to share a configuration.
+    # One weight of the grid is the weight the main matrix also runs, and the
+    # grid measured those cells again instead of resuming them. Both
+    # measurements are kept. Averaging the repeats within a policy is the
+    # better estimate of what that weight does, and the two differ by more
+    # than the contrast they carry, so dropping either one would report a
+    # single draw from that spread as the weight's value. The row's run count
+    # says which weight carries two measurements.
     pw = load([RUNS / f"{pre}ablation_weight_pushing_*.jsonl",
                RUNS / f"{pre}main_pushing_0.00.jsonl",
                RUNS / f"{pre}main_pushing_0.10.jsonl"])

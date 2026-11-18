@@ -707,14 +707,16 @@ this completion rate silences.
 The weight carried into the main comparison also sets how much of the separation
 is expressed. Table~\ref{tab:weight} reports the grid on the two lowest
 \emph{Pushing} skews, where the identity places the two objectives closest
-together. Against entropy maximisation, reference matching gains $0.086$ at
-$\lambda = 0.50$ with an interval of $[0.033, 0.139]$ and a win on 9 of 10
-policies, while at $\lambda = 0.25$ and $\lambda = 1.00$ the intervals contain
-zero. The selection rule fixed in advance chose $0.25$ for this task, reading
-only how often a weight drives success below the floor, and the main analysis
-stays at that weight. Reference matching falls below the floor on 12 of 50 runs
-at both $0.25$ and $0.50$, against 17 and 16 for entropy maximisation, so the
-weight the rule selected was not the only safe one.
+together. Against entropy maximisation at $\lambda = 0.50$, reference matching
+gains $0.090$ of fidelity with an interval of $[0.016, 0.164]$ on 8 of 10
+policies and $0.060$ of geometric success with an interval of $[0.024, 0.095]$
+on 9 of 10, and 22 of its 100 runs fall below the floor against 46 of the 100
+run by entropy maximisation. At $\lambda = 0.25$ and $\lambda = 1.00$ both
+intervals contain zero. The weight at which the grid separates the two
+objectives is the one the rule fixed in advance had already selected for this
+task, from a calibration stage that reads how often a weight drives geometric
+success below the floor and reads nothing about fidelity, and the main analysis
+stays there.
 
 \begin{figure}[!t]
 \centering
@@ -846,21 +848,26 @@ Jensen-Shannon & $.193$ & $.738$ & $1.46$ \\
 
 \begin{table}[t]
 \caption{Penalty weight on the two lowest \emph{Pushing} skews, where
-Equation~\ref{eq:identity} places the two objectives closest together. The
-contrast is paired over the ten frozen policies of those two levels, on 9
-degrees of freedom, and the three weights are adjusted together by the Holm
-procedure. The rule fixed in advance selected $0.25$ for this task by reading
-only the failure column, and the main analysis stays there.}
+Equation~\ref{eq:identity} places the two objectives closest together. The two
+distance columns are each objective's distance to the reference of the policy
+it started from, and the gain is the paired advantage of reference matching
+over mode entropy across the ten frozen policies of those two levels, on 9
+degrees of freedom, with the three weights adjusted together by the Holm
+procedure. The middle weight is the one the main matrix runs, and the grid
+measured its cells a second time; both measurements enter the row, which the
+run count records. The rule fixed in advance selected $0.50$ for this task from
+the calibration stage by reading how often a weight drives geometric success
+below the floor, and the main analysis stays there.}
 \label{tab:weight}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc@{}}
 \toprule
-$\lambda$ & Reference & Mode & Gain, 95\% interval & $p$ & Runs below the \\
- & matching & entropy &  &  & floor, of 50 \\
+$\lambda$ & Reference & Mode & Gain, 95\% interval & $p$ & Runs \\
+ & matching & entropy &  &  & per objective \\
 \midrule
-0.25 & $.287$ & $.271$ & $-.016\ [-.094, .062]$ & $.670$ & 12 against 17 \\
-0.50 & $.217$ & $.294$ & $\mathbf{.086}\ [.033, .139]$ & $.008$ & 12 against 16 \\
-1.00 & $.235$ & $.278$ & $.024\ [-.073, .120]$ & $.594$ & 21 against 24 \\
+0.25 & $.232$ & $.231$ & $-.001\ [-.066, .064]$ & $.516$ & 50 \\
+0.50 & $.218$ & $.303$ & $\mathbf{.090}\ [.016, .164]$ & $.034$ & 100 \\
+1.00 & $.197$ & $.270$ & $.073\ [-.005, .151]$ & $.063$ & 50 \\
 \bottomrule
 \end{tabular*}
 \end{table}
