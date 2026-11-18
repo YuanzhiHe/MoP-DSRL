@@ -463,7 +463,8 @@ discriminator are two-layer networks with 128 hidden units. Each regularised
 objective carries the weight its own calibration selected under a common rule.
 The observation bound applies to every objective and both tasks, because the
 commanded pose a policy acts on accumulates its own deltas along a rollout and
-so leaves the range the demonstrations cover.}
+so leaves the range the demonstrations cover. It engages on $0.003$ of the
+\emph{Avoiding} steps in the cohort and $0.017$ of the \emph{Pushing} ones.}
 \label{tab:hyper}
 \begin{tabular}{@{}lcc@{}}
 \toprule
@@ -757,7 +758,7 @@ $C_{\mathrm{ref}}$, measured once before fine-tuning. (b) The Kullback-Leibler
 divergence of each frozen policy's mode distribution from uniform, over 900
 rollouts on \emph{Avoiding} and 600 on \emph{Pushing}, grouped by task and by
 how that policy's demonstrations were weighted. Each point is one of the forty
-frozen policies and the bar is the group mean. None lies at the uniform point in
+frozen policies and the vertical rule is the group mean. None lies at the uniform point in
 orange, which is the only point at which matching and entropy maximisation are
 the same objective. The five policies of a group spread widely, so the weighting
 a policy was cloned under predicts its skew only loosely.}
@@ -767,12 +768,13 @@ a policy was cloned under predicts its skew only loosely.}
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\textwidth]{figures/fig2_result.pdf}
-\caption{Distance to the pretrained behaviour distribution, over every run with
-no exclusion. (a, b) Mean distance against each group's measured reference skew,
+\caption{Distance to the pretrained behaviour distribution, with no run
+excluded for ending below the success floor. (a, b) Mean distance against each group's measured reference skew,
 with standard errors over the runs that produced a labelled histogram. The
-shaded band is the distance each frozen policy reaches from its own reference
-when evaluated under its own latent prior on the same budget, averaged over the
-task's twenty frozen policies; per level it runs from $0.037$ to $0.059$ on
+shaded band reaches from zero to the distance each frozen policy sits at from
+its own reference when evaluated under its own latent prior on the same budget,
+averaged over the task's twenty frozen policies; per level that distance runs
+from $0.037$ to $0.059$ on
 \emph{Avoiding} and $0.043$ to $0.073$ on \emph{Pushing}. The two lowest
 \emph{Pushing} levels share a skew of $0.24$, so their points sit together on
 that axis. Mode entropy rises with skew on both tasks, which is what
@@ -781,7 +783,7 @@ while the reference moves away. (c) Paired
 differences across the twenty frozen policies of each task, each the mean over
 its five run seeds, with 95\% intervals from the $t$ distribution on that
 contrast's own degrees of freedom and the family adjusted by the Holm procedure.
-The right-hand figures give the mean reduction and the number of policies on
+The numbers at the right give the mean reduction and the number of policies on
 which reference matching ends closer.}
 \label{fig:main}
 \end{figure}
@@ -853,12 +855,13 @@ Task & Skew & Frozen & No mode & Mode entropy & Learned skills & Reference \\
 
 \begin{table}[t]
 \caption{Divergence between the two histograms replaced, at the most skewed
-\emph{Avoiding} level, over the same five frozen policies and five seeds. The
-last column is the largest per-episode coefficient reaching the update,
+\emph{Avoiding} level, over the five frozen policies of that level and five
+seeds each. The last column is the largest per-episode coefficient reaching the
+update,
 averaged over runs: a common weight gives each variant its own penalty
 strength, and the weight was calibrated under total variation. All five end
-nearer the reference than the $0.243$ reached without matching at all, and
-total variation, in bold, is the closest of them.}
+nearer the reference than the $0.243$ the unregularised objective reaches at
+that level, and total variation, in bold, is the closest of them.}
 \label{tab:divergence}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc@{}}
@@ -880,7 +883,8 @@ Jensen-Shannon & $.193$ & $.738$ & $1.46$ \\
 Equation~\ref{eq:identity} places the two objectives closest together. The two
 distance columns are each objective's distance to the reference of the policy
 it started from. The gain is the advantage of reference matching over mode
-entropy, paired inside each of the ten frozen policies of those two levels and
+entropy on that distance, paired inside each of the ten frozen policies of
+those two levels and
 averaged over them, on 9 degrees of freedom and with the three weights adjusted
 together by the Holm procedure; the one gain whose interval clears zero is in
 bold. The middle weight was measured twice, which its run count records. The
