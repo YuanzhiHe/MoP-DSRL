@@ -509,9 +509,10 @@ and is excluded from the histogram, so both histograms are conditional on
 completion. Evaluated under their own latent prior, the frozen policies
 complete $0.776$ of their \emph{Avoiding} episodes and $0.375$ of their
 \emph{Pushing} ones, and the count behind each fine-tuned histogram follows
-that objective's own completion. A run whose evaluation produces no labelled episode has undefined
-fidelity; such runs are counted and reported as undefined, and they appear in
-every total below.
+that objective's own completion. A run whose evaluation produces no labelled
+episode has undefined fidelity. It enters no distance and no contrast, its
+policy keeps whatever other runs it has, and the count of such runs is reported
+with every comparison they fall out of.
 
 Both histograms are finite samples, so the endpoint has a sampling floor even
 for a policy that reproduces the reference exactly, and that floor is
@@ -521,13 +522,15 @@ as a fine-tuned run and scored against its own reference, which places both
 histograms under one distribution by construction. The forty policies give
 $0.045$ on \emph{Avoiding} and $0.063$ on \emph{Pushing}. The same measurement
 scores the frozen policy itself on the endpoint, making the floor of this
-section and the origin of Section~\ref{sec:main} one number. Every process in the
-cohort builds one environment and rolls out on it, which is the protocol the
-frozen evaluations and the fine-tuned runs share. Drawing both histograms from
-one distribution at the counts the runs produced puts the same quantity at
-$0.046$ and $0.074$ by calculation. The measured floor is the one quoted below,
-because it carries whatever the evaluation and reference paths differ by along
-with the sampling spread. The floors differ between tasks because
+section and the origin of Section~\ref{sec:main} one number, taken on the path
+the fine-tuned runs take: every process in the cohort builds one environment
+and rolls out on it. Drawing both histograms from one distribution at the
+counts the runs produced puts the same quantity at $0.046$ and $0.074$ by
+calculation. The measured floor is the one quoted below, because it carries
+whatever the evaluation and reference paths differ by along with the sampling
+spread.
+
+The floors differ between tasks because
 \emph{Pushing} completes about one episode in five, leaving a median of 73
 labelled episodes to fill four bins against \emph{Avoiding}'s 372 for six.
 Within each task the measured floor follows the labelled count of the level,
@@ -592,7 +595,8 @@ variation, with a 95\% interval of $[0.141, 0.244]$ and a win on
 interval $[0.132, 0.251]$ and \textbf{19 of 20}, and $0.177$ closer than
 entropy maximisation, interval $[0.102, 0.251]$ and \textbf{18 of 20}. All
 three are one-sided paired tests on 19 degrees of freedom, adjusted together by
-the Holm procedure, and all three give $p < 0.0001$. Figure~\ref{fig:main}(c)
+the Holm procedure, and all three give $p < 0.0001$; every interval in this
+paper is the two-sided 95\% interval of the same paired differences. Figure~\ref{fig:main}(c)
 draws them beside the contrasts on \emph{Pushing}.
 
 The result holds under either counting rule. Excluding runs whose
@@ -718,8 +722,8 @@ an order the measurement holds loosely.
 \emph{Pushing} completes about one episode in five, and that rate sets the
 resolution of everything measured on it. A median of 73 labelled episodes falls
 into four bins, which carries a measured sampling floor between $0.043$ and
-$0.073$ depending on the level and leaves 10 of the 100 reference-matching runs
-with no labelled episode. The same rate empties the reward signal. A batch of
+$0.073$ depending on the level. Ten of the 100 reference-matching runs produce
+no labelled episode at all. The same rate empties the reward signal. A batch of
 sixteen episodes completes about three of them, one of the four modes carries
 reward, and in the median run 44 of the 60 updates read a batch where every
 episode returns zero, against 10 on \emph{Avoiding}. Rewarded success
@@ -734,7 +738,7 @@ is expressed. Table~\ref{tab:weight} reports the grid on the two lowest
 together. Against entropy maximisation at $\lambda = 0.50$, reference matching gains
 $0.090$ of fidelity with an interval of $[0.016, 0.164]$ on 8 of 10 policies,
 and $0.060$ of geometric success with an interval of $[0.024, 0.095]$ on 9 of
-10. It also holds 22 of its 100 runs below the success floor against 46 of the
+10. Twenty-two of its 100 runs fall below the success floor, against 46 of the
 100 run by entropy maximisation. At $\lambda = 0.25$ and $\lambda = 1.00$ both
 intervals contain zero. The weight at which the grid separates the two
 objectives is the one the rule had already selected for this task, from a
