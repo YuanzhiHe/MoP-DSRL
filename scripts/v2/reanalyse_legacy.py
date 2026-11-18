@@ -14,6 +14,7 @@ shared reference's sampling error is carried separately.
 """
 from __future__ import annotations
 
+import os
 import json
 import sys
 from fractions import Fraction
@@ -22,7 +23,11 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 sys.path[:0] = [str(ROOT / "scripts"), str(ROOT / "scripts" / "v2")]
 
 import d3il_runs as D  # noqa: E402

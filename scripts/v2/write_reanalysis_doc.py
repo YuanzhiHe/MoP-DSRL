@@ -5,10 +5,15 @@ Nothing here recomputes a number. Every figure in the output is read from
 ``runs/_d3il_v2/reanalysis_legacy.json`` so the document cannot drift from the
 analysis that produced it; regenerate both together or neither.
 """
+import os
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 SRC = ROOT / "runs" / "_d3il_v2" / "reanalysis_legacy.json"
 OUT = ROOT / "docs" / "v2" / "REANALYSIS_LEGACY.md"
 

@@ -8,6 +8,7 @@ disagree.
 """
 from __future__ import annotations
 
+import os
 import collections
 import glob
 import json
@@ -21,7 +22,11 @@ import numpy as np
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 from scipy import stats as sps
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 
@@ -45,7 +50,8 @@ NAME = {"dsrl": "No mode term", "mi": "Mode entropy",
 # scored against its own reference, which puts both histograms under one
 # distribution and carries whatever the two measurement paths differ by.
 FLOOR = {k: v["overall"]["tv_to_ref"]["mean"] for k, v in json.loads(
-    (ROOT / "runs" / "_d3il_v2" / "frozen2_report.json").read_text()).items()
+    (ROOT / "runs" / "_d3il_v2"
+     / f"{PREFIX}frozen_report.json").read_text()).items()
     if "/" not in k}
 
 plt.rcParams.update({

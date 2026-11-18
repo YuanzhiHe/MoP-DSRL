@@ -15,6 +15,7 @@ quantities, and on Pushing they are not even monotonically related.
 """
 from __future__ import annotations
 
+import os
 import argparse
 import collections
 import glob
@@ -25,7 +26,11 @@ from pathlib import Path
 import numpy as np
 from scipy import stats as sps
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 

@@ -13,6 +13,7 @@ scheduled against measurement.
 """
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -20,7 +21,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import train_d3il_backbone as T  # noqa: E402

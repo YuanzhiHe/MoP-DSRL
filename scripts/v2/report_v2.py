@@ -17,6 +17,7 @@ What it produces, in the order docs/v2/PREREG_v2.md asks for:
   5. undefined fidelity counted, never imputed;
   6. the reference's own sampling error, resampled from the stored counts.
 """
+import os
 import argparse
 import collections
 import glob
@@ -26,7 +27,11 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 # Name prefix of the run files the analysis reads. The matrix was measured
 # again after the environment rule changed, and both cohorts sit in the same
 # directory; the prefix is what keeps the two apart, so a bare invocation

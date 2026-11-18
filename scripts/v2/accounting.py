@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Run accounting for the legacy sweep, from the reconstructed manifest."""
+import os
 import collections
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 M = [json.loads(l) for l in open(ROOT / "runs/_d3il_v2/manifest_legacy.jsonl")]
 
 print(f"planned cells in the manifest: {len(M)}")

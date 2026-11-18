@@ -11,6 +11,7 @@ than guessed, so a reader can tell a recovered value from an absent one.
 """
 from __future__ import annotations
 
+import os
 import argparse
 import glob
 import hashlib
@@ -20,7 +21,11 @@ import shlex
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 RUNS = ROOT / "runs" / "_d3il"
 LOGS = ROOT / "logs" / "cpu"
 BACKBONES = Path("/shared/scratch/SCWF00111/d3il_backbones")

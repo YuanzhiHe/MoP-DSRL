@@ -13,6 +13,7 @@ plus a statement of what is finished and what is not.
 """
 from __future__ import annotations
 
+import os
 import argparse
 import collections
 import glob
@@ -23,7 +24,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import launch_plan as LP  # noqa: E402
 
@@ -42,10 +47,12 @@ STAGE_FILES = {
     "ablation/weight": f"{PREFIX}ablation_weight_*.jsonl",
     # Evaluation only: each frozen policy is rolled out under its own latent
     # prior with no training, which is where the fine-tuned runs start from.
-    # The superseded first stage, which measured every cell on the environment
-    # its worker built first, stays on disk under frozen_*.jsonl and enters no
-    # analysis.
-    "frozen policy": "frozen2_*.jsonl",
+    # Earlier stages of this measurement stay on disk under frozen_*.jsonl and
+    # frozen2_*.jsonl and enter no analysis: the first measured every cell on
+    # the environment its worker built first, and both predate the Pushing
+    # clone this cohort runs, so their rows name checkpoints that no longer
+    # sit on disk under those hashes.
+    "frozen policy": f"{PREFIX}frozen_*.jsonl",
 }
 # Cells whose results are debugging evidence under section III of the brief and
 # never enter an analysis. They are listed so that the package accounts for
@@ -436,8 +443,10 @@ def main():
                 f"runs/_d3il_v2/{PREFIX}report_main.json",
                 f"runs/_d3il_v2/{PREFIX}trend_main.json",
                 f"runs/_d3il_v2/{PREFIX}ablations.json",
-                "runs/_d3il_v2/reanalysis_legacy.json",
-                "runs/_d3il_v2/observation_range.json"):
+                f"runs/_d3il_v2/{PREFIX}frozen_report.json",
+                f"runs/_d3il_v2/{PREFIX}sampling_floor.json",
+                f"runs/_d3il_v2/{PREFIX}observation_range.json",
+                "runs/_d3il_v2/reanalysis_legacy.json"):
         p = ROOT / src
         if p.exists():
             (out / Path(src).name).write_bytes(p.read_bytes())

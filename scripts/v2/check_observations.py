@@ -99,30 +99,43 @@ def from_runs(paths):
     return summary
 
 
-def measure(task, weightings, episodes, bound):
+def _probe(job):
+    """One weighting, in a process that has built nothing before it.
+
+    A process builds one environment, so a loop over weightings here measured
+    every weighting after the first on a reused environment. The work is
+    handed to a pool that retires each worker after one task instead.
+    """
+    task, w, episodes, bound = job
     args = R.build_parser().parse_args(
-        ["--task", task, "--weightings", weightings[0], "--out", "/dev/null"])
-    per_channel, per_step = None, []
-    for w in weightings:
-        model, blob = R.load_backbone(R.backbone_path(task, w, 0), "cpu")
-        # One environment per process, like every other path. Looping over
-        # weightings here built several in one process, so every weighting
-        # after the first was measured on a reused environment: the probe
-        # refuses that now rather than reporting it.
-        env = EF.build(task, R.TASKS, 0, blob.get("history", 1))
-        rng = np.random.default_rng(0)
-        if per_channel is None:
-            per_channel = np.zeros(len(blob["obs_std"]))
-        for _ in range(episodes):
-            obs, done = env.reset(), False
-            while not done:
-                v = (np.asarray(obs, float) - blob["obs_mean"]) / blob["obs_std"]
-                per_channel = np.maximum(per_channel, np.abs(v))
-                per_step.append(float(np.abs(v).max()))
-                o = torch.tensor(np.clip(v, -bound, bound), dtype=torch.float32)[None]
-                z = torch.tensor(rng.standard_normal((1, blob["act_dim"])),
-                                 dtype=torch.float32)
-                obs, _, done, _ = env.step(R.decode(model, blob, o, z, args.M)[0])
+        ["--task", task, "--weightings", w, "--out", "/dev/null"])
+    model, blob = R.load_backbone(R.backbone_path(task, w, 0), "cpu")
+    env = EF.build(task, R.TASKS, 0, blob.get("history", 1))
+    rng = np.random.default_rng(0)
+    per_channel = np.zeros(len(blob["obs_std"]))
+    per_step = []
+    for _ in range(episodes):
+        obs, done = env.reset(), False
+        while not done:
+            v = (np.asarray(obs, float) - blob["obs_mean"]) / blob["obs_std"]
+            per_channel = np.maximum(per_channel, np.abs(v))
+            per_step.append(float(np.abs(v).max()))
+            o = torch.tensor(np.clip(v, -bound, bound),
+                             dtype=torch.float32)[None]
+            z = torch.tensor(rng.standard_normal((1, blob["act_dim"])),
+                             dtype=torch.float32)
+            obs, _, done, _ = env.step(R.decode(model, blob, o, z, args.M)[0])
+    return [float(x) for x in per_channel], per_step
+
+
+def measure(task, weightings, episodes, bound):
+    import multiprocessing as mp
+    jobs = [(task, w, episodes, bound) for w in weightings]
+    ctx = mp.get_context("spawn")
+    with ctx.Pool(processes=min(len(jobs), 4), maxtasksperchild=1) as pool:
+        got = pool.map(_probe, jobs)
+    per_channel = np.max(np.asarray([g[0] for g in got]), axis=0)
+    per_step = [v for g in got for v in g[1]]
     q = np.asarray(per_step)
     return dict(task=task, weightings=list(weightings), episodes=episodes,
                 steps=int(q.size), median=float(np.median(q)),

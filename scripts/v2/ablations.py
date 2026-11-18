@@ -17,6 +17,7 @@ attempt rather than for the runs that pass a threshold.
 Prior. The learned-skill arm with its prior fitted to the reference, against
 the same arm under a uniform prior, on the same policies and seeds.
 """
+import os
 import argparse
 import collections
 import glob
@@ -26,7 +27,11 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import stats as S  # noqa: E402
 

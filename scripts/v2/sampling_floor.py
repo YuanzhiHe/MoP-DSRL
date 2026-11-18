@@ -12,6 +12,7 @@ The evaluation count is the median labelled count over that task's runs, which
 keeps one collapsed run from setting the offset for the task. The quartiles of
 that count are reported beside it so the spread is visible.
 """
+import os
 import argparse
 import glob
 import json
@@ -19,7 +20,11 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 # Name prefix of the run files the analysis reads. The matrix was measured
 # again after the environment rule changed, and both cohorts sit in the same
 # directory; the prefix is what keeps the two apart, so a bare invocation
@@ -109,6 +114,11 @@ def main():
     args = ap.parse_args()
     rng = np.random.default_rng(args.seed)
     rows = read(f"{PREFIX}main_*.jsonl")
+    # An empty read wrote an empty file and reported success, and the table
+    # that reads this file then had a floor of nothing to compare against.
+    if not rows:
+        raise SystemExit(f"no rows under {PREFIX}main_*.jsonl: the floor is "
+                         f"measured from the runs it is a floor for")
     out = {}
     for task in sorted({r["task"] for r in rows}):
         f = floor_for(rows, task, args.draws, rng)

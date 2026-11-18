@@ -33,6 +33,7 @@
   "v22_ablation_fitted_prior_pushing.jsonl"
  ],
  "tab:weight": [
+  "v22_ablation_weight_pushing_0.25.jsonl",
   "v22_ablation_weight_pushing_0.50.jsonl",
   "v22_ablation_weight_pushing_1.00.jsonl"
  ],

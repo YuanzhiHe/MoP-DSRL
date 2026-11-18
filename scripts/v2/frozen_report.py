@@ -8,6 +8,7 @@ histogram to the reference measured from the same policy: both samples come
 from one distribution, so that distance is the sampling floor measured rather
 than computed, and it is reported beside the computed one.
 """
+import os
 import glob
 import json
 import sys
@@ -15,7 +16,11 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 # Name prefix of the run files the analysis reads. The matrix was measured
 # again after the environment rule changed, and both cohorts sit in the same
 # directory; the prefix is what keeps the two apart, so a bare invocation
@@ -65,7 +70,8 @@ def main():
     # of its completion rate, and the second builds a throwaway environment
     # ahead of the measured one. Naming the pattern keeps a report from
     # averaging the two together.
-    pattern = sys.argv[1] if len(sys.argv) > 1 else "frozen2_*.jsonl"
+    pattern = sys.argv[1] if len(sys.argv) > 1 \
+        else f"{PREFIX}frozen_*.jsonl"
     frozen = [r for r in read(pattern) if r.get("status") == "completed"]
     main_rows = [r for r in read(f"{PREFIX}main_*.jsonl") if r.get("status") == "completed"]
     if not frozen:
@@ -130,7 +136,10 @@ def main():
                 {k: v for k, v in c.__dict__.items()
                  if k not in ("p_one_sided", "p_adjusted", "t")} for c in fam]
 
-    tag = pattern.split("_")[0]
+    # The whole stem of the pattern, so that a cohort prefix and the
+    # stage together name the file: splitting on the first underscore
+    # turned v22_frozen_*.jsonl into a report called v22.
+    tag = pattern.split("*")[0].rstrip("_")
     dest = ROOT / "runs" / "_d3il_v2" / f"{tag}_report.json"
     dest.write_text(json.dumps(out, indent=1, default=str))
     print(f"\nwrote {dest}")

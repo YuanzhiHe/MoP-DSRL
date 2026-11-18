@@ -16,13 +16,18 @@ It reads success, never fidelity, and it reads only the calibration file. A run
 that raised counts as a failure of that weight, since a weight that makes the
 optimisation fall over is not a weight to carry into the main experiment.
 """
+import os
 import argparse
 import collections
 import glob
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 FLOOR = {"avoiding": 0.15, "pushing": 0.10}
 TOLERATED = 0.15
 MAIN_BACKBONES = (0, 1, 2, 3, 4)

@@ -18,13 +18,18 @@ and the dependency it carries, so the chain can be read back from the log.
 """
 from __future__ import annotations
 
+import os
 import argparse
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# A job runs a frozen copy of scripts/ under runs/_d3il_v2/_src/<job>,
+# so this file's own location says nothing about where the run files
+# are. The environment names the root; the fallback is a local run.
+ROOT = Path(os.environ.get("MOP_DSRL_ROOT")
+            or Path(__file__).resolve().parents[2])
 JOB = "scripts/v2/cpu_job_v2.sh"
 
 AVOIDING_W = ["0.00", "0.15", "0.30", "0.60"]

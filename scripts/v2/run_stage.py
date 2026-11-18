@@ -115,7 +115,11 @@ def ablations(task):
     if task == "pushing":
         # The weight grid lives on the two lowest Pushing skews, which is
         # where the identity places the two objectives closest together.
-        for lam in ("0.50", "1.00"):
+        # Every candidate weight the plan names, not the two that were not
+        # the chosen one when the plan was written: the rule can choose any of
+        # them, and it chose 0.50 here, which left the grid's third weight
+        # unrun while the accounting still planned for it.
+        for lam in ("0.25", "0.50", "1.00"):
             out.append(drv(
                 "--task", "pushing", *cfg("pushing"),
                 "--weightings", "0.00", "0.10",
