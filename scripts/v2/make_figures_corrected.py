@@ -118,7 +118,7 @@ def figure_one():
 
     box(0.00, 0.60, 0.23, 0.33, r"noise policy $\mu_\phi$", "trained",
         fc="#d9e8f4", ec=C["mop"], lw=1.2)
-    box(0.30, 0.60, 0.26, 0.33, r"generative policy $v_\theta$", "frozen")
+    box(0.30, 0.60, 0.26, 0.33, r"generative policy $\pi_\theta$", "frozen")
     box(0.63, 0.60, 0.21, 0.33, "rollout", "simulator", fc="#fff")
     arrow((0.23, 0.765), (0.30, 0.765)); arrow((0.56, 0.765), (0.63, 0.765))
     ax.text(0.265, 0.55, r"$z$", ha="center", fontsize=6.6, color=MUT)
@@ -143,7 +143,7 @@ def figure_one():
             byw[w].append(v)
         for w in sorted(byw, reverse=True):
             groups.append(np.array(byw[w]))
-            labels.append(f"{task[:2].upper()}  {w}")
+            labels.append(f"{task.capitalize()}  {w}")
     rng = np.random.default_rng(1)
     for i, v in enumerate(groups):
         ax.scatter(v, np.full_like(v, i) + rng.uniform(-.14, .14, len(v)),
@@ -158,7 +158,8 @@ def figure_one():
                                 shrinkA=2, shrinkB=1))
     ax.set_yticks(range(len(groups)))
     ax.set_yticklabels(labels, fontsize=6.2)
-    ax.set_ylabel("task and\ndemonstration weighting", fontsize=6.6)
+    # The tick labels carry the task name, so the axis names what is left.
+    ax.set_ylabel("demonstration weighting", fontsize=6.6)
     ax.set_xlabel(r"measured $D_{\mathrm{KL}}(C_{\mathrm{ref}}\,\|\,u)$   (nats)")
     ax.set_xlim(-0.03, 1.40); ax.set_ylim(-0.7, len(groups) + 0.75)
     ax.set_title("(b)  None of the forty cloned policies is uniform",
@@ -247,7 +248,8 @@ def figure_two():
     ax.set_xlim(-0.17, right + 0.145); ax.set_ylim(-0.95, len(ys) + 0.1)
     ax.set_xlabel("reduction in " r"$D_{\mathrm{TV}}(C_\phi, C_{\mathrm{ref}})$"
                   ",  paired within each frozen policy")
-    ax.set_title("(c)  Reduction per frozen policy (95% CI; policies won)",
+    ax.set_title("(c)  Reduction per frozen policy "
+                 "(95% interval; policies won)",
                  loc="left", pad=2)
 
     fig.savefig(OUT / "fig2_result.pdf"); fig.savefig(OUT / "fig2_result.png")

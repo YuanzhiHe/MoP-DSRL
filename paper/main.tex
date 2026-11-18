@@ -36,16 +36,16 @@
 
 \begin{abstract}
 Reinforcement learning on the latent noise input of a frozen generative policy
-raises reward without touching its weights, and changes which of several valid
-behaviours it produces. Methods for keeping that behaviour maximise the
-entropy over behavioural modes, or a mutual information bound, on an assumption
-they leave unstated. For a
+raises reward without touching the pretrained weights, and it changes which of
+several valid behaviours the policy produces. The methods offered for keeping
+that behaviour maximise the entropy over behavioural modes, or a mutual
+information bound, on an assumption they leave unstated. For a
 reference uniform over $K$ modes, the Kullback-Leibler divergence to it equals
 $\ln K$ minus the entropy, so matching a policy to its pretrained behaviour and
 maximising behavioural entropy are one objective, and they separate only as the
-pretrained distribution departs from uniform. Behaviour cloning produces skewed
-policies, so the distinction is present in realistic cases and has gone
-unmeasured. We penalise the total variation distance between the fine-tuned
+pretrained distribution departs from uniform. Every one of the forty policies
+cloned here departs from it, by up to $1.29$ nats, so the separation is present
+in the ordinary case and has gone unmeasured. We penalise the total variation distance between the fine-tuned
 policy's mode histogram and the frozen policy's own, with no learned components
 and one scalar weight. Over two manipulation tasks, 40 independently trained
 frozen policies and 1,566 fine-tuning runs, the gap between the two objectives
@@ -54,11 +54,11 @@ grows with each policy's own measured skew at $0.811$ per unit on
 penalty ends $0.177$ closer to the pretrained behaviour than entropy
 maximisation on 18 of 20 frozen policies and $0.193$ closer than unregularised
 fine-tuning on 20 of 20, while solving the task more often than any of them and
-giving up $0.014$ of the geometric success of the policy it started from, where
-the other three give up $0.052$ to $0.138$. A
-learned-skill method with a discriminator and a latent skill space ends $0.191$
-further away. On \emph{Pushing} the penalty ends $0.094$ closer than entropy
-maximisation, which is the comparison the identity singles out.
+giving up $0.014$ of the geometric success of the policy it started from
+against $0.052$ to $0.138$ for the other three. On \emph{Pushing} it ends $0.094$
+closer than entropy maximisation, the comparison the identity singles out. The
+learned-skill method it passes by $0.191$ carries a discriminator and a latent
+skill space of its own.
 \end{abstract}
 
 \begin{keyword}
@@ -118,7 +118,9 @@ Pretrained policies depart from uniform. Measured over the six route groups
 used throughout this paper, the mode distributions of twenty cloned policies
 lie between $0.014$ and $1.291$ nats from uniform. Five of those twenty were cloned from an
 unmodified demonstration set, and they alone span $0.014$ to $0.416$ nats, so
-even balanced demonstrations produce a skewed policy. Equation~\ref{eq:identity}
+even balanced demonstrations produce a skewed policy, and
+Figure~\ref{fig:setting}(b) places all forty policies of this paper on that
+scale. Equation~\ref{eq:identity}
 collapses the distinction between the two objectives only at uniform, so in
 realistic cases the distinction stands, and an objective that respects it
 departs from the one in common use.
@@ -546,7 +548,9 @@ $0.56$, and the \emph{Pushing} gap runs $0.045$, $-0.003$, $0.156$, $0.180$ as
 mean skew runs $0.24$, $0.24$, $0.42$, $0.54$. On both tasks the gap is
 smallest where the reference is least skewed and largest where it is most
 skewed, and the two \emph{Pushing} levels that share a skew of $0.24$ share the
-two smallest gaps on that task.
+two smallest gaps on that task. Figure~\ref{fig:main}(a, b) draws the four
+objectives against that scale, with entropy maximisation the one line that
+rises along it.
 
 Table~\ref{tab:main} shows the mechanism directly, level by level. On
 \emph{Avoiding}, entropy maximisation ends $0.313$ from the reference at the least skewed level and
@@ -578,7 +582,8 @@ variation, with a 95\% interval of $[0.141, 0.244]$ and a win on
 interval $[0.132, 0.251]$ and \textbf{19 of 20}, and $0.177$ closer than
 entropy maximisation, interval $[0.102, 0.251]$ and \textbf{18 of 20}. All
 three are one-sided paired tests on 19 degrees of freedom, adjusted together by
-the Holm procedure, and all three give $p < 0.0001$.
+the Holm procedure, and all three give $p < 0.0001$. Figure~\ref{fig:main}(c)
+draws them beside the contrasts on \emph{Pushing}.
 
 The result holds under either counting rule. Excluding runs whose
 geometric success falls below the success floor moves the same three margins to
@@ -754,9 +759,11 @@ with standard errors over the runs that produced a labelled histogram. The
 shaded band is the distance each frozen policy reaches from its own reference
 when evaluated under its own latent prior on the same budget, averaged over the
 task's twenty frozen policies; per level it runs from $0.037$ to $0.059$ on
-\emph{Avoiding} and $0.043$ to $0.073$ on \emph{Pushing}. Mode entropy rises
-with skew on both tasks, which is what Equation~\ref{eq:identity} predicts for
-an objective pulling toward uniform while the reference moves away. (c) Paired
+\emph{Avoiding} and $0.043$ to $0.073$ on \emph{Pushing}. The two lowest
+\emph{Pushing} levels share a skew of $0.24$, so their points sit together on
+that axis. Mode entropy rises with skew on both tasks, which is what
+Equation~\ref{eq:identity} predicts for an objective pulling toward uniform
+while the reference moves away. (c) Paired
 differences across the twenty frozen policies of each task, each the mean over
 its five run seeds, with 95\% intervals from the $t$ distribution on that
 contrast's own degrees of freedom and the family adjusted by the Holm procedure.
@@ -837,7 +844,7 @@ last column is the largest per-episode coefficient reaching the update,
 averaged over runs: a common weight gives each variant its own penalty
 strength, and the weight was calibrated under total variation. All five end
 nearer the reference than the $0.243$ reached without matching at all, and
-total variation is the closest of them.}
+total variation, in bold, is the closest of them.}
 \label{tab:divergence}
 \small
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccc@{}}
