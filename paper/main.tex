@@ -595,7 +595,8 @@ entropy maximisation, interval $[0.102, 0.251]$ and \textbf{18 of 20}. All
 three are one-sided paired tests on 19 degrees of freedom, adjusted together by
 the Holm procedure, and all three give $p < 0.0001$; every interval in this
 paper is the two-sided 95\% interval of the same paired differences. Figure~\ref{fig:main}(c)
-draws them beside the contrasts on \emph{Pushing}.
+draws them beside the contrasts on \emph{Pushing}. Figure~\ref{fig:histograms} draws the
+histograms those distances are taken between, for one policy.
 
 The result holds under either counting rule. Excluding runs whose
 geometric success falls below the success floor moves the same three margins to
@@ -648,6 +649,24 @@ common origin and a common budget, these columns settle which mode term to
 carry while fine-tuning in noise space. They were measured after the
 analysis above, so they carry intervals without $p$ values: no direction for
 them was declared before the runs they compare.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig3_histograms.pdf}
+\caption{What each objective leaves of the pretrained behaviour. One
+\emph{Avoiding} policy, the one whose measured skew is the median of the five
+at the most skewed level, with its mode histogram averaged over the five runs
+of each objective and the frozen policy's own histogram repeated behind each as
+a dashed outline. The printed distance is between the two histograms drawn;
+averaging the five runs' own distances instead, as the tables do, gives $0.36$,
+$0.50$, $0.36$ and $0.22$ in the same order. Reward falls on four of the
+twenty-four routes and is drawn afresh for each run, and the unregularised
+objective moves mass onto the routes its own run rewards. Entropy maximisation
+flattens toward the dotted uniform line whatever the reference does, which is
+what Equation~\ref{eq:identity} predicts of it, and reference matching holds
+the shape it started from.}
+\label{fig:histograms}
+\end{figure}
 
 \subsection{Robustness of the Ordering}\label{sec:robust}
 
